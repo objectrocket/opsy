@@ -1,0 +1,37 @@
+{% extends "layout.html" %}
+{% set active_page = 'events' %}
+{% block head %}
+  {{ super() }}
+      <!-- Custom styles for this template -->
+      <link href="/static/css/datatables/jquery.dataTables.min.css" rel="stylesheet">
+{% endblock %}
+{% block content %}
+      <table id="events" class="table">
+        <thead>
+          <tr>
+            <th>Datacenter</th>
+            <th>Source</th>
+            <th>Check Name</th>
+            <th>Output</th>
+            <th>Occurrences</th>
+            <th>Last Check</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for datacenter, source, check, output, occurrences, lastcheck in events %}
+          <tr>
+            <td>{{ datacenter }}</td>
+            <td>{{ source }}</td>
+            <td>{{ check }}</td>
+            <td>{{ output }}</td>
+            <td>{{ occurrences }}</td>
+            <td>{{ lastcheck }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+{% endblock %}
+{% block footer %}
+  {{ super() }}
+  <script src="/static/js/datatables/jquery.dataTables.min.js"></script>
+{% endblock %}
