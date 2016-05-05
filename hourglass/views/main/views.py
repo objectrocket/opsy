@@ -1,13 +1,12 @@
 import requests
 import json
 from . import main
-from flask import render_template, current_app
+from flask import render_template, current_app, redirect, url_for
 
 
 @main.route('/')
 def index():
-    return render_template('main.html', title='FOO')
-
+    return redirect(url_for('main.events'))
 
 @main.route('/events')
 @main.route('/events/<datacenter>')
@@ -39,3 +38,7 @@ def checks(datacenter=None):
         for host in hosts:
             checks += json.loads(requests.get('http://'+host+':4567/checks').content)
     return render_template('checks.html', title='Checks', checks=checks)
+
+@main.route('/about')
+def about():
+    return render_template('about.html', title='About')
