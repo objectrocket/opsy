@@ -14,13 +14,13 @@ def events(datacenter=None):
     app = current_app._get_current_object()
     HGCONFIG = app.config.get('hourglass_config')
     if datacenter:
-        host = [i['host'] for i in HGCONFIG['sensu'] if i['name'] == datacenter][0]
-        events = json.loads(requests.get('http://'+host+':4567/events').content)
+        host = [{'host': i['host'], 'port': i['port']} for i in HGCONFIG['sensu'] if i['name'] == datacenter][0]
+        events = json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/events').content)
     else:
-        hosts = [i['host'] for i in HGCONFIG['sensu']]
+        hosts = [{'host':i['host'], 'port':i['port']} for i in HGCONFIG['sensu']]
         events = []
         for host in hosts:
-            events += json.loads(requests.get('http://'+host+':4567/events').content)
+            events += json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/events').content)
     return render_template('events.html', title='Events', events=events)
 
 
@@ -30,13 +30,13 @@ def checks(datacenter=None):
     app = current_app._get_current_object()
     HGCONFIG = app.config.get('hourglass_config')
     if datacenter:
-        host = [i['host'] for i in HGCONFIG['sensu'] if i['name'] == datacenter][0]
-        checks = json.loads(requests.get('http://'+host+':4567/checks').content)
+        host = [{'host': i['host'], 'port': i['port']} for i in HGCONFIG['sensu'] if i['name'] == datacenter][0]
+        events = json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/checks').content)
     else:
-        hosts = [i['host'] for i in HGCONFIG['sensu']]
+        hosts = [{'host':i['host'], 'port':i['port']} for i in HGCONFIG['sensu']]
         checks = []
         for host in hosts:
-            checks += json.loads(requests.get('http://'+host+':4567/checks').content)
+            checks += json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/checks').content)
     return render_template('checks.html', title='Checks', checks=checks)
 
 @main.route('/about')
