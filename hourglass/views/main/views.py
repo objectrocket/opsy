@@ -1,7 +1,6 @@
 import requests
-import json
 from . import main
-from flask import render_template, current_app, redirect, url_for
+from flask import render_template, current_app, redirect, url_for, json
 from time import time
 from humanize import naturaltime
 
