@@ -11,6 +11,7 @@
           <table id="checks" class="table table-striped table-bordered table-hover table-condensed">
             <thead>
               <tr>
+                <th id="datacenter">DC</th>
                 <th id="name">Name</th>
                 <th id="command">Command</th>
                 <th id="interval">Interval</th>
@@ -18,7 +19,8 @@
             </thead>
             <tbody>
             {% for check in checks|sort(attribute='name') %}
-            <tr>
+              <tr>
+                <td>{{ check.datacenter }}</td>
                 <td>{{ check.name }}</td>
                 <td>{{ check.command }}</td>
                 <td>{{ check.interval }}</td>
