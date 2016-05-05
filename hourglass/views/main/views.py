@@ -14,12 +14,13 @@ def index():
 def events(datacenter=None):
     app = current_app._get_current_object()
     HGCONFIG = app.config.get('hourglass_config')
+    print(HGCONFIG)
     if datacenter:
         host = [{'host': i['host'], 'port': i['port']} for i in HGCONFIG['sensu'] if i['name'] == datacenter][0]
         events = json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/events').content)
         for event in events:
             age = naturaltime(time() - event['timestamp'])
-            event.update({"datacenter": datacenter, 'lastcheck': age})
+            event.update({"datacenter": datacenter})
     else:
         hosts = HGCONFIG['sensu']
         events = []
@@ -27,9 +28,14 @@ def events(datacenter=None):
             localevents = json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/events').content)
             for event in localevents:
                 age = naturaltime(time() - event['timestamp'])
-                event.update({'datacenter': host['name'], 'lastcheck': age})
+                event.update({'datacenter': host['name']})
             events += localevents
-    return render_template('events.html', title='Events', events=events)
+    for event in events:
+        event.update({
+            'lastcheck': age,
+            'href': event['datacenter']+'/'+event['client']['name']+'?check='+event['check']['name']
+            })
+    return render_template('events.html', title='Events', events=events, uchiwa=HGCONFIG['hourglass']['uchiwa_url'])
 
 
 @main.route('/checks')
