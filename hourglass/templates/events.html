@@ -3,7 +3,7 @@
 {% block head %}
   {{ super() }}
       <!-- Custom styles for this template -->
-      <link href="/static/css/datatables/jquery.dataTables.min.css" rel="stylesheet">
+      <link href="/static/css/datatables/dataTables.bootstrap.min.css" rel="stylesheet">
 {% endblock %}
 {% block content %}
       <div class="row">
@@ -21,7 +21,7 @@
             </thead>
             <tbody>
             {% for event in events %}
-              <tr>
+            <tr class="link-row" data-href="{{ uchiwa }}/#/client/{{ event.href }}">
                 <td>{{ event.datacenter }}</td>
                 <td>{{ event.client.name }}</td>
                 <td>{{ event.check.name }}</td>
@@ -38,4 +38,5 @@
 {% block footer %}
   {{ super() }}
   <script src="/static/js/datatables/jquery.dataTables.min.js"></script>
+  <script src="/static/js/datatables/dataTables.bootstrap.min.js"></script>
 {% endblock %}
