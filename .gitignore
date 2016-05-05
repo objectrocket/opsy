@@ -1,5 +1,7 @@
 #Hourglass files
 hourglass.json
+sampleevents.json
+samplechecks.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
