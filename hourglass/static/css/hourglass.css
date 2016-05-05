@@ -6,7 +6,7 @@ table {
     table-layout: fixed;
 }
 
-td, th {
+table td, table th {
     overflow: hidden;
     white-space: nowrap;
 }
@@ -15,18 +15,26 @@ td {
 }
 
 /* EVENTS TABLE */
-th#datacenter {
-    width: 5%;
+th#datacenter{
+    width: 5%
 }
 th#source {
     width: 25%;
 }
 th#check {
-    width: 15%;
+    width: 10%;
 }
 th#occurrences {
-    width: 7%;
+    width: 5%;
 }
 th#lastcheck {
+    width: 10%;
+}
+
+/* CHECKS TABLE */
+th#name {
+    width: 15%;
+}
+th#interval {
     width: 10%;
 }
