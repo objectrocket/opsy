@@ -14,7 +14,5 @@ if __name__ == '__main__':
     manager = Manager(create_app)
     manager.add_option('-c', '--config', dest='config', required=False,
                        default='%s/config.ini' % basedir)
-    manager.add_option('-m', '--mode', dest='mode', required=False,
-                       default='dev')
     manager.add_command("shell", Shell(make_context=make_shell_context))
     manager.run()
