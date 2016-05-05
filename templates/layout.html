@@ -52,7 +52,8 @@
           {% block leftnav %}
           {% set leftnav_bar = [
             ('/', 'index', 'Home'),
-            ('/events', 'events', 'Events')
+            ('/events', 'events', 'Events'),
+            ('/checks', 'checks', 'Checks')
           ] -%}
           {% set active_page = active_page|default('index') -%}
           {% for href, id, caption in leftnav_bar %}

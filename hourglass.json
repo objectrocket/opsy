@@ -1,0 +1,10 @@
+{
+"sensu": [
+    {
+      "name": "Rackspace",
+      "host": "watcher.cryptkcoding.com",
+      "port": 4567,
+      "timeout": 10
+    }
+  ]
+}

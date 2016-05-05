@@ -18,14 +18,14 @@
           </tr>
         </thead>
         <tbody>
-        {% for datacenter, source, check, output, occurrences, lastcheck in events %}
+        {% for event in events %}
           <tr>
-            <td>{{ datacenter }}</td>
-            <td>{{ source }}</td>
-            <td>{{ check }}</td>
-            <td>{{ output }}</td>
-            <td>{{ occurrences }}</td>
-            <td>{{ lastcheck }}</td>
+            <td>{{ event.datacenter }}</td>
+            <td>{{ event.client.name }}</td>
+            <td>{{ event.check.name }}</td>
+            <td>{{ event.check.output }}</td>
+            <td>{{ event.occurrences }}</td>
+            <td>{{ event.lastcheck }}</td>
           </tr>
         {% endfor %}
         </tbody>
