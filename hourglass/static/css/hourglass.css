@@ -1,0 +1,32 @@
+body {
+  padding-top: 70px;
+}
+
+table {
+    table-layout: fixed;
+}
+
+td, th {
+    overflow: hidden;
+    white-space: nowrap;
+}
+td {
+    text-overflow: ellipsis;
+}
+
+/* EVENTS TABLE */
+th#datacenter {
+    width: 5%;
+}
+th#source {
+    width: 25%;
+}
+th#check {
+    width: 15%;
+}
+th#occurrences {
+    width: 7%;
+}
+th#lastcheck {
+    width: 10%;
+}
