@@ -51,13 +51,13 @@
           <ul class="nav navbar-nav">
           {% block leftnav %}
           {% set leftnav_bar = [
-            ('/', 'index', 'Home'),
-            ('/events', 'events', 'Events'),
-            ('/checks', 'checks', 'Checks')
+            ('main.events', 'events', 'Events'),
+            ('main.checks', 'checks', 'Checks'),
+            ('main.about', 'about', 'About'),
           ] -%}
           {% set active_page = active_page|default('index') -%}
           {% for href, id, caption in leftnav_bar %}
-            <li{% if id == active_page %} class="active"{% endif %}><a href="{{ href|e }}">{{ caption|e }}</a></li>
+            <li{% if id == active_page %} class="active"{% endif %}><a href="{{ url_for(href|e) }}">{{ caption|e }}</a></li>
           {% endfor %}
           {% endblock %}
           </ul>
