@@ -6,24 +6,28 @@
       <link href="/static/css/datatables/jquery.dataTables.min.css" rel="stylesheet">
 {% endblock %}
 {% block content %}
-      <table id="checks" class="table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Command</th>
-            <th>Interval</th>
-          </tr>
-        </thead>
-        <tbody>
-        {% for check in checks|sort(attribute='name') %}
-        <tr>
-            <td>{{ check.name }}</td>
-            <td>{{ check.command }}</td>
-            <td>{{ check.interval }}</td>
-          </tr>
-        {% endfor %}
-        </tbody>
-      </table>
+      <div class="row">
+        <div class="col-md-10 col-md-offset-1">
+          <table id="checks" class="table table-striped table-bordered table-hover table-condensed">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Command</th>
+                <th>Interval</th>
+              </tr>
+            </thead>
+            <tbody>
+            {% for check in checks|sort(attribute='name') %}
+            <tr>
+                <td>{{ check.name }}</td>
+                <td>{{ check.command }}</td>
+                <td>{{ check.interval }}</td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
 {% endblock %}
 {% block footer %}
   {{ super() }}
