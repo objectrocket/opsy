@@ -2,6 +2,8 @@ import requests
 import json
 from . import main
 from flask import render_template, current_app, redirect, url_for
+from time import time
+from humanize import naturaltime
 
 
 @main.route('/')
@@ -17,14 +19,16 @@ def events(datacenter=None):
         host = [{'host': i['host'], 'port': i['port']} for i in HGCONFIG['sensu'] if i['name'] == datacenter][0]
         events = json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/events').content)
         for event in events:
-            event.update({"datacenter": datacenter})
+            age = naturaltime(time() - event['timestamp'])
+            event.update({"datacenter": datacenter, 'lastcheck': age})
     else:
         hosts = HGCONFIG['sensu']
         events = []
         for host in hosts:
             localevents = json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/events').content)
             for event in localevents:
-                event.update({'datacenter': host['name']})
+                age = naturaltime(time() - event['timestamp'])
+                event.update({'datacenter': host['name'], 'lastcheck': age})
             events += localevents
     return render_template('events.html', title='Events', events=events)
 
