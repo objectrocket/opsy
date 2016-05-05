@@ -1,20 +1,16 @@
 from flask import Flask
 import json
 
-HGCONFIG = {}
-
 
 def create_app(config, mode):
     app = Flask(__name__)
-    get_config()
+    app.debug = True
+    app.config['hourglass_config'] = get_config()
     register_blueprints(app)
     return app
 
 
 def get_config(path='./hourglass.json'):
-    global HGCONFIG
-    if len(HGCONFIG) > 0:
-        return HGCONFIG
     with open('./hourglass.json') as conffile:
         HGCONFIG = json.load(conffile)
     return HGCONFIG
