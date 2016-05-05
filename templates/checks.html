@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% set active_page = 'checks' %}
+{% block head %}
+  {{ super() }}
+      <!-- Custom styles for this template -->
+      <link href="/static/css/datatables/jquery.dataTables.min.css" rel="stylesheet">
+{% endblock %}
+{% block content %}
+      <table id="checks" class="table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Command</th>
+            <th>Interval</th>
+          </tr>
+        </thead>
+        <tbody>
+        {% for check in checks|sort(attribute='name') %}
+        <tr>
+            <td>{{ check.name }}</td>
+            <td>{{ check.command }}</td>
+            <td>{{ check.interval }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+{% endblock %}
+{% block footer %}
+  {{ super() }}
+  <script src="/static/js/datatables/jquery.dataTables.min.js"></script>
+{% endblock %}

@@ -1,5 +1,18 @@
+import requests
+
+from flask import json
 from flask import Flask, render_template
 app = Flask(__name__)
+
+HGCONFIG = {}
+
+def get_config(path='./hourglass.json'):
+    global HGCONFIG
+    if len(HGCONFIG) > 0:
+        return HGCONFIG
+    with open('./hourglass.json') as conffile:
+        HGCONFIG = json.load(conffile)
+    return HGCONFIG
 
 @app.route('/')
 def index():
@@ -8,13 +21,22 @@ def index():
 @app.route('/events')
 @app.route('/events/<datacenter>')
 def events(datacenter=None):
-    events = [
-        (datacenter, 'somehost', 'some-check', 'Output', 5, 'a minute ago'),
-        (datacenter, 'someotherhost', 'some-check2', 'Output2', 6, 'an hour ago'),
-        (datacenter, 'anotherhost', 'some-check3', 'Output3', 7, 'a day ago'),
-        (datacenter, 'yetanotherhost', 'some-check4', 'Output4', 8, 'a second ago'),
-    ]
+    if datacenter:
+        host = [i['host'] for i in HGCONFIG['sensu'] if i['name'] == datacenter][0]
+        events = json.loads(requests.get('http://'+host+':4567/events').content)
+    else:
+        hosts = [i['host'] for i in HGCONFIG['sensu']]
+        events = []
+        for host in hosts:
+            events += json.loads(requests.get('http://'+host+':4567/events').content)
     return render_template('events.html', title='Events', events=events)
 
+@app.route('/checks')
+@app.route('/checks/<datacenter>')
+def checks(datacenter=None):
+    checks = json.loads(requests.get('http://watcher.cryptkcoding.com:4567/checks').content)
+    return render_template('checks.html', title='Checks', checks=checks)
+
 if __name__ == "__main__":
-    app.run(debug=True)
+    get_config()
+    app.run(debug=True, host='0.0.0.0')
