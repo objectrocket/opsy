@@ -1,22 +1,14 @@
 import requests
-
-from flask import json
 from flask import Flask, render_template
 app = Flask(__name__)
 
 HGCONFIG = {}
 
-def get_config(path='./hourglass.json'):
-    global HGCONFIG
-    if len(HGCONFIG) > 0:
-        return HGCONFIG
-    with open('./hourglass.json') as conffile:
-        HGCONFIG = json.load(conffile)
-    return HGCONFIG
 
 @app.route('/')
 def index():
     return render_template('main.html', title='FOO')
+
 
 @app.route('/events')
 @app.route('/events/<datacenter>')
@@ -30,6 +22,7 @@ def events(datacenter=None):
         for host in hosts:
             events += json.loads(requests.get('http://'+host+':4567/events').content)
     return render_template('events.html', title='Events', events=events)
+
 
 @app.route('/checks')
 @app.route('/checks/<datacenter>')
