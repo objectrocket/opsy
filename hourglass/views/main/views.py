@@ -16,11 +16,17 @@ def events(datacenter=None):
     if datacenter:
         host = [{'host': i['host'], 'port': i['port']} for i in HGCONFIG['sensu'] if i['name'] == datacenter][0]
         events = json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/events').content)
+        for event in events:
+            event.update({"datacenter": datacenter})
     else:
-        hosts = [{'host':i['host'], 'port':i['port']} for i in HGCONFIG['sensu']]
+        hosts = HGCONFIG['sensu']
         events = []
         for host in hosts:
-            events += json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/events').content)
+            localevents = json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/events').content)
+            for event in localevents:
+                event.update({'datacenter': host['name']})
+            events += localevents
+    print(events[0])
     return render_template('events.html', title='Events', events=events)
 
 
@@ -31,12 +37,17 @@ def checks(datacenter=None):
     HGCONFIG = app.config.get('hourglass_config')
     if datacenter:
         host = [{'host': i['host'], 'port': i['port']} for i in HGCONFIG['sensu'] if i['name'] == datacenter][0]
-        events = json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/checks').content)
+        checks = json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/checks').content)
+        for check in checks:
+            check.update({"datacenter": datacenter})
     else:
-        hosts = [{'host':i['host'], 'port':i['port']} for i in HGCONFIG['sensu']]
+        hosts = HGCONFIG['sensu']
         checks = []
         for host in hosts:
-            checks += json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/checks').content)
+            localchecks = json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/checks').content)
+            for check in localchecks:
+                check.update({'datacenter': host['name']})
+            checks += localchecks
     return render_template('checks.html', title='Checks', checks=checks)
 
 @main.route('/about')
