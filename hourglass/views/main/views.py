@@ -26,7 +26,6 @@ def events(datacenter=None):
             for event in localevents:
                 event.update({'datacenter': host['name']})
             events += localevents
-    print(events[0])
     return render_template('events.html', title='Events', events=events)
 
 
