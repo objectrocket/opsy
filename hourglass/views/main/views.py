@@ -14,7 +14,6 @@ def index():
 def events(datacenter=None):
     app = current_app._get_current_object()
     HGCONFIG = app.config.get('hourglass_config')
-    print(HGCONFIG)
     if datacenter:
         host = [{'host': i['host'], 'port': i['port']} for i in HGCONFIG['sensu'] if i['name'] == datacenter][0]
         events = json.loads(requests.get('http://'+host['host']+':'+str(host['port'])+'/events').content)
