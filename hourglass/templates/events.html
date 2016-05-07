@@ -7,10 +7,11 @@
 {% endblock %}
 {% block content %}
       <div class="row">
-        <div class="col-md-12">
-          <table id="events" class="dt table table-striped table-bordered table-hover table-condensed col-md-10">
+        <div>
+          <table id="events" class="dt table table-striped">
             <thead>
               <tr>
+                <th id='status'>Status</th>
                 <th id="datacenter">DC</th>
                 <th id="source">Source</th>
                 <th id="check">Check Name</th>
@@ -20,16 +21,6 @@
               </tr>
             </thead>
             <tbody>
-            {% for event in events %}
-            <tr class="link-row" data-href="{{ uchiwa }}/#/client/{{ event.href }}">
-                <td>{{ event.datacenter }}</td>
-                <td>{{ event.client.name }}</td>
-                <td>{{ event.check.name }}</td>
-                <td>{{ event.check.output }}</td>
-                <td>{{ event.occurrences }}</td>
-                <td>{{ event.lastcheck }}</td>
-              </tr>
-            {% endfor %}
             </tbody>
           </table>
         </div>
@@ -39,4 +30,6 @@
   {{ super() }}
   <script src="/static/js/datatables/jquery.dataTables.min.js"></script>
   <script src="/static/js/datatables/dataTables.bootstrap.min.js"></script>
+  <script src="/static/js/timeago/jquery.timeago.js"></script>
+  <script src="/static/js/hourglass/events.js"></script>
 {% endblock %}

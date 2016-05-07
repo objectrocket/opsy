@@ -18,4 +18,6 @@ def get_config(path='./hourglass.json'):
 
 def register_blueprints(app):
     from views.main import main as main_blueprint
+    from views.api import api as api_blueprint
     app.register_blueprint(main_blueprint)
+    app.register_blueprint(api_blueprint, url_prefix='/api')
