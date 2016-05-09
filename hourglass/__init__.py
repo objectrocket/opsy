@@ -1,20 +1,23 @@
 from flask import Flask
 from flask.ext.iniconfig import INIConfig
-#from hourglass.cache import cache
 
 
 def create_app(config):
     app = Flask(__name__)
-    #cache.init_app(app)
     INIConfig(app)
     app.config.from_inifile(config)
-    hourglass_config = app.config.get('hourglass')
-    enabled_regions = hourglass_config.get('enabled_regions').split(',')
-    app.config['regions'] = {}
-    for region in enabled_regions:
-        app.config['regions'][region] = app.config.get(region)
+    parse_config(app)
     register_blueprints(app)
+    print app.config
     return app
+
+
+def parse_config(app):
+    hourglass_config = app.config.get('hourglass')
+    enabled_regions = hourglass_config.get('enabled_sensu_nodes').split(',')
+    app.config['sensu_nodes'] = {}
+    for region in enabled_regions:
+        app.config['sensu_nodes'][region] = app.config.get(region)
 
 
 def register_blueprints(app):
