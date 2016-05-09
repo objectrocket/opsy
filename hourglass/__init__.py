@@ -8,7 +8,7 @@ def create_app(config):
     app.config.from_inifile(config)
     parse_config(app)
     register_blueprints(app)
-    print app.config
+    #print app.config
     return app
 
 
