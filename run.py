@@ -1,8 +1,10 @@
 #!/usr/bin/env python2
-
 from hourglass import create_app
 from flask.ext.script import Manager, Shell
+from hourglass.models.poller import Poller
 import os
+import gevent.monkey
+gevent.monkey.patch_all()
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 
