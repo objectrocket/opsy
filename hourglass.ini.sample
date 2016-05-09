@@ -1,5 +1,7 @@
-[hourglass]
+[flask]
 DEBUG = 1
+
+[hourglass]
 enabled_sensu_nodes = region1,region2
 enabled_dashborads = cde,ops
 
