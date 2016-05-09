@@ -13,6 +13,6 @@ def make_shell_context():
 if __name__ == '__main__':
     manager = Manager(create_app)
     manager.add_option('-c', '--config', dest='config', required=False,
-                       default='%s/config.ini' % basedir)
+                       default='%s/hourglass.ini' % basedir)
     manager.add_command("shell", Shell(make_context=make_shell_context))
     manager.run()

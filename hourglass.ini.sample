@@ -1,0 +1,19 @@
+[hourglass]
+DEBUG = 1
+enabled_sensu_nodes = region1,region2
+enabled_dashborads = cde,ops
+
+[ops]
+check_names = keepalive
+
+[region1]
+name = test1
+host = localhost
+port = 4567
+timeout = 10
+
+[region2]
+name = test2
+host = localhost
+port = 4568
+timeout = 10
