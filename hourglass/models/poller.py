@@ -54,7 +54,7 @@ class Poller(object):
             Event.query.delete()
             for sensu in events:
                 for event in events[sensu]:
-                    db.session.add(Event(sensu, event['client']['name'], event['check']['name'], event['occurrences'], event['check']['status'], event['timestamp'], event))
+                    db.session.add(Event(sensu, event['client']['name'], event['occurrences'], event['check']['status'], event['timestamp'], event))
             db.session.commit()
 
     def main(self):
