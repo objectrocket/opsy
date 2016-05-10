@@ -1,8 +1,7 @@
 #!/usr/bin/env python2
+import os
 from hourglass import create_app
 from flask.ext.script import Manager, Shell
-from hourglass.models.poller import Poller
-import os
 import gevent.monkey
 gevent.monkey.patch_all()
 

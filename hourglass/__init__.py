@@ -1,7 +1,7 @@
 import gevent
 from flask import Flask
 from flask.ext.iniconfig import INIConfig
-from models.poller import Poller
+from hourglass.models.poller import Poller
 
 
 def create_app(config):
@@ -13,9 +13,11 @@ def create_app(config):
     create_poller(app)
     return app
 
+
 def create_poller(app):
     poller = Poller(app)
     return gevent.spawn(poller.run)
+
 
 def parse_config(app):
     hourglass_config = app.config.get('hourglass')
@@ -26,7 +28,7 @@ def parse_config(app):
 
 
 def register_blueprints(app):
-    from views.main import main as main_blueprint
-    from views.api import api as api_blueprint
+    from hourglass.views.main import main as main_blueprint
+    from hourglass.views.api import api as api_blueprint
     app.register_blueprint(main_blueprint)
     app.register_blueprint(api_blueprint, url_prefix='/api')

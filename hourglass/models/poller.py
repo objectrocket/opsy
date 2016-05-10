@@ -1,11 +1,11 @@
 import gevent
 import gevent.monkey
-gevent.monkey.patch_all()
 import requests
-
 from flask import json
 from hourglass.models.api import Client
 from . import db
+
+gevent.monkey.patch_all()
 
 
 class Poller(object):
@@ -32,7 +32,6 @@ class Poller(object):
                     except KeyError:
                         db.session.add(Client(sensu, client['name'], client, 0))
             db.session.commit()
-
 
     def main(self):
         clients = {}

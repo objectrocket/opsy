@@ -1,6 +1,6 @@
-import requests
 from datetime import datetime
 from time import time
+import requests
 from . import db, TimeStampMixin
 
 
@@ -70,7 +70,7 @@ class Client(TimeStampMixin, db.Model):
         self.timestamp = datetime.fromtimestamp(timestamp)
 
     def __repr__(self):
-        return('<Client %r/%r>' % (self.datacenter, self.name))
+        return '<Client %r/%r>' % (self.datacenter, self.name)
 
 
 # class Check(db.Model):

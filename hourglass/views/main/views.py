@@ -1,21 +1,21 @@
-import requests
 from . import main
-from flask import render_template, current_app, redirect, url_for, json
-from time import time
-from humanize import naturaltime
+from flask import render_template, redirect, url_for
 
 
 @main.route('/')
 def index():
     return redirect(url_for('main.events'))
 
+
 @main.route('/events')
-def events(datacenter=None):
+def events():
     return render_template('events.html', title='Events')
 
+
 @main.route('/checks')
-def checks(datacenter=None):
+def checks():
     return render_template('checks.html', title='Checks')
+
 
 @main.route('/about')
 def about():
