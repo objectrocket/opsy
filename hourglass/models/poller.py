@@ -16,7 +16,7 @@ class Poller(object):
             db.create_all()
             db.session.commit()
         self.sensus = self.app.config['sensu_nodes']
-        self.interval = self.app.config.get('poll_interval', 10)
+        self.interval = self.app.config['hourglass'].get('poll_interval', 10)
 
     @classmethod
     def get_clients(cls, sensu):
@@ -58,7 +58,8 @@ class Poller(object):
             db.session.commit()
 
     def main(self):
-        self.app.logger.info('Updating Cache')
+        if self.app.config.get('DEBUG'):
+            print('Updating Cache')
         checks = {}
         clients = {}
         events = {}
