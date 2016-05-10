@@ -108,26 +108,29 @@ class Event(TimeStampMixin, db.Model):
     __tablename__ = 'events'
     datacenter = db.Column(db.String(64), primary_key=True)
     clientkey = db.Column(db.String(256), db.ForeignKey('clients.key'), primary_key=True)
-    checkkey = db.Column(db.String(256), db.ForeignKey('checks.key'), primary_key=True)
-    occurrences = db.Column(db.BigInteger)
+    checkname = db.Column(db.String(256), primary_key=True)
+    checkoutput = db.Column(db.Text)
+    checkoccurrences = db.Column(db.BigInteger)
+    eventoccurrences = db.Column(db.BigInteger)
     status = db.Column(db.Integer)
     timestamp = db.Column(db.DateTime)
     extra = db.Column(db.PickleType)
 
     client = db.relationship('Client', backref=db.backref('events'))
-    check = db.relationship('Check', backref=db.backref('events'))
 
-    def __init__(self, datacenter, clientname, checkname, occurrences, status, timestamp, extra):
+    def __init__(self, datacenter, clientname, occurrences, status, timestamp, extra):
         self.datacenter = datacenter
         self.clientkey = '%s/%s' % (datacenter, clientname)
-        self.checkkey = '%s/%s' % (datacenter, checkname)
-        self.occurrences = occurrences
+        self.checkname = extra['check']['name']
+        self.checkoutput = extra['check']['output']
+        self.checkoccurrences = extra['check'].get('occurrences')
+        self.eventoccurrences = occurrences
         self.status = status
         self.timestamp = datetime.fromtimestamp(timestamp)
         self.extra = extra
 
     def __repr__(self):
-        return '<Event %s/%s/%s>' % (self.datacenter, self.clientkey, self.checkkey)
+        return '<Event %s/%s>' % (self.clientkey, self.checkname)
 
 
 # class Stash(db.Model):
