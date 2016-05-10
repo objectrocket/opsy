@@ -1,7 +1,7 @@
 from datetime import datetime
 from time import time
 import requests
-from . import db, TimeStampMixin
+from . import db, HourglassMixin
 
 
 def get_events(config, datacenter=None):
