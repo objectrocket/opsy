@@ -55,7 +55,7 @@ def get_checks(config, datacenter=None):
 #     __tablename__ = 'nodes'
 
 
-class Client(TimeStampMixin, db.Model):
+class Client(HourglassMixin, db.Model):
     __bind_key__ = 'cache'
     __tablename__ = 'clients'
     key = db.Column(db.String(320), primary_key=True)
@@ -68,6 +68,7 @@ class Client(TimeStampMixin, db.Model):
         self.key = '%s/%s' % (datacenter, name)
         self.datacenter = datacenter
         self.name = name
+        extra['datacenter'] = datacenter
         self.extra = extra
         self.timestamp = datetime.fromtimestamp(timestamp)
 
@@ -75,7 +76,7 @@ class Client(TimeStampMixin, db.Model):
         return '<Client %s/%s>' % (self.datacenter, self.name)
 
 
-class Check(TimeStampMixin, db.Model):
+class Check(HourglassMixin, db.Model):
     __bind_key__ = 'cache'
     __tablename__ = 'checks'
     key = db.Column(db.String(320), primary_key=True)
@@ -87,6 +88,7 @@ class Check(TimeStampMixin, db.Model):
         self.key = '%s/%s' % (datacenter, name)
         self.datacenter = datacenter
         self.name = name
+        extra['datacenter'] = datacenter
         self.extra = extra
 
     def __repr__(self):
@@ -103,7 +105,7 @@ class Check(TimeStampMixin, db.Model):
 #     __tablename__ = 'aggregates'
 
 
-class Event(TimeStampMixin, db.Model):
+class Event(HourglassMixin, db.Model):
     __bind_key__ = 'cache'
     __tablename__ = 'events'
     datacenter = db.Column(db.String(64), primary_key=True)
@@ -127,6 +129,7 @@ class Event(TimeStampMixin, db.Model):
         self.eventoccurrences = occurrences
         self.status = status
         self.timestamp = datetime.fromtimestamp(timestamp)
+        extra['datacenter'] = datacenter
         self.extra = extra
 
     def __repr__(self):
