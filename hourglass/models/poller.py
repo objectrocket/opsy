@@ -44,9 +44,9 @@ class Poller(object):
             for sensu in clients:
                 for client in clients[sensu]:
                     try:
-                        db.session.add(Client(sensu, client['name'], client['timestamp'], client))
+                        db.session.add(Client(sensu, client['name'], client, client['timestamp']))
                     except KeyError:
-                        db.session.add(Client(sensu, client['name'], 0, client))
+                        db.session.add(Client(sensu, client['name'], client))
             db.session.commit()
 
     def update_events_cache(self, events):
@@ -58,6 +58,7 @@ class Poller(object):
             db.session.commit()
 
     def main(self):
+        self.app.logger.info('Updating Cache')
         checks = {}
         clients = {}
         events = {}
