@@ -1,12 +1,22 @@
 [flask]
 DEBUG = 1
+SQLALCHEMY_TRACK_MODIFICATIONS = False
+SQLALCHEMY_DATABASE_URI = sqlite:////tmp/hourglass.db
+
+[SQLALCHEMY_BINDS]
+data = sqlite:////tmp/hourglass.db
+cache = sqlite:////tmp/hourglass-cache.db
 
 [hourglass]
+uchiwa_url = http://url.to.uchiwa.com/
 enabled_sensu_nodes = region1,region2
-enabled_dashborads = cde,ops
+enabled_dashborads = dash1,dash2
 
-[ops]
-check_names = keepalive
+[dash1]
+check_names = keepalive,puppet-results
+
+[dash2]
+check_names = keepalive,memory-usage
 
 [region1]
 name = test1

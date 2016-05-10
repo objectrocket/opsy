@@ -1,5 +1,5 @@
-from . import api
 from time import time
+from . import api
 from hourglass.models.api import get_events, get_checks
 from flask import current_app, json
 
@@ -12,12 +12,12 @@ def ping():
 @api.route('/events')
 @api.route('/events/<datacenter>')
 def events(datacenter=None):
-    events = get_events(current_app.config, datacenter)
-    return(json.dumps({'events': events, 'timestamp': time()}))
+    sensuevents = get_events(current_app.config, datacenter)
+    return json.dumps({'events': sensuevents, 'timestamp': time()})
 
 
 @api.route('/checks')
 @api.route('/checks/<datacenter>')
 def checks(datacenter=None):
-    checks = get_checks(current_app.config, datacenter)
-    return(json.dumps({'checks': checks, 'timestamp': time()}))
+    sensuchecks = get_checks(current_app.config, datacenter)
+    return json.dumps({'checks': sensuchecks, 'timestamp': time()})
