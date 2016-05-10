@@ -58,19 +58,22 @@ def get_checks(config, datacenter=None):
 class Client(HourglassMixin, db.Model):
     __bind_key__ = 'cache'
     __tablename__ = 'clients'
-    key = db.Column(db.String(320), primary_key=True)
-    datacenter = db.Column(db.String(64))
-    name = db.Column(db.String(256))
+    datacenter = db.Column(db.String(64), primary_key=True)
+    name = db.Column(db.String(256), primary_key=True)
     timestamp = db.Column(db.DateTime)
     extra = db.Column(db.PickleType)
 
-    def __init__(self, datacenter, name, timestamp, extra):
-        self.key = '%s/%s' % (datacenter, name)
+    events = db.relationship('Event', backref='client', lazy='dynamic')
+
+    def __init__(self, datacenter, name, extra, timestamp=None):
         self.datacenter = datacenter
         self.name = name
         extra['datacenter'] = datacenter
         self.extra = extra
-        self.timestamp = datetime.fromtimestamp(timestamp)
+        try:
+            self.timestamp = datetime.fromtimestamp(timestamp)
+        except TypeError:
+            self.timestamp = None
 
     def __repr__(self):
         return '<Client %s/%s>' % (self.datacenter, self.name)
@@ -79,13 +82,11 @@ class Client(HourglassMixin, db.Model):
 class Check(HourglassMixin, db.Model):
     __bind_key__ = 'cache'
     __tablename__ = 'checks'
-    key = db.Column(db.String(320), primary_key=True)
-    datacenter = db.Column(db.String(64))
-    name = db.Column(db.String(256))
+    datacenter = db.Column(db.String(64), primary_key=True)
+    name = db.Column(db.String(256), primary_key=True)
     extra = db.Column(db.PickleType)
 
     def __init__(self, datacenter, name, extra):
-        self.key = '%s/%s' % (datacenter, name)
         self.datacenter = datacenter
         self.name = name
         extra['datacenter'] = datacenter
@@ -109,7 +110,7 @@ class Event(HourglassMixin, db.Model):
     __bind_key__ = 'cache'
     __tablename__ = 'events'
     datacenter = db.Column(db.String(64), primary_key=True)
-    clientkey = db.Column(db.String(256), db.ForeignKey('clients.key'), primary_key=True)
+    clientname = db.Column(db.String(256), primary_key=True)
     checkname = db.Column(db.String(256), primary_key=True)
     checkoutput = db.Column(db.Text)
     checkoccurrences = db.Column(db.BigInteger)
@@ -118,11 +119,17 @@ class Event(HourglassMixin, db.Model):
     timestamp = db.Column(db.DateTime)
     extra = db.Column(db.PickleType)
 
-    client = db.relationship('Client', backref=db.backref('events'))
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ['datacenter', 'clientname'],
+            ['clients.datacenter', 'clients.name']
+        ),
+    )
+
 
     def __init__(self, datacenter, clientname, occurrences, status, timestamp, extra):
         self.datacenter = datacenter
-        self.clientkey = '%s/%s' % (datacenter, clientname)
+        self.clientname = clientname
         self.checkname = extra['check']['name']
         self.checkoutput = extra['check']['output']
         self.checkoccurrences = extra['check'].get('occurrences')
@@ -133,7 +140,7 @@ class Event(HourglassMixin, db.Model):
         self.extra = extra
 
     def __repr__(self):
-        return '<Event %s/%s>' % (self.clientkey, self.checkname)
+        return '<Event %s/%s/%s>' % (self.datacenter, self.clientname, self.checkname)
 
 
 # class Stash(db.Model):

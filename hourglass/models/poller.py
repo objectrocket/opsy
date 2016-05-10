@@ -16,7 +16,7 @@ class Poller(object):
             db.create_all()
             db.session.commit()
         self.sensus = self.app.config['sensu_nodes']
-        self.interval = self.app.config.get('poll_interval', 10)
+        self.interval = self.app.config['hourglass'].get('poll_interval', 10)
 
     @classmethod
     def get_clients(cls, sensu):
@@ -44,9 +44,9 @@ class Poller(object):
             for sensu in clients:
                 for client in clients[sensu]:
                     try:
-                        db.session.add(Client(sensu, client['name'], client['timestamp'], client))
+                        db.session.add(Client(sensu, client['name'], client, client['timestamp']))
                     except KeyError:
-                        db.session.add(Client(sensu, client['name'], 0, client))
+                        db.session.add(Client(sensu, client['name'], client))
             db.session.commit()
 
     def update_events_cache(self, events):
@@ -58,6 +58,8 @@ class Poller(object):
             db.session.commit()
 
     def main(self):
+        if self.app.config.get('DEBUG'):
+            print('Updating Cache')
         checks = {}
         clients = {}
         events = {}
