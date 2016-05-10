@@ -127,7 +127,7 @@ class Event(TimeStampMixin, db.Model):
         self.extra = extra
 
     def __repr__(self):
-        return '<Event %s/%s/%s>' % (self.datacenter, self.clientname, self.checkname)
+        return '<Event %s/%s/%s>' % (self.datacenter, self.clientkey, self.checkkey)
 
 
 # class Stash(db.Model):
