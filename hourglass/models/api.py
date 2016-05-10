@@ -1,6 +1,7 @@
 import requests
+from datetime import datetime
 from time import time
-# from . import db
+from . import db, TimeStampMixin
 
 
 def get_events(config, datacenter=None):
@@ -54,9 +55,22 @@ def get_checks(config, datacenter=None):
 #     __tablename__ = 'nodes'
 
 
-# class Client(db.Model):
-#     __bind_key__ = 'cache'
-#     __tablename__ = 'clients'
+class Client(TimeStampMixin, db.Model):
+    __bind_key__ = 'cache'
+    __tablename__ = 'clients'
+    datacenter = db.Column(db.String(64), primary_key=True)
+    name = db.Column(db.String(256), primary_key=True)
+    extra = db.Column(db.PickleType)
+    timestamp = db.Column(db.DateTime)
+
+    def __init__(self, datacenter, name, extra, timestamp):
+        self.datacenter = datacenter
+        self.name = name
+        self.extra = extra
+        self.timestamp = datetime.fromtimestamp(timestamp)
+
+    def __repr__(self):
+        return('<Client %r/%r>' % (self.datacenter, self.name))
 
 
 # class Check(db.Model):
