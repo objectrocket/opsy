@@ -2,7 +2,7 @@ from flask.ext.sqlalchemy import SQLAlchemy, BaseQuery
 from flask import json
 
 
-db = SQLAlchemy()
+db = SQLAlchemy()  # pylint: disable=invalid-name
 
 
 class JsonOut(BaseQuery):
@@ -14,7 +14,7 @@ class JsonOut(BaseQuery):
         return json.dumps(self.all_extra_as_dict())
 
 
-class HourglassCacheMixin(object):
+class HourglassCacheMixin(object):  # pylint: disable=too-few-public-methods
     query_class = JsonOut
     updated_at = db.Column(db.DateTime, default=db.func.now(),
                            onupdate=db.func.now())

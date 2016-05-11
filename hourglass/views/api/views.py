@@ -1,6 +1,6 @@
 from time import time
 from . import api
-from hourglass.models.api import *
+from hourglass.models.api import Event, Check
 from flask import json
 
 
