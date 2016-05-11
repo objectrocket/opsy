@@ -36,6 +36,18 @@ def events():
     return jsonify({'events': sensuevents, 'timestamp': time()})
 
 
+@api.route('/events/datacenters')
+def events_datacenters():
+    datacenters = [x[0] for x in Event.query.with_entities(Event.datacenter).distinct().all()]
+    return jsonify({'datacenters': datacenters, 'timestamp': time()})
+
+
+@api.route('/events/checks')
+def events_checks():
+    eventchecks = [x[0] for x in Event.query.with_entities(Event.checkname).distinct().all()]
+    return jsonify({'checks': eventchecks, 'timestamp': time()})
+
+
 @api.route('/checks')
 def checks():
     datacenters = request.args.get("datacenter")
