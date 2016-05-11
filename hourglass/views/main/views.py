@@ -9,7 +9,11 @@ def index():
 
 @main.route('/events')
 def events():
-    return render_template('events.html', title='Events', dashboards=current_app.config['dashboards'])
+    data = {}
+    data['title'] = 'Events'
+    data['dashboards'] = current_app.config['dashboards']
+    data['uchiwa_url'] = current_app.config['hourglass']['uchiwa_url']
+    return render_template('events.html', **data)
 
 
 @main.route('/checks')

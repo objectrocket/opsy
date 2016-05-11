@@ -144,6 +144,7 @@ $(document).ready(function() {
         },
         'createdRow': function(nRow, aData, iDataIndex) {
             aData['check']['status'] = statusnames[aData['check']['status']];
+            aData['href'] = UCHIWA_URL+'/#/client/'+aData['datacenter']+'/'+aData['client']['name']+'?check='+aData['check']['name'];
             $(nRow).data('href', aData['href']);
             $(nRow).click(function() {
                 window.open($(this).data("href"), '_blank');
