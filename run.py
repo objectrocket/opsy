@@ -1,12 +1,12 @@
 #!/usr/bin/env python2
 import os
-from hourglass import create_app
 from flask.ext.script import Manager, Shell
-from hourglass.models.api import *
+from hourglass.models.api import Client, Check, Event, db
+from hourglass import create_app
 import gevent.monkey
 gevent.monkey.patch_all()
 
-basedir = os.path.abspath(os.path.dirname(__file__))
+BASEDIR = os.path.abspath(os.path.dirname(__file__))
 
 
 def make_shell_context():
@@ -14,8 +14,8 @@ def make_shell_context():
                 Event=Event)
 
 if __name__ == '__main__':
-    manager = Manager(create_app)
-    manager.add_option('-c', '--config', dest='config', required=False,
-                       default='%s/hourglass.ini' % basedir)
-    manager.add_command("shell", Shell(make_context=make_shell_context))
-    manager.run()
+    MANAGER = Manager(create_app)
+    MANAGER.add_option('-c', '--config', dest='config', required=False,
+                       default='%s/hourglass.ini' % BASEDIR)
+    MANAGER.add_command("shell", Shell(make_context=make_shell_context))
+    MANAGER.run()

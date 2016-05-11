@@ -1,0 +1,41 @@
+[MASTER]
+# List of plugins (as comma separated values of python modules names) to load,
+# usually to register additional checkers.
+load-plugins=pylint_flask
+
+# Use multiple processes to speed up Pylint.
+jobs=2
+
+[REPORTS]
+# Tells whether to display a full report or only the messages
+reports=no
+
+[FORMAT]
+# Maximum number of characters on a single line.
+max-line-length=160
+
+[TYPECHECK]
+# List of members which are set dynamically and missed by pylint inference
+# system, and so shouldn't trigger E1101 when accessed. Python regular
+# expressions are accepted.
+generated-members=query,from_inifile
+
+[MESSAGES CONTROL]
+# Disable the message, report, category or checker with the given id(s). You
+# can either give multiple identifiers separated by comma (,) or put this
+# option multiple times (only on the command line, not in the configuration
+# file where it should appear only once).You can also use "--disable=all" to
+# disable everything first and then reenable specific checks. For example, if
+# you want to run only the similarities checker, you can use "--disable=all
+# --enable=similarities". If you want to run only the classes checker, but have
+# no Warning level messages displayed, use"--disable=all --enable=classes
+# --disable=W"
+
+disable=missing-docstring,locally-disabled,too-few-public-methods
+
+[DESIGN]
+# Maximum number of arguments for function / method
+max-args=10
+
+# Maximum number of attributes for a class (see R0902).
+max-attributes=15

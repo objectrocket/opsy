@@ -19,16 +19,9 @@ class Poller(object):
         self.interval = self.app.config['hourglass'].get('poll_interval', 10)
 
     @classmethod
-    def get_clients(cls, sensu):
-        return json.loads(requests.get('http://'+sensu['host']+':'+str(sensu['port'])+'/clients').content)
-
-    @classmethod
-    def get_checks(cls, sensu):
-        return json.loads(requests.get('http://'+sensu['host']+':'+str(sensu['port'])+'/checks').content)
-
-    @classmethod
-    def get_events(cls, sensu):
-        return json.loads(requests.get('http://'+sensu['host']+':'+str(sensu['port'])+'/events').content)
+    def query_sensu(cls, sensu, uri):
+        url = "http://%s:%s/%s" % (sensu['host'], sensu['port'], uri)
+        return json.loads(requests.get(url).content)
 
     def update_checks_cache(self, checks):
         with self.app.app_context():
@@ -58,15 +51,14 @@ class Poller(object):
             db.session.commit()
 
     def main(self):
-        if self.app.config.get('DEBUG'):
-            print('Updating Cache')
+        self.app.logger.debug('Updating Cache')
         checks = {}
         clients = {}
         events = {}
         for sensu in self.sensus:
-            checks[sensu] = self.get_checks(self.sensus[sensu])
-            clients[sensu] = self.get_clients(self.sensus[sensu])
-            events[sensu] = self.get_events(self.sensus[sensu])
+            checks[sensu] = self.query_sensu(self.sensus[sensu], 'checks')
+            clients[sensu] = self.query_sensu(self.sensus[sensu], 'clients')
+            events[sensu] = self.query_sensu(self.sensus[sensu], 'events')
         self.update_clients_cache(clients)
         self.update_checks_cache(checks)
         self.update_events_cache(events)
