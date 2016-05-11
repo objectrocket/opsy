@@ -94,7 +94,7 @@ $(document).ready(function() {
         'columnDefs': [
             {
                 "targets": [ 0 ],
-                "visible": false,
+                "visible": true,
                 "searchable": true
             },
         ],
@@ -124,10 +124,11 @@ $(document).ready(function() {
              name: 'timestamp'},
         ],
         'fnRowCallback': function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
-            $(nRow).addClass(statusclasses[aData['check']['status']]);
+            //$(nRow).addClass(statusclasses[aData['check']['status']]);
             var d = new Date(0);
             d.setUTCSeconds(aData['timestamp']);
             $('td:last', nRow).html('<time class="timeago" datetime="'+d.toISOString()+'">'+d+'</time>');
+            $('td:first', nRow).html($('<span class="fa fa-flag '+aData['check']['status']+'"></span>'));
         },
         'fnDrawCallback': function(oSettings){
             $('time.timeago').timeago();
