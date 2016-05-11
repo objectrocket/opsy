@@ -49,7 +49,6 @@ var setDataTablesUrl = function() {
     if ( $.QueryString['dashboard'] ) {
         params['dashboard'] = $.QueryString['dashboard'];
     }
-    console.log(params);
     return '/api/events?'+$.param(params);
 }
 
@@ -61,7 +60,6 @@ var updateDataTablesUrl = function() {
     if ( $.QueryString['dashboard'] ) {
         params['dashboard'] = $.QueryString['dashboard'];
     }
-    console.log(params);
     document.eventstable.ajax.url('/api/events?'+$.param(params));
     document.eventstable.ajax.reload(null, false);
 }
