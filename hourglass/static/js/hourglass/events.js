@@ -146,7 +146,6 @@ $(document).ready(function() {
                 addOption('status-filter', obj[0], obj[1])
             });
             setInterval( function() {
-                updateDataTablesUrl()
                 updateFilters();
                 document.eventstable.ajax.reload(null, false);
             }, 30000);
