@@ -31,7 +31,7 @@ var addOption = function(selectID, option, value=null) {
 var updateFilters = function() {
 
     $.getJSON('/api/events/checks', function(data) {
-        $.each(data.checks, function(idx, obj) {
+        $.each(data.checks.sort(), function(idx, obj) {
             addOption('checkname-filter', obj);
         });
     });
