@@ -20,6 +20,9 @@ td {
 }
 
 /* EVENTS TABLE */
+th#status{
+    width: 5%
+}
 th#datacenter{
     width: 5%
 }
@@ -34,6 +37,18 @@ th#occurrences {
 }
 th#lastcheck {
     width: 10%;
+}
+
+.fa-flag.Critical {
+    color: #AA0000
+}
+
+.fa-flag.Warning {
+    color: #BBBB00
+}
+
+.fa-flag.OK {
+    color: #00AA00
 }
 
 /* CHECKS TABLE */
