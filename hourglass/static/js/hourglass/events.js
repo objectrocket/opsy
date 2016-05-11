@@ -105,11 +105,7 @@ $(document).ready(function() {
             [ 5, 'desc' ],
         ],
         'ajax': {
-<<<<<<< HEAD
             url: setDataTablesUrl(),
-=======
-            url: updateDataTablesUrl(),
->>>>>>> master
             dataSrc: 'events'
         },
         'dom': "<'row'<'col-sm-2'l><'col-sm-8'<'#filters'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
