@@ -21,13 +21,18 @@ var addFilters = function() {
     addFormGroup('checkname');
 }
 
-var addOption = function(selectID, option) {
-    if ( $('#'+selectID+':has(option[value='+option+'])').length == 0) {
-        $('#'+selectID).append('<option value="'+option+'">'+option+'</option>');
+var addOption = function(selectID, option, value=null) {
+    if (value === null) {
+        value = option;
+    }
+    console.log(option, value);
+    if ( $('#'+selectID+':has(option[value='+value+'])').length == 0) {
+        $('#'+selectID).append('<option value="'+value+'">'+option+'</option>');
     }
 }
 
 var updateFilters = function() {
+
     $.getJSON('/api/events/checks', function(data) {
         $.each(data.checks, function(idx, obj) {
             addOption('checkname-filter', obj);
@@ -43,7 +48,7 @@ var updateFilters = function() {
 var updateDataTablesUrl = function() {
     params = {}
     $('#filters select').each(function(idx, obj) {
-        params[$(obj).data('filter')] = $(obj).children('option:selected').text()
+        params[$(obj).data('filter')] = $(obj).children('option:selected').val()
     });
     document.eventstable.ajax.url('/api/events?'+$.param(params));
 }
@@ -113,6 +118,10 @@ $(document).ready(function() {
         'initComplete': function () {
             addFilters();
             updateFilters();
+            $([['Critical', 2],['Warning', 1],['OK', 0]]).each( function(idx, obj) {
+                console.log(obj);
+                addOption('status-filter', obj[0], obj[1])
+            });
             setInterval( function() {
                 updateDataTablesUrl()
                 updateFilters();
