@@ -8,7 +8,6 @@ var addFormGroup = function(name) {
     formitem = $('<select data-filter="'+name+'" class="form-control" id="'+name+'-filter"><option value=""></option></select>').appendTo($(labeldiv));
     formitem.on('change', function() {
         updateDataTablesUrl();
-        document.eventstable.ajax.reload(null, false);
     });
 }
 
@@ -42,7 +41,7 @@ var updateFilters = function() {
     });
 }
 
-var updateDataTablesUrl = function() {
+var setDataTablesUrl = function() {
     params = {}
     $('#filters select').each(function(idx, obj) {
         params[$(obj).data('filter')] = $(obj).children('option:selected').val()
@@ -52,6 +51,19 @@ var updateDataTablesUrl = function() {
     }
     console.log(params);
     return '/api/events?'+$.param(params);
+}
+
+var updateDataTablesUrl = function() {
+    params = {}
+    $('#filters select').each(function(idx, obj) {
+        params[$(obj).data('filter')] = $(obj).children('option:selected').val()
+    });
+    if ( $.QueryString['dashboard'] ) {
+        params['dashboard'] = $.QueryString['dashboard'];
+    }
+    console.log(params);
+    document.eventstable.ajax.url('/api/events?'+$.param(params));
+    document.eventstable.ajax.reload(null, false);
 }
 
 $(document).ready(function() {
@@ -93,7 +105,11 @@ $(document).ready(function() {
             [ 5, 'desc' ],
         ],
         'ajax': {
+<<<<<<< HEAD
+            url: setDataTablesUrl(),
+=======
             url: updateDataTablesUrl(),
+>>>>>>> master
             dataSrc: 'events'
         },
         'dom': "<'row'<'col-sm-2'l><'col-sm-8'<'#filters'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
