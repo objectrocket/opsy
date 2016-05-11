@@ -25,7 +25,6 @@ var addOption = function(selectID, option, value=null) {
     if (value === null) {
         value = option;
     }
-    console.log(option, value);
     if ( $('#'+selectID+':has(option[value='+value+'])').length == 0) {
         $('#'+selectID).append('<option value="'+value+'">'+option+'</option>');
     }
@@ -119,7 +118,6 @@ $(document).ready(function() {
             addFilters();
             updateFilters();
             $([['Critical', 2],['Warning', 1],['OK', 0]]).each( function(idx, obj) {
-                console.log(obj);
                 addOption('status-filter', obj[0], obj[1])
             });
             setInterval( function() {
