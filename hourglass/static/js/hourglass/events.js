@@ -2,6 +2,52 @@ String.prototype.capitalize = function() {
     return this.charAt(0).toUpperCase() + this.slice(1);
 }
 
+document.filterlist = {};
+
+var addFormGroup = function(name) {
+    filterdiv = $('<div class="form-group"></div>').appendTo( $('#filters') );
+    labeldiv = $('<label for="'+name+'-filter">'+name.capitalize()+'</label>').appendTo( $(filterdiv) );
+    formitem = $('<select data-filter="'+name+'" class="form-control" id="'+name+'-filter"><option value=""></option></select>').appendTo($(labeldiv));
+    formitem.on('change', function() {
+        updateDataTablesUrl();
+        document.eventstable.ajax.reload(null, false);
+    });
+}
+
+var addFilters = function() {
+    $('#filters').addClass('form-inline');
+    addFormGroup('status');
+    addFormGroup('datacenter');
+    addFormGroup('checkname');
+}
+
+var addOption = function(selectID, option) {
+    if ( $('#'+selectID+':has(option[value='+option+'])').length == 0) {
+        $('#'+selectID).append('<option value="'+option+'">'+option+'</option>');
+    }
+}
+
+var updateFilters = function() {
+    $.getJSON('/api/events/checks', function(data) {
+        $.each(data.checks, function(idx, obj) {
+            addOption('checkname-filter', obj);
+        });
+    });
+    $.getJSON('/api/events/datacenters', function(data) {
+        $.each(data.datacenters, function(idx, obj) {
+            addOption('datacenter-filter', obj);
+        });
+    });
+}
+
+var updateDataTablesUrl = function() {
+    params = {}
+    $('#filters select').each(function(idx, obj) {
+        params[$(obj).data('filter')] = $(obj).children('option:selected').text()
+    });
+    document.eventstable.ajax.url('/api/events?'+$.param(params));
+}
+
 $(document).ready(function() {
     statusclasses = {
         'OK': 'success',
@@ -13,7 +59,7 @@ $(document).ready(function() {
         1: 'Warning',
         2: 'Critical'
     }
-    document.dt = $('table.dt').DataTable({
+    document.eventstable = $('#events').DataTable({
         'lengthMenu': [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
         //'stateSave' : true,
         'columnDefs': [
@@ -65,37 +111,13 @@ $(document).ready(function() {
             });
         },
         'initComplete': function () {
-            filteredColumns = [
-                'status:name',
-                'datacenter:name',
-                'check-name:name'
-            ]
-            var columns = this.api().settings().init().columns;
-            $('#filters').addClass('form-inline');
-            this.api().columns(filteredColumns).every(function(index) {
-                var name = columns[index].name;
-                var column = this;
-                var filterdiv = $('<div class="form-group"></div>').appendTo( $('#filters') );
-                var filterlabel = $('<label for="'+name+'-filter">'+name.capitalize()+'</label>').appendTo( $(filterdiv) );
-                var select = $('<select class="form-control" id="'+name+'-filter"><option value=""></option></select>')
-                    .appendTo( $(filterdiv) )
-                    .on( 'change', function () {
-                        var val = $.fn.dataTable.util.escapeRegex(
-                            $(this).val()
-                        );
- 
-                        column
-                            .search( val ? '^'+val+'$' : '', true, false )
-                            .draw();
-                    } );
- 
-                column.data().unique().sort().each( function ( d, j ) {
-                    select.append( '<option value="'+d+'">'+d+'</option>' )
-                } );
-            });
+            addFilters();
+            updateFilters();
             setInterval( function() {
-                document.dt.ajax.reload(null, false);
-            }, 30000);
+                updateDataTablesUrl()
+                updateFilters();
+                document.eventstable.ajax.reload(null, false);
+            }, 3000);
         }
     });
 });
