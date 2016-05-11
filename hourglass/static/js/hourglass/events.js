@@ -2,8 +2,6 @@ String.prototype.capitalize = function() {
     return this.charAt(0).toUpperCase() + this.slice(1);
 }
 
-document.filterlist = {};
-
 var addFormGroup = function(name) {
     filterdiv = $('<div class="form-group"></div>').appendTo( $('#filters') );
     labeldiv = $('<label for="'+name+'-filter">'+name.capitalize()+'</label>').appendTo( $(filterdiv) );
@@ -49,10 +47,27 @@ var updateDataTablesUrl = function() {
     $('#filters select').each(function(idx, obj) {
         params[$(obj).data('filter')] = $(obj).children('option:selected').val()
     });
-    document.eventstable.ajax.url('/api/events?'+$.param(params));
+    if ( $.QueryString['dashboard'] ) {
+        params['dashboard'] = $.QueryString['dashboard'];
+    }
+    console.log(params);
+    return '/api/events?'+$.param(params);
 }
 
 $(document).ready(function() {
+    (function($) {
+        $.QueryString = (function(a) {
+            if (a == "") return {};
+            var b = {};
+            for (var i = 0; i < a.length; ++i)
+            {
+                var p=a[i].split('=');
+                if (p.length != 2) continue;
+                b[p[0]] = decodeURIComponent(p[1].replace(/\+/g, " "));
+            }
+            return b;
+        })(window.location.search.substr(1).split('&'))
+    })(jQuery);
     statusclasses = {
         'OK': 'success',
         'Warning': 'warning',
@@ -78,7 +93,7 @@ $(document).ready(function() {
             [ 5, 'desc' ],
         ],
         'ajax': {
-            url: '/api/events',
+            url: updateDataTablesUrl(),
             dataSrc: 'events'
         },
         'dom': "<'row'<'col-sm-2'l><'col-sm-8'<'#filters'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
