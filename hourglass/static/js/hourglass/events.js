@@ -5,7 +5,7 @@ String.prototype.capitalize = function() {
 var addFormGroup = function(name) {
     filterdiv = $('<div class="form-group"></div>').appendTo( $('#filters') );
     labeldiv = $('<label for="'+name+'-filter">'+name.capitalize()+'</label>').appendTo( $(filterdiv) );
-    formitem = $('<select data-filter="'+name+'" class="form-control" id="'+name+'-filter"><option value=""></option></select>').appendTo($(labeldiv));
+    formitem = $('<select data-filter="'+name+'" class="form-control" id="'+name+'-filter"><option value="">All</option></select>').appendTo($(labeldiv));
     formitem.on('change', function() {
         updateDataTablesUrl();
     });
