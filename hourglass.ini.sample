@@ -10,13 +10,14 @@ cache = sqlite:////tmp/hourglass-cache.db
 [hourglass]
 uchiwa_url = http://url.to.uchiwa.com/
 enabled_sensu_nodes = region1,region2
-enabled_dashborads = dash1,dash2
+enabled_dashboards = admin,support
 
-[dash1]
-check_names = keepalive,puppet-results
+[admin]
+checkname = !datastore-connection,!mysqld-not-running
 
-[dash2]
-check_names = keepalive,memory-usage
+[support]
+datacenter = !region1
+checkname = mysqld-not-running,datastore-connection,guest-queues
 
 [region1]
 name = test1
