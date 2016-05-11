@@ -1,7 +1,7 @@
 from time import time
 from . import api
 from hourglass.models.api import Event, Check, Client
-from flask import jsonify, request
+from flask import current_app, jsonify, request
 
 
 def get_filters_list(filters):
@@ -18,6 +18,18 @@ def get_filters_list(filters):
     return filters_list
 
 
+def get_dashboard_filters_list(config, dashboard):
+    datacenters = config['dashboards'][dashboard].get("datacenter")
+    checknames = config['dashboards'][dashboard].get("checkname")
+    clientnames = config['dashboards'][dashboard].get("clientname")
+    statuses = config['dashboards'][dashboard].get("status")
+    filters = ((datacenters, Event.datacenter),
+               (checknames, Event.checkname),
+               (clientnames, Event.clientname),
+               (statuses, Event.status))
+    return get_filters_list(filters)
+
+
 @api.route('/ping')
 def ping():
     return jsonify({'pong': time()})
@@ -25,14 +37,23 @@ def ping():
 
 @api.route('/events')
 def events():
+    dashboard = request.args.get("dashboard")
     datacenters = request.args.get("datacenter")
     checknames = request.args.get("checkname")
     clientnames = request.args.get("clientname")
+    statuses = request.args.get("status")
     filters = ((datacenters, Event.datacenter),
                (checknames, Event.checkname),
-               (clientnames, Event.clientname))
+               (clientnames, Event.clientname),
+               (statuses, Event.status))
     filters_list = get_filters_list(filters)
-    sensuevents = Event.query.filter(*filters_list).all_extra_as_dict()
+    if dashboard:
+        config = current_app.config
+        dash_filters_list = get_dashboard_filters_list(config, dashboard)
+        events_query = Event.query.filter(*dash_filters_list)
+    else:
+        events_query = Event.query
+    sensuevents = events_query.filter(*filters_list).all_extra_as_dict()
     return jsonify({'events': sensuevents, 'timestamp': time()})
 
 

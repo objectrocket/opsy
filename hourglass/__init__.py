@@ -21,10 +21,16 @@ def create_poller(app):
 
 def parse_config(app):
     hourglass_config = app.config.get('hourglass')
-    enabled_regions = hourglass_config.get('enabled_sensu_nodes').split(',')
     app.config['sensu_nodes'] = {}
-    for region in enabled_regions:
-        app.config['sensu_nodes'][region] = app.config.get(region)
+    app.config['dashboards'] = {}
+    if hourglass_config.get('enabled_sensu_nodes'):
+        enabled_regions = hourglass_config.get('enabled_sensu_nodes').split(',')
+        for region in enabled_regions:
+            app.config['sensu_nodes'][region] = app.config.get(region)
+    if hourglass_config.get('enabled_dashboards'):
+        enabled_dashboards = hourglass_config.get('enabled_dashboards').split(',')
+        for dashboard in enabled_dashboards:
+            app.config['dashboards'][dashboard] = app.config.get(dashboard)
 
 
 def register_blueprints(app):
