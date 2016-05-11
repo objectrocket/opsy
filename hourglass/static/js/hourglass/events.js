@@ -124,7 +124,7 @@ $(document).ready(function() {
                 updateDataTablesUrl()
                 updateFilters();
                 document.eventstable.ajax.reload(null, false);
-            }, 3000);
+            }, 30000);
         }
     });
 });
