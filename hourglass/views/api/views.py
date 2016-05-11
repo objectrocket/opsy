@@ -1,12 +1,12 @@
 from time import time
 from . import api
 from hourglass.models.api import Event, Check
-from flask import json
+from flask import jsonify
 
 
 @api.route('/ping')
 def ping():
-    return json.dumps({'pong': time()})
+    return jsonify({'pong': time()})
 
 
 @api.route('/events')
@@ -16,7 +16,7 @@ def events(datacenter=None):
     if datacenter:
         filter_list.append(Event.datacenter.in_([datacenter]))
     sensuevents = Event.query.filter(*filter_list).all_extra_as_dict()
-    return json.dumps({'events': sensuevents, 'timestamp': time()})
+    return jsonify({'events': sensuevents, 'timestamp': time()})
 
 
 @api.route('/checks')
@@ -26,4 +26,4 @@ def checks(datacenter=None):
     if datacenter:
         filter_list.append(Check.datacenter.in_([datacenter]))
     sensuchecks = Check.query.filter(*filter_list).all_extra_as_dict()
-    return json.dumps({'checks': sensuchecks, 'timestamp': time()})
+    return jsonify({'checks': sensuchecks, 'timestamp': time()})
