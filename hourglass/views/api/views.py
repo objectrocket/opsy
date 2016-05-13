@@ -1,5 +1,6 @@
 from time import time
 from . import api
+from hourglass.models import db
 from hourglass.models.api import Event, Check, Client
 from flask import current_app, jsonify, request
 
@@ -38,6 +39,7 @@ def ping():
 @api.route('/events')
 def events():
     dashboard = request.args.get("dashboard")
+    hide_silenced = request.args.get("hide_silenced")
     datacenters = request.args.get("datacenter")
     checknames = request.args.get("checkname")
     clientnames = request.args.get("clientname")
@@ -47,6 +49,10 @@ def events():
                (clientnames, Event.clientname),
                (statuses, Event.status))
     filters_list = get_filters_list(filters)
+    if hide_silenced == "1":
+        filters_list.append(db.not_(Event.stash.has(
+            clientname=Event.clientname, checkname=Event.checkname,
+            flavor='silence')))
     if dashboard:
         config = current_app.config
         dash_filters_list = get_dashboard_filters_list(config, dashboard)

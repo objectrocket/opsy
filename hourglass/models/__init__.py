@@ -5,7 +5,7 @@ from flask import json
 db = SQLAlchemy()  # pylint: disable=invalid-name
 
 
-class JsonOut(BaseQuery):
+class ExtraOut(BaseQuery):
 
     def all_extra_as_dict(self):
         return [json.loads(x.extra) for x in self]
@@ -15,6 +15,6 @@ class JsonOut(BaseQuery):
 
 
 class HourglassCacheMixin(object):  # pylint: disable=too-few-public-methods
-    query_class = JsonOut
+    query_class = ExtraOut
     updated_at = db.Column(db.DateTime, default=db.func.now(),
                            onupdate=db.func.now())
