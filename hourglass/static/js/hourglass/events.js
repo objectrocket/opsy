@@ -15,6 +15,7 @@ var filters = {
     checknameOptions: [],
 
     multiselectOptions: {
+        buttonWidth: '100%',
         enableFiltering: true,
         enableCaseInsensitiveFiltering: true,
         numberDisplayed: 1,
@@ -32,8 +33,7 @@ var filters = {
 
     addFormGroup: function(name) {
         var self = this;
-        filterdiv = $('<div class="form-group"></div>').appendTo( $('#'+name+'-filter-div') );
-        formitem = $('<select multiple class="ms" data-filter="'+name+'" class="form-control" id="'+name+'-filter"></select>').appendTo($(filterdiv));
+        formitem = $('<select multiple class="ms" data-filter="'+name+'" class="form-control" id="'+name+'-filter"></select>').appendTo( $('#'+name+'-filter-div') );
         formitem.on('change', function() {
             self.setDataTablesUrl();
             document.eventstable.ajax.reload(null, false);
