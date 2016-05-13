@@ -3,6 +3,8 @@
 {% block head %}{{ super() }}
     <!-- Custom styles for this template -->
     <link href="/static/css/datatables/dataTables.bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/datatables-responsive/responsive.bootstrap.min.css" rel="stylesheet">
+    <link href="/static/css/bootstrap-multiselect/bootstrap-multiselect.css" rel="stylesheet">
 {% endblock %}
 {% block content %}
       <div class="row">
@@ -28,6 +30,9 @@
 {% block footer %}{{ super() }}
     <script src="/static/js/datatables/jquery.dataTables.min.js"></script>
     <script src="/static/js/datatables/dataTables.bootstrap.min.js"></script>
+    <script src="/static/js/datatables-responsive/dataTables.responsive.min.js"></script>
+    <script src="/static/js/datatables-responsive/responsive.bootstrap.min.js"></script>
+    <script src="/static/js/bootstrap-multiselect/bootstrap-multiselect.js"></script>
     <script src="/static/js/timeago/jquery.timeago.js"></script>
     <script src="/static/js/hourglass/events.js"></script>
 {% endblock %}

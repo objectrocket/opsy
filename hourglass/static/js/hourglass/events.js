@@ -2,66 +2,111 @@ String.prototype.capitalize = function() {
     return this.charAt(0).toUpperCase() + this.slice(1);
 }
 
-var addFormGroup = function(name) {
-    filterdiv = $('<div class="form-group"></div>').appendTo( $('#filters') );
-    labeldiv = $('<label for="'+name+'-filter">'+name.capitalize()+'</label>').appendTo( $(filterdiv) );
-    formitem = $('<select data-filter="'+name+'" class="form-control" id="'+name+'-filter"><option value="">All</option></select>').appendTo($(labeldiv));
-    formitem.on('change', function() {
-        updateDataTablesUrl();
-    });
-}
+var filters = {
 
-var addFilters = function() {
-    $('#filters').addClass('form-inline');
-    addFormGroup('status');
-    addFormGroup('datacenter');
-    addFormGroup('checkname');
-}
+    statusOptions: [
+        {label: 'Critical', title: 'Critical', value: 2},
+        {label: 'Warning', title: 'Warning', value: 1},
+        {label: 'OK', title: 'OK', value: 0},
+    ],
 
-var addOption = function(selectID, option, value=null) {
-    if (value === null) {
-        value = option;
-    }
-    if ( $('#'+selectID+':has(option[value='+value+'])').length == 0) {
-        $('#'+selectID).append('<option value="'+value+'">'+option+'</option>');
-    }
-}
+    datacenterOptions: [],
 
-var updateFilters = function() {
+    checknameOptions: [],
 
-    $.getJSON('/api/events/checks', function(data) {
-        $.each(data.checks.sort(), function(idx, obj) {
-            addOption('checkname-filter', obj);
+    multiselectOptions: {
+        enableFiltering: true,
+        enableCaseInsensitiveFiltering: true,
+        numberDisplayed: 1,
+        includeSelectAllOption: true,
+        buttonText: function(options, select) {
+            if (options.length == 1) {
+                return $(options[0]).attr('label');
+            } else if (options.length > 1) {
+                return options.length+' items selected';
+            } else {
+                return $(select).data('filter').capitalize();
+            }
+        },
+    },
+
+    addFormGroup: function(name) {
+        var self = this;
+        filterdiv = $('<div class="form-group"></div>').appendTo( $('#'+name+'-filter-div') );
+        formitem = $('<select multiple class="ms" data-filter="'+name+'" class="form-control" id="'+name+'-filter"></select>').appendTo($(filterdiv));
+        formitem.on('change', function() {
+            self.setDataTablesUrl();
+            document.eventstable.ajax.reload(null, false);
         });
-    });
-    $.getJSON('/api/events/datacenters', function(data) {
-        $.each(data.datacenters, function(idx, obj) {
-            addOption('datacenter-filter', obj);
+    },
+
+    create: function() {
+        var self = this;
+        $('#filters-div').addClass('form-inline');
+        self.addFormGroup('status');
+        $('#status-filter').multiselect(self.multiselectOptions);
+        $('#status-filter').multiselect('dataprovider', self.statusOptions);
+        self.addFormGroup('datacenter');
+        self.updateDatacenters(true);
+        self.addFormGroup('checkname');
+        self.updateChecknames(true);
+    },
+
+    update: function() {
+        this.updateDatacenters();
+        this.updateChecknames();
+    },
+
+    updateDatacenters: function(init) {
+        var self = this;
+        $.getJSON('/api/events/datacenters', function(data) {
+            newdatacenters = []
+            $.each(data.datacenters, function(idx, obj) {
+                newdatacenters.push({label: obj, title: obj, value: obj});
+            });
+            self.datacenterOptions = newdatacenters;
+        }).success(function() {
+            if (init == true ) {
+                $('#datacenter-filter').multiselect(self.multiselectOptions);
+                $('#datacenter-filter').multiselect('dataprovider', self.datacenterOptions);
+            } else {
+                $('#checkname-filter').multiselect('refresh');
+            }
         });
-    });
-}
+    },
 
-var setDataTablesUrl = function() {
-    params = {}
-    $('#filters select').each(function(idx, obj) {
-        params[$(obj).data('filter')] = $(obj).children('option:selected').val()
-    });
-    if ( $.QueryString['dashboard'] ) {
-        params['dashboard'] = $.QueryString['dashboard'];
-    }
-    return '/api/events?'+$.param(params);
-}
+    updateChecknames: function(init) {
+        var self = this;
+        $.getJSON('/api/events/checks', function(data) {
+            newchecknames = []
+            $.each(data.checks.sort(), function(idx, obj) {
+                newchecknames.push({label: obj, title: obj, value: obj});
+            });
+            self.checknameOptions = newchecknames;
+        }).success(function() {
+            if (init == true ) {
+                $('#checkname-filter').multiselect(self.multiselectOptions);
+                $('#checkname-filter').multiselect('dataprovider', self.checknameOptions);
+            } else {
+                $('#checkname-filter').multiselect('refresh');
+            }
+        });
+    },
 
-var updateDataTablesUrl = function() {
-    params = {}
-    $('#filters select').each(function(idx, obj) {
-        params[$(obj).data('filter')] = $(obj).children('option:selected').val()
-    });
-    if ( $.QueryString['dashboard'] ) {
-        params['dashboard'] = $.QueryString['dashboard'];
+    setDataTablesUrl: function() {
+        params = {}
+        $('select.ms').each(function(idx, obj) {
+            params[$(obj).data('filter')] = $(obj).children('option:selected').map(function() { return this.value }).get().join(',')
+        });
+        if ( $.QueryString['dashboard'] ) {
+            params['dashboard'] = $.QueryString['dashboard'];
+        }
+        try {
+            document.eventstable.ajax.url('/api/events?'+$.param(params));
+        } catch(err) {
+        }
+        return '/api/events?'+$.param(params);
     }
-    document.eventstable.ajax.url('/api/events?'+$.param(params));
-    document.eventstable.ajax.reload(null, false);
 }
 
 var getStatusCount = function(state) {
@@ -102,6 +147,7 @@ $(document).ready(function() {
     }
     document.eventstable = $('#events').DataTable({
         'lengthMenu': [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
+        'autoWidth': false,
         //'stateSave' : true,
         'columnDefs': [
             {
@@ -115,10 +161,11 @@ $(document).ready(function() {
             [ 5, 'desc' ],
         ],
         'ajax': {
-            url: setDataTablesUrl(),
+            url: filters.setDataTablesUrl(),
             dataSrc: 'events',
         },
-        'dom': "<'row'<'col-sm-2'l><'col-sm-8'<'#filters'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
+        //'dom': "<'row'<'col-sm-2'l><'col-sm-8'<'#filters'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
+        'dom': "<'row'<'col-sm-2'l><'col-sm-2'<'#status-filter-div'>><'col-sm-2'<'#datacenter-filter-div'>><'col-sm-2'<'#checkname-filter-div'>><'col-sm-4'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
         'columns': [
             {data: 'check.status',
              name: 'status'},
@@ -136,7 +183,6 @@ $(document).ready(function() {
              name: 'timestamp'},
         ],
         'rowCallback': function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
-            //$(nRow).addClass(statusclasses[aData['check']['status']]);
             var d = new Date(0);
             d.setUTCSeconds(aData['timestamp']);
             $('td:last', nRow).html('<time class="timeago" datetime="'+d.toISOString()+'">'+d+'</time>');
@@ -147,20 +193,17 @@ $(document).ready(function() {
             aData['check']['status'] = statusnames[aData['check']['status']];
             aData['href'] = UCHIWA_URL+'/#/client/'+aData['datacenter']+'/'+aData['client']['name']+'?check='+aData['check']['name'];
             $(nRow).data('href', aData['href']);
-            $(nRow).click(function() {
+            $(nRow).click(function(e) {
                 window.open($(this).data("href"), '_blank');
+                e.stopPropagation();
             });
         },
         'initComplete': function (foo) {
-            addFilters();
-            updateFilters();
-            $([['Critical', 2],['Warning', 1],['OK', 0]]).each( function(idx, obj) {
-                addOption('status-filter', obj[0], obj[1])
-            });
+            filters.create();
             setInterval( function() {
-                updateFilters();
+                //filters.update();
                 document.eventstable.ajax.reload(null, false);
-            }, 30000);
+            }, 10000);
         }
     }).on('draw.dt', function() {
         updateTitle();
