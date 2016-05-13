@@ -1,9 +1,6 @@
 from datetime import datetime
 from flask import json
-from . import db, HourglassCacheMixin
-
-
-# UCHIWA_URL = db.get_app().config.get('uchiwa_url')
+from . import db, ExtraOut, HourglassCacheMixin
 
 
 # Laying out the framework for the api caching layer.
@@ -20,14 +17,13 @@ class Client(HourglassCacheMixin, db.Model):
     timestamp = db.Column(db.DateTime)
     extra = db.Column(db.Text)
 
-    events = db.relationship('Event', backref='client', lazy='dynamic')
+    events = db.relationship('Event', backref='client', lazy='dynamic',
+                             query_class=ExtraOut)
 
     def __init__(self, datacenter, name, extra, timestamp=None):
         self.datacenter = datacenter
         self.name = name
         extra['datacenter'] = datacenter
-        # extra['href'] = '%s/#/client/%s/%s' % (UCHIWA_URL, self.datacenter,
-        #                                        self.name)
         self.extra = json.dumps(extra)
         try:
             self.timestamp = datetime.fromtimestamp(timestamp)
@@ -83,6 +79,10 @@ class Event(HourglassCacheMixin, db.Model):
             ['datacenter', 'clientname'],
             ['clients.datacenter', 'clients.name']
         ),
+        db.ForeignKeyConstraint(
+            ['datacenter', 'clientname', 'checkname'],
+            ['stashes.datacenter', 'stashes.clientname', 'stashes.checkname']
+        )
     )
 
     def __init__(self, datacenter, clientname, occurrences, status, timestamp,
@@ -96,8 +96,6 @@ class Event(HourglassCacheMixin, db.Model):
         self.status = status
         self.timestamp = datetime.fromtimestamp(timestamp)
         extra['datacenter'] = datacenter
-        # extra['href'] = '%s/#/client/%s/%s?check=%s' % (
-        #     UCHIWA_URL, self.datacenter, self.clientname, self.checkname)
         self.extra = json.dumps(extra)
 
     def __repr__(self):
@@ -105,6 +103,50 @@ class Event(HourglassCacheMixin, db.Model):
                                      self.checkname)
 
 
-# class Stash(db.Model):
-#     __bind_key__ = 'cache'
-#     __tablename__ = 'stashes'
+class Stash(HourglassCacheMixin, db.Model):
+    __bind_key__ = 'cache'
+    __tablename__ = 'stashes'
+    datacenter = db.Column(db.String(64), primary_key=True)
+    path = db.Column(db.String(256), primary_key=True)
+    clientname = db.Column(db.String(256), primary_key=True)
+    checkname = db.Column(db.String(256), primary_key=True)
+    source = db.Column(db.String(64))
+    flavor = db.Column(db.String(64))
+    created_at = db.Column(db.DateTime)
+    expire_at = db.Column(db.DateTime)
+    extra = db.Column(db.Text)
+
+    events = db.relationship('Event', backref='stash', lazy='dynamic',
+                             query_class=ExtraOut, viewonly=True)
+
+    def __init__(self, datacenter, path, extra):
+        self.datacenter = datacenter
+        self.path = path
+        extra['datacenter'] = datacenter
+        self.extra = json.dumps(extra)
+        if extra.get('expire') == -1:
+            self.expire_at = None
+        else:
+            self.expire_at = datetime.fromtimestamp(
+                int(datetime.utcnow().strftime("%s")) + extra['expire'])
+        try:
+            path_list = path.split('/')
+            self.flavor = path_list[0]
+            self.clientname = path_list[1]
+            try:
+                self.checkname = path_list[2]
+            except IndexError:
+                self.checkname = None
+            self.source = extra['content']['source']
+            self.created_at = datetime.fromtimestamp(
+                extra['content']['timestamp'])
+        except:
+            self.flavor = None
+            self.clientname = None
+            self.checkname = None
+            self.source = None
+            self.created_at = None
+            self.expire_at = None
+
+    def __repr__(self):
+        return '<Stash %s/%s>' % (self.datacenter, self.path)
