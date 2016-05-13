@@ -1,8 +1,7 @@
 import gevent
 import gevent.monkey
 import requests
-from flask import json
-from hourglass.models.api import Check, Client, Event
+from hourglass.models.api import Check, Client, Event, Stash
 from . import db
 
 gevent.monkey.patch_all()
@@ -21,7 +20,7 @@ class Poller(object):
     @classmethod
     def query_sensu(cls, sensu, uri):
         url = "http://%s:%s/%s" % (sensu['host'], sensu['port'], uri)
-        return json.loads(requests.get(url).content)
+        return requests.get(url).json()
 
     def update_checks_cache(self, checks):
         with self.app.app_context():
@@ -37,7 +36,8 @@ class Poller(object):
             for sensu in clients:
                 for client in clients[sensu]:
                     try:
-                        db.session.add(Client(sensu, client['name'], client, client['timestamp']))
+                        db.session.add(Client(sensu, client['name'], client,
+                                       client['timestamp']))
                     except KeyError:
                         db.session.add(Client(sensu, client['name'], client))
             db.session.commit()
@@ -47,7 +47,18 @@ class Poller(object):
             Event.query.delete()
             for sensu in events:
                 for event in events[sensu]:
-                    db.session.add(Event(sensu, event['client']['name'], event['occurrences'], event['check']['status'], event['timestamp'], event))
+                    db.session.add(Event(sensu, event['client']['name'],
+                                         event['occurrences'],
+                                         event['check']['status'],
+                                         event['timestamp'], event))
+            db.session.commit()
+
+    def update_stashes_cache(self, stashes):
+        with self.app.app_context():
+            Stash.query.delete()
+            for sensu in stashes:
+                for stash in stashes[sensu]:
+                    db.session.add(Stash(sensu, stash['path'], stash))
             db.session.commit()
 
     def main(self):
@@ -55,13 +66,16 @@ class Poller(object):
         checks = {}
         clients = {}
         events = {}
+        stashes = {}
         for sensu in self.sensus:
             checks[sensu] = self.query_sensu(self.sensus[sensu], 'checks')
             clients[sensu] = self.query_sensu(self.sensus[sensu], 'clients')
             events[sensu] = self.query_sensu(self.sensus[sensu], 'events')
+            stashes[sensu] = self.query_sensu(self.sensus[sensu], 'stashes')
         self.update_clients_cache(clients)
         self.update_checks_cache(checks)
         self.update_events_cache(events)
+        self.update_stashes_cache(stashes)
 
     def run(self):
         while True:
