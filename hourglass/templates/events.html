@@ -1,14 +1,13 @@
 {% extends "layout.html" %}
 {% set active_page = 'events' %}
-{% block head %}
-  {{ super() }}
-      <!-- Custom styles for this template -->
-      <link href="/static/css/datatables/dataTables.bootstrap.min.css" rel="stylesheet">
+{% block head %}{{ super() }}
+    <!-- Custom styles for this template -->
+    <link href="/static/css/datatables/dataTables.bootstrap.min.css" rel="stylesheet">
 {% endblock %}
 {% block content %}
       <div class="row">
-        <div>
-          <table id="events" class="dt table table-striped">
+        <div class="col-md-12">
+          <table id="events" class="dt table table-striped table-bordered table-hover">
             <thead>
               <tr>
                 <th id='status'>Status</th>
@@ -26,10 +25,9 @@
         </div>
       </div>
 {% endblock %}
-{% block footer %}
-  {{ super() }}
-  <script src="/static/js/datatables/jquery.dataTables.min.js"></script>
-  <script src="/static/js/datatables/dataTables.bootstrap.min.js"></script>
-  <script src="/static/js/timeago/jquery.timeago.js"></script>
-  <script src="/static/js/hourglass/events.js"></script>
+{% block footer %}{{ super() }}
+    <script src="/static/js/datatables/jquery.dataTables.min.js"></script>
+    <script src="/static/js/datatables/dataTables.bootstrap.min.js"></script>
+    <script src="/static/js/timeago/jquery.timeago.js"></script>
+    <script src="/static/js/hourglass/events.js"></script>
 {% endblock %}
