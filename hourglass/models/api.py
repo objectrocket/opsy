@@ -109,7 +109,7 @@ class Stash(HourglassCacheMixin, db.Model):
     datacenter = db.Column(db.String(64), primary_key=True)
     path = db.Column(db.String(256), primary_key=True)
     clientname = db.Column(db.String(256), primary_key=True)
-    checkname = db.Column(db.String(256), primary_key=True)
+    checkname = db.Column(db.String(256), nullable=True, primary_key=True)
     source = db.Column(db.String(64))
     flavor = db.Column(db.String(64))
     created_at = db.Column(db.DateTime)

@@ -1,5 +1,11 @@
-String.prototype.capitalize = function() {
-    return this.charAt(0).toUpperCase() + this.slice(1);
+String.prototype.capitalize = function(all) {
+    if (all) {
+        return this.split(' ').map(function(i) {
+            return i.capitalize()
+        }).join(' ');
+    } else {
+        return this.charAt(0).toUpperCase() + this.slice(1);
+    }
 }
 
 var filters = {
@@ -8,6 +14,11 @@ var filters = {
         {label: 'Critical', title: 'Critical', value: 2},
         {label: 'Warning', title: 'Warning', value: 1},
         {label: 'OK', title: 'OK', value: 0},
+    ],
+
+    hideOptions: [
+        {label: 'Silenced Checks', title: 'Silenced Checks', value: 'checks'},
+        {label: 'Silenced Clients', title: 'Silenced Clients', value: 'clients'},
     ],
 
     datacenterOptions: [],
@@ -26,23 +37,28 @@ var filters = {
             } else if (options.length > 1) {
                 return options.length+' items selected';
             } else {
-                return $(select).data('filter').capitalize();
+                return $(select).data('name').replace('-', ' ').capitalize(true);
             }
+        },
+        buttonTitle: function(options, select) {
+            return $(select).data('name').replace('-', ' ').capitalize(true);
+        },
+        onDropdownHidden: function() {
+            filters.setDataTablesUrl();
+            document.eventstable.ajax.reload(null, false);
         },
     },
 
-    addFormGroup: function(name) {
+    addFormGroup: function(name, filter=null) {
         var self = this;
-        formitem = $('<select multiple class="ms" data-filter="'+name+'" class="form-control" id="'+name+'-filter"></select>').appendTo( $('#'+name+'-filter-div') );
-        formitem.on('change', function() {
-            self.setDataTablesUrl();
-            document.eventstable.ajax.reload(null, false);
-        });
+        if (filter === null) {
+            filter = name;
+        }
+        formitem = $('<select multiple class="ms" data-name="'+name+'" data-filter="'+filter+'" class="form-control" id="'+name+'-filter"></select>').appendTo( $('#'+name+'-filter-div') );
     },
 
     create: function() {
         var self = this;
-        $('#filters-div').addClass('form-inline');
         self.addFormGroup('status');
         $('#status-filter').multiselect(self.multiselectOptions);
         $('#status-filter').multiselect('dataprovider', self.statusOptions);
@@ -50,6 +66,9 @@ var filters = {
         self.updateDatacenters(true);
         self.addFormGroup('checkname');
         self.updateChecknames(true);
+        self.addFormGroup('hide-events', 'hide_silenced');
+        $('#hide-events-filter').multiselect(self.multiselectOptions);
+        $('#hide-events-filter').multiselect('dataprovider', self.hideOptions);
     },
 
     update: function() {
@@ -70,7 +89,7 @@ var filters = {
                 $('#datacenter-filter').multiselect(self.multiselectOptions);
                 $('#datacenter-filter').multiselect('dataprovider', self.datacenterOptions);
             } else {
-                $('#checkname-filter').multiselect('refresh');
+                $('#checkname-filter').multiselect('rebuild');
             }
         });
     },
@@ -88,7 +107,7 @@ var filters = {
                 $('#checkname-filter').multiselect(self.multiselectOptions);
                 $('#checkname-filter').multiselect('dataprovider', self.checknameOptions);
             } else {
-                $('#checkname-filter').multiselect('refresh');
+                $('#checkname-filter').multiselect('rebuild');
             }
         });
     },
@@ -165,7 +184,7 @@ $(document).ready(function() {
             dataSrc: 'events',
         },
         //'dom': "<'row'<'col-sm-2'l><'col-sm-8'<'#filters'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
-        'dom': "<'row'<'col-sm-2'l><'col-sm-2'<'#status-filter-div'>><'col-sm-2'<'#datacenter-filter-div'>><'col-sm-2'<'#checkname-filter-div'>><'col-sm-4'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
+        'dom': "<'row'<'col-sm-2'l><'col-sm-2'<'#status-filter-div'>><'col-sm-2'<'#datacenter-filter-div'>><'col-sm-2'<'#checkname-filter-div'>><'col-sm-2'<'#hide-events-filter-div'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
         'columns': [
             {data: 'check.status',
              name: 'status'},
@@ -203,7 +222,7 @@ $(document).ready(function() {
             setInterval( function() {
                 //filters.update();
                 document.eventstable.ajax.reload(null, false);
-            }, 10000);
+            }, 30000);
         }
     }).on('draw.dt', function() {
         updateTitle();
