@@ -34,6 +34,8 @@ var filters = {
         buttonText: function(options, select) {
             if (options.length == 1) {
                 return $(options[0]).attr('label');
+            } else if (options.length == $(select).children(options).length) {
+                return 'All items selected';
             } else if (options.length > 1) {
                 return options.length+' items selected';
             } else {
