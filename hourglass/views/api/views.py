@@ -1,7 +1,7 @@
 from time import time
 from . import api
 from hourglass.models import db
-from hourglass.models.api import Event, Check, Client
+from hourglass.models.api import Event, Check, Client, Stash
 from flask import current_app, jsonify, request
 
 
@@ -9,14 +9,23 @@ def get_filters_list(filters):
     filters_list = []
     for items, db_object in filters:
         if items:
-            item_list = items.split(',')
-            include = [x for x in item_list if not x.startswith('!')]
-            exclude = [x[1:] for x in item_list if x.startswith('!')]
+            include, exclude = parse_include_excludes(items)
             if include:
                 filters_list.append(db_object.in_(include))
             if exclude:
                 filters_list.append(~db_object.in_(exclude))
     return filters_list
+
+
+def parse_include_excludes(items):
+    if items:
+        item_list = items.split(',')
+        # Wrap in a set to remove duplicates
+        include = list(set([x for x in item_list if not x.startswith('!')]))
+        exclude = list(set([x[1:] for x in item_list if x.startswith('!')]))
+    else:
+        include, exclude = [], []
+    return include, exclude
 
 
 def get_dashboard_filters_list(config, dashboard):
@@ -34,6 +43,35 @@ def get_dashboard_filters_list(config, dashboard):
 @api.route('/ping')
 def ping():
     return jsonify({'pong': time()})
+
+
+@api.route('/list/datacenters')
+def list_datacenters():
+    dashboard = request.args.get('dashboard')
+    config = current_app.config
+    datacenters = [x for x in config['sensu_nodes'].keys()]
+    if dashboard:
+        datacenters_string = config['dashboards'][dashboard].get('datacenter')
+        include, exclude = parse_include_excludes(datacenters_string)
+        if include:
+            datacenters = include
+        if exclude:
+            datacenters = list(set(datacenters) - set(exclude))
+    return jsonify({'datacenters': datacenters, 'timestamp': time()})
+
+
+@api.route('/list/checks')
+def list_checks():
+    dashboard = request.args.get('dashboard')
+    if dashboard:
+        config = current_app.config
+        dash_filters_list = get_dashboard_filters_list(config, dashboard)
+        events_query = Event.query.filter(*dash_filters_list)
+    else:
+        events_query = Event.query
+    eventchecks = [x[0] for x in events_query.with_entities(
+        Event.checkname).distinct().all()]
+    return jsonify({'checks': eventchecks, 'timestamp': time()})
 
 
 @api.route('/events')
@@ -71,18 +109,6 @@ def events():
     return jsonify({'events': sensuevents, 'timestamp': time()})
 
 
-@api.route('/events/datacenters')
-def events_datacenters():
-    datacenters = [x[0] for x in Event.query.with_entities(Event.datacenter).distinct().all()]
-    return jsonify({'datacenters': datacenters, 'timestamp': time()})
-
-
-@api.route('/events/checks')
-def events_checks():
-    eventchecks = [x[0] for x in Event.query.with_entities(Event.checkname).distinct().all()]
-    return jsonify({'checks': eventchecks, 'timestamp': time()})
-
-
 @api.route('/checks')
 def checks():
     datacenters = request.args.get('datacenter')
@@ -103,3 +129,18 @@ def clients():
     filters_list = get_filters_list(filters)
     sensuclients = Client.query.filter(*filters_list).all_extra_as_dict()
     return jsonify({'clients': sensuclients, 'timestamp': time()})
+
+
+@api.route('/stashes')
+def stashes():
+    datacenters = request.args.get('datacenter')
+    clientnames = request.args.get('clientname')
+    checknames = request.args.get('checkname')
+    flavor = request.args.get('flavor')
+    filters = ((datacenters, Stash.datacenter),
+               (clientnames, Stash.clientname),
+               (checknames, Stash.checkname),
+               (flavor, Stash.flavor))
+    filters_list = get_filters_list(filters)
+    sensustashes = Stash.query.filter(*filters_list).all_extra_as_dict()
+    return jsonify({'stashes': sensustashes, 'timestamp': time()})
