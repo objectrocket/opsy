@@ -17,5 +17,5 @@ if __name__ == '__main__':
     MANAGER = Manager(create_app)
     MANAGER.add_option('-c', '--config', dest='config', required=False,
                        default='%s/hourglass.ini' % BASEDIR)
-    MANAGER.add_command("shell", Shell(make_context=make_shell_context))
+    MANAGER.add_command('shell', Shell(make_context=make_shell_context))
     MANAGER.run()

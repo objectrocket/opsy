@@ -20,10 +20,10 @@ def get_filters_list(filters):
 
 
 def get_dashboard_filters_list(config, dashboard):
-    datacenters = config['dashboards'][dashboard].get("datacenter")
-    checknames = config['dashboards'][dashboard].get("checkname")
-    clientnames = config['dashboards'][dashboard].get("clientname")
-    statuses = config['dashboards'][dashboard].get("status")
+    datacenters = config['dashboards'][dashboard].get('datacenter')
+    checknames = config['dashboards'][dashboard].get('checkname')
+    clientnames = config['dashboards'][dashboard].get('clientname')
+    statuses = config['dashboards'][dashboard].get('status')
     filters = ((datacenters, Event.datacenter),
                (checknames, Event.checkname),
                (clientnames, Event.clientname),
@@ -38,21 +38,29 @@ def ping():
 
 @api.route('/events')
 def events():
-    dashboard = request.args.get("dashboard")
-    hide_silenced = request.args.get("hide_silenced")
-    datacenters = request.args.get("datacenter")
-    checknames = request.args.get("checkname")
-    clientnames = request.args.get("clientname")
-    statuses = request.args.get("status")
+    dashboard = request.args.get('dashboard')
+    hide_silenced = request.args.get('hide_silenced') or ''
+    datacenters = request.args.get('datacenter')
+    checknames = request.args.get('checkname')
+    clientnames = request.args.get('clientname')
+    statuses = request.args.get('status')
     filters = ((datacenters, Event.datacenter),
                (checknames, Event.checkname),
                (clientnames, Event.clientname),
                (statuses, Event.status))
     filters_list = get_filters_list(filters)
-    if hide_silenced == "1":
+    hide_silenced = hide_silenced.split(',')
+    if 'checks' in hide_silenced:
         filters_list.append(db.not_(Event.stash.has(
             clientname=Event.clientname, checkname=Event.checkname,
             flavor='silence')))
+    if 'clients' in hide_silenced:
+        filters_list.append(db.not_(Client.stash.has(
+            clientname=Event.clientname, checkname=None,
+            flavor='silence')))
+    if 'occurrences' in hide_silenced:
+        filters_list.append(db.not_(
+            Event.eventoccurrences < Event.checkoccurrences))
     if dashboard:
         config = current_app.config
         dash_filters_list = get_dashboard_filters_list(config, dashboard)
@@ -77,8 +85,8 @@ def events_checks():
 
 @api.route('/checks')
 def checks():
-    datacenters = request.args.get("datacenter")
-    checknames = request.args.get("checkname")
+    datacenters = request.args.get('datacenter')
+    checknames = request.args.get('checkname')
     filters = ((datacenters, Check.datacenter),
                (checknames, Check.name))
     filters_list = get_filters_list(filters)
@@ -88,8 +96,8 @@ def checks():
 
 @api.route('/clients')
 def clients():
-    datacenters = request.args.get("datacenter")
-    clientnames = request.args.get("clientname")
+    datacenters = request.args.get('datacenter')
+    clientnames = request.args.get('clientname')
     filters = ((datacenters, Client.datacenter),
                (clientnames, Client.name))
     filters_list = get_filters_list(filters)

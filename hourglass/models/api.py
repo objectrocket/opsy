@@ -20,6 +20,13 @@ class Client(HourglassCacheMixin, db.Model):
     events = db.relationship('Event', backref='client', lazy='dynamic',
                              query_class=ExtraOut)
 
+    __table_args__ = (
+        db.ForeignKeyConstraint(
+            ['datacenter', 'name'],
+            ['stashes.datacenter', 'stashes.clientname']
+        ),
+    )
+
     def __init__(self, datacenter, name, extra, timestamp=None):
         self.datacenter = datacenter
         self.name = name
@@ -117,6 +124,8 @@ class Stash(HourglassCacheMixin, db.Model):
     extra = db.Column(db.Text)
 
     events = db.relationship('Event', backref='stash', lazy='dynamic',
+                             query_class=ExtraOut, viewonly=True)
+    client = db.relationship('Client', backref='stash', lazy='dynamic',
                              query_class=ExtraOut, viewonly=True)
 
     def __init__(self, datacenter, path, extra):
