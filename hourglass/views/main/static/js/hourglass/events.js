@@ -19,6 +19,7 @@ var filters = {
     hideOptions: [
         {label: 'Silenced Checks', title: 'Silenced Checks', value: 'checks'},
         {label: 'Silenced Clients', title: 'Silenced Clients', value: 'clients'},
+        {label: 'Below Occurrence Threshold', title: 'Below Occurrence Threshold', value: 'occurrences'},
     ],
 
     datacenterOptions: [],
