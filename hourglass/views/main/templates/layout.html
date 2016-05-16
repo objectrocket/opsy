@@ -13,17 +13,17 @@
     <title>{% if title %}{{ title }} | {% endif %}Hourglass</title>
 
     <!-- Bootstrap core CSS -->
-    <link href="/static/css/bootstrap/bootstrap.min.css" rel="stylesheet">
+    <link href="{{url_for('main.static', filename='css/bootstrap/bootstrap.min.css')}}" rel="stylesheet">
 
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-    <link href="/static/css/bootstrap/ie10-viewport-bug-workaround.css" rel="stylesheet">
+    <link href="{{url_for('main.static', filename='css/bootstrap/ie10-viewport-bug-workaround.css')}}" rel="stylesheet">
 
     <!-- Custom styles for this template -->
-    <link href="/static/css/hourglass.css" rel="stylesheet">
+    <link href="{{url_for('main.static', filename='css/hourglass.css')}}" rel="stylesheet">
 
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]><script src="../../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
-    <script src="/static/js/bootstrap/ie-emulation-modes-warning.js"></script>
+    <script src="{{url_for('main.static', filename='js/bootstrap/ie-emulation-modes-warning.js')}}"></script>
 
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
@@ -83,10 +83,10 @@
     <!-- Bootstrap core JavaScript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
-    <script src="/static/js/jquery/jquery.min.js"></script>
-    <script src="/static/js/bootstrap/bootstrap.min.js"></script>
+    <script src="{{url_for('main.static', filename='js/jquery/jquery.min.js')}}"></script>
+    <script src="{{url_for('main.static', filename='js/bootstrap/bootstrap.min.js')}}"></script>
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-    <script src="/static/js/bootstrap/ie10-viewport-bug-workaround.js"></script>
+    <script src="{{url_for('main.static', filename='js/bootstrap/ie10-viewport-bug-workaround.js')}}"></script>
     <script type="text/javascript">
       var UCHIWA_URL = "{{ uchiwa_url }}";
     </script>
