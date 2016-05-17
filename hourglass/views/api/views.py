@@ -1,7 +1,7 @@
 from time import time
 from . import api
-from hourglass.models import db
-from hourglass.models.api import Event, Check, Client, Stash
+from hourglass.models.backends import db
+from hourglass.models.backends.sensu.cache import Event, Check, Client, Stash
 from flask import current_app, jsonify, request
 
 

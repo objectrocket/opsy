@@ -1,6 +1,6 @@
 from datetime import datetime
 from flask import json
-from . import db, ExtraOut, HourglassCacheMixin
+from .. import db, ExtraOut, HourglassCacheMixin
 
 
 # Laying out the framework for the api caching layer.
