@@ -1,6 +1,6 @@
 import os
 from flask.ext.script import Manager, Shell
-from models.backends.sensu.cache import Client, Check, Event, Stash, db
+from hourglass.models.backends.sensu.cache import Client, Check, Event, Stash, db
 from . import create_app
 import gevent.monkey
 gevent.monkey.patch_all()
