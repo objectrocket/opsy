@@ -81,7 +81,7 @@ var filters = {
 
     updateDatacenters: function(init) {
         var self = this;
-        $.getJSON('/api/events/datacenters', function(data) {
+        $.getJSON('/api/list/datacenters', function(data) {
             newdatacenters = []
             $.each(data.datacenters, function(idx, obj) {
                 newdatacenters.push({label: obj, title: obj, value: obj});
@@ -99,7 +99,7 @@ var filters = {
 
     updateChecknames: function(init) {
         var self = this;
-        $.getJSON('/api/events/checks', function(data) {
+        $.getJSON('/api/list/checks', function(data) {
             newchecknames = []
             $.each(data.checks.sort(), function(idx, obj) {
                 newchecknames.push({label: obj, title: obj, value: obj});
