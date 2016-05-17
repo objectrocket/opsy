@@ -1,8 +1,8 @@
 import gevent
 import gevent.monkey
 import requests
-from hourglass.models.api import Check, Client, Event, Stash
-from . import db
+from hourglass.models.backends.sensu.cache import Check, Client, Event, Stash
+from hourglass.models.backends import db
 
 gevent.monkey.patch_all()
 

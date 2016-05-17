@@ -10,7 +10,7 @@ setup(
     author='Chris Jowett, David Bennett',
     url='https://github.com/cryptk/hourglass',
     license='MIT',
-    install_requires = [
+    install_requires=[
         'Flask==0.10.1',
         'requests==2.10.0',
         'Flask-Script==2.0.5',
@@ -19,7 +19,7 @@ setup(
         'Flask-SQLAlchemy==2.1',
         'gevent==1.1.1',
     ],
-    extras_require = {
+    extras_require={
         'DEV': [
             'ipython==4.2.0',
         ],
@@ -29,10 +29,10 @@ setup(
             'pep8==1.7.0',
         ],
     },
-    entry_points = {
+    entry_points={
         'console_scripts': [
-            'hourglass = hourglass.command_line:run_hourglass',
+            'hourglass = hourglass.shell:run_hourglass',
         ]
     },
-    include_package_data = True,
+    include_package_data=True,
 )
