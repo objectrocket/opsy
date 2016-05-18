@@ -1,22 +1,15 @@
-import gevent
 from flask import Flask
 from flask.ext.iniconfig import INIConfig
 from hourglass.models.poller import Poller
 
-
 def create_app(config):
+    global app
     app = Flask(__name__)
     INIConfig(app)
     app.config.from_inifile(config)
     parse_config(app)
     register_blueprints(app)
-    create_poller(app)
     return app
-
-
-def create_poller(app):
-    poller = Poller(app)
-    return gevent.spawn(poller.run)
 
 
 def parse_config(app):
