@@ -17,7 +17,7 @@ setup(
         'humanize==0.5.1',
         'Flask-INIConfig==0.0.9',
         'Flask-SQLAlchemy==2.1',
-        'uWSGI==2.0.13.1
+        'uWSGI==2.0.13.1',
     ],
     extras_require={
         'DEV': [
