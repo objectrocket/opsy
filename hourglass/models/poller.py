@@ -1,4 +1,3 @@
-import gevent
 import gevent.monkey
 import requests
 from hourglass.models.backends.sensu.cache import Check, Client, Event, Stash
@@ -76,11 +75,3 @@ class Poller(object):
         self.update_checks_cache(checks)
         self.update_events_cache(events)
         self.update_stashes_cache(stashes)
-
-    def run(self):
-        while True:
-            try:
-                self.main()
-                gevent.sleep(self.interval)
-            except Exception:
-                raise
