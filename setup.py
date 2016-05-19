@@ -12,7 +12,7 @@ setup(
     license='MIT',
     install_requires=[
         'Flask==0.10.1',
-        'requests==2.10.0',
+        'aiohttp==0.21.6',
         'Flask-Script==2.0.5',
         'humanize==0.5.1',
         'Flask-INIConfig==0.0.9',
