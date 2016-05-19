@@ -7,10 +7,8 @@ from hourglass.models.backends import db
 class Poller(object):
     def __init__(self, app):
         self.app = app
-        db.init_app(self.app)
-        with self.app.app_context():
-            db.create_all()
-            db.session.commit()
+        self.db = db
+        self.httpsession = aiohttp.ClientSession()
         self.sensus = self.app.config['sensu_nodes']
         self.interval = self.app.config['hourglass'].get('poll_interval', 10)
         self.loop = asyncio.get_event_loop()
@@ -18,60 +16,66 @@ class Poller(object):
     @asyncio.coroutine
     def query_sensu(self, sensu, uri):
         url = "http://%s:%s/%s" % (sensu['host'], sensu['port'], uri)
-        response = yield from aiohttp.get(url)
+        with aiohttp.Timeout(sensu['timeout']):
+            response = yield from self.httpsession.get(url)
         return (yield from response.json())
 
     @asyncio.coroutine
     def update_sensu_checks(self, sensu):
-        print("updating checks " + sensu['name'])
+        self.app.logger.debug("updating checks " + sensu['name'])
         checks = yield from self.query_sensu(sensu, 'checks')
-        with self.app.app_context():
-            Check.query.filter(Check.datacenter==sensu['name']).delete()
-            for check in checks:
-                db.session.add(Check(sensu['name'], check))
-            db.session.commit()
-        print("updated checks " + sensu['name'])
+        checkobjects = []
+        for check in checks:
+            checkobjects.append(Check(sensu['name'], check))
+        self.app.logger.debug("updated checks " + sensu['name'])
+        return checkobjects
 
     @asyncio.coroutine
     def update_sensu_clients(self, sensu):
-        print("updating clients " + sensu['name'])
+        self.app.logger.debug("updating clients " + sensu['name'])
         clients = yield from self.query_sensu(sensu, 'clients')
-        with self.app.app_context():
-            Client.query.filter(Client.datacenter==sensu['name']).delete()
-            for client in clients:
-                db.session.add(Client(sensu['name'], client))
-            db.session.commit()
-        print("updated clients " + sensu['name'])
+        clientobjects = []
+        for client in clients:
+            clientobjects.append(Client(sensu['name'], client))
+        self.app.logger.debug("updated clients " + sensu['name'])
+        return clientobjects
 
     @asyncio.coroutine
     def update_sensu_events(self, sensu):
-        print("updating events " + sensu['name'])
+        self.app.logger.debug("updating events " + sensu['name'])
         events = yield from self.query_sensu(sensu, 'events')
-        with self.app.app_context():
-            Event.query.filter(Event.datacenter==sensu['name']).delete()
-            for event in events:
-                db.session.add(Event(sensu['name'], event))
-            db.session.commit()
-        print("updated events " + sensu['name'])
+        eventobjects = []
+        for event in events:
+            eventobjects.append(Event(sensu['name'], event))
+        self.app.logger.debug("updated events " + sensu['name'])
+        return eventobjects
 
     @asyncio.coroutine
     def update_sensu_stashes(self, sensu):
-        print("updating stashes " + sensu['name'])
+        self.app.logger.debug("updating stashes " + sensu['name'])
         stashes = yield from self.query_sensu(sensu, 'stashes')
-        with self.app.app_context():
-            Stash.query.filter(Stash.datacenter==sensu['name']).delete()
-            for stash in stashes:
-                db.session.add(Stash(sensu['name'], stash))
-            db.session.commit()
-        print("updated stashes " + sensu['name'])
+        stashobjects = []
+        for stash in stashes:
+            stashobjects.append(Stash(sensu['name'], stash))
+        self.app.logger.debug("updated stashes " + sensu['name'])
+        return stashobjects
 
     def main(self):
-        print('Updating Cache')
+        self.app.logger.debug('Updating Cache')
         tasks = []
         for sensu in self.sensus:
-            tasks.append(self.update_sensu_checks(self.sensus[sensu]))
-            tasks.append(self.update_sensu_clients(self.sensus[sensu]))
-            tasks.append(self.update_sensu_events(self.sensus[sensu]))
-            tasks.append(self.update_sensu_stashes(self.sensus[sensu]))
-        self.loop.run_until_complete(asyncio.wait(tasks))
-        print("Cache update complete")
+            tasks.append(asyncio.ensure_future(self.update_sensu_checks(self.sensus[sensu])))
+            tasks.append(asyncio.ensure_future(self.update_sensu_clients(self.sensus[sensu])))
+            tasks.append(asyncio.ensure_future(self.update_sensu_events(self.sensus[sensu])))
+            tasks.append(asyncio.ensure_future(self.update_sensu_stashes(self.sensus[sensu])))
+        with self.app.app_context():
+            self.loop.run_until_complete(asyncio.wait(tasks))
+            for sensu in self.sensus:
+                Check.query.filter(Check.datacenter==sensu).delete()
+                Client.query.filter(Client.datacenter==sensu).delete()
+                Event.query.filter(Event.datacenter==sensu).delete()
+                Stash.query.filter(Stash.datacenter==sensu).delete()
+            for task in tasks:
+                self.db.session.bulk_save_objects(task.result())
+            self.db.session.commit()
+        self.app.logger.debug("Cache update complete")
