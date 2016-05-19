@@ -1,9 +1,7 @@
-import gevent.monkey
-import requests
+import asyncio
+import aiohttp
 from hourglass.models.backends.sensu.cache import Check, Client, Event, Stash
 from hourglass.models.backends import db
-
-gevent.monkey.patch_all()
 
 
 class Poller(object):
@@ -15,63 +13,73 @@ class Poller(object):
             db.session.commit()
         self.sensus = self.app.config['sensu_nodes']
         self.interval = self.app.config['hourglass'].get('poll_interval', 10)
+        self.loop = asyncio.get_event_loop()
 
-    @classmethod
-    def query_sensu(cls, sensu, uri):
+    @asyncio.coroutine
+    def query_sensu(self, sensu, uri):
         url = "http://%s:%s/%s" % (sensu['host'], sensu['port'], uri)
-        return requests.get(url).json()
+        response = yield from aiohttp.get(url)
+        return (yield from response.json())
 
-    def update_checks_cache(self, checks):
+    @asyncio.coroutine
+    def update_sensu_checks(self, sensu):
+        print("updating checks " + sensu['name'])
+        checks = yield from self.query_sensu(sensu, 'checks')
         with self.app.app_context():
-            Check.query.delete()
-            for sensu in checks:
-                for check in checks[sensu]:
-                    db.session.add(Check(sensu, check['name'], check))
+            Check.query.filter(Check.datacenter==sensu['name']).delete()
+            for check in checks:
+                db.session.add(Check(sensu['name'], check['name'], check))
             db.session.commit()
+        print("updated checks " + sensu['name'])
 
-    def update_clients_cache(self, clients):
+    @asyncio.coroutine
+    def update_sensu_clients(self, sensu):
+        print("updating clients " + sensu['name'])
+        clients = yield from self.query_sensu(sensu, 'clients')
         with self.app.app_context():
-            Client.query.delete()
-            for sensu in clients:
-                for client in clients[sensu]:
-                    try:
-                        db.session.add(Client(sensu, client['name'], client,
-                                       client['timestamp']))
-                    except KeyError:
-                        db.session.add(Client(sensu, client['name'], client))
+            Client.query.filter(Client.datacenter==sensu['name']).delete()
+            for client in clients:
+                try:
+                    db.session.add(Client(sensu['name'], client['name'], client, client['timestamp']))
+                except KeyError:
+                    db.session.add(Client(sensu['name'], client['name'], client))
             db.session.commit()
+        print("updated clients " + sensu['name'])
 
-    def update_events_cache(self, events):
+    @asyncio.coroutine
+    def update_sensu_events(self, sensu):
+        print("updating events " + sensu['name'])
+        events = yield from self.query_sensu(sensu, 'events')
         with self.app.app_context():
-            Event.query.delete()
-            for sensu in events:
-                for event in events[sensu]:
-                    db.session.add(Event(sensu, event['client']['name'],
-                                         event['occurrences'],
-                                         event['check']['status'],
-                                         event['timestamp'], event))
+            Event.query.filter(Event.datacenter==sensu['name']).delete()
+            for event in events:
+                db.session.add(Event(sensu['name'],
+                                     event['client']['name'],
+                                     event['occurrences'],
+                                     event['check']['status'],
+                                     event['timestamp'],
+                                     event))
             db.session.commit()
+        print("updated events " + sensu['name'])
 
-    def update_stashes_cache(self, stashes):
+    @asyncio.coroutine
+    def update_sensu_stashes(self, sensu):
+        print("updating stashes " + sensu['name'])
+        stashes = yield from self.query_sensu(sensu, 'stashes')
         with self.app.app_context():
-            Stash.query.delete()
-            for sensu in stashes:
-                for stash in stashes[sensu]:
-                    db.session.add(Stash(sensu, stash['path'], stash))
-            db.session.commit()
+            Stash.query.filter(Stash.datacenter==sensu['name']).delete()
+            for stash in stashes:
+                db.session.add(Stash(sensu['name'], stash['path'], stash))
+        #db.session.commit()
+        print("updated stashes " + sensu['name'])
 
     def main(self):
-        self.app.logger.debug('Updating Cache')
-        checks = {}
-        clients = {}
-        events = {}
-        stashes = {}
+        print('Updating Cache')
+        tasks = []
         for sensu in self.sensus:
-            checks[sensu] = self.query_sensu(self.sensus[sensu], 'checks')
-            clients[sensu] = self.query_sensu(self.sensus[sensu], 'clients')
-            events[sensu] = self.query_sensu(self.sensus[sensu], 'events')
-            stashes[sensu] = self.query_sensu(self.sensus[sensu], 'stashes')
-        self.update_clients_cache(clients)
-        self.update_checks_cache(checks)
-        self.update_events_cache(events)
-        self.update_stashes_cache(stashes)
+            tasks.append(self.update_sensu_checks(self.sensus[sensu]))
+            tasks.append(self.update_sensu_clients(self.sensus[sensu]))
+            tasks.append(self.update_sensu_events(self.sensus[sensu]))
+            tasks.append(self.update_sensu_stashes(self.sensus[sensu]))
+        self.loop.run_until_complete(asyncio.wait(tasks))
+        print("Cache update complete")
