@@ -28,7 +28,7 @@ class Poller(object):
         with self.app.app_context():
             Check.query.filter(Check.datacenter==sensu['name']).delete()
             for check in checks:
-                db.session.add(Check(sensu['name'], check['name'], check))
+                db.session.add(Check(sensu['name'], check))
             db.session.commit()
         print("updated checks " + sensu['name'])
 
@@ -39,10 +39,7 @@ class Poller(object):
         with self.app.app_context():
             Client.query.filter(Client.datacenter==sensu['name']).delete()
             for client in clients:
-                try:
-                    db.session.add(Client(sensu['name'], client['name'], client, client['timestamp']))
-                except KeyError:
-                    db.session.add(Client(sensu['name'], client['name'], client))
+                db.session.add(Client(sensu['name'], client))
             db.session.commit()
         print("updated clients " + sensu['name'])
 
@@ -53,12 +50,7 @@ class Poller(object):
         with self.app.app_context():
             Event.query.filter(Event.datacenter==sensu['name']).delete()
             for event in events:
-                db.session.add(Event(sensu['name'],
-                                     event['client']['name'],
-                                     event['occurrences'],
-                                     event['check']['status'],
-                                     event['timestamp'],
-                                     event))
+                db.session.add(Event(sensu['name'], event))
             db.session.commit()
         print("updated events " + sensu['name'])
 
@@ -69,8 +61,8 @@ class Poller(object):
         with self.app.app_context():
             Stash.query.filter(Stash.datacenter==sensu['name']).delete()
             for stash in stashes:
-                db.session.add(Stash(sensu['name'], stash['path'], stash))
-        #db.session.commit()
+                db.session.add(Stash(sensu['name'], stash))
+            db.session.commit()
         print("updated stashes " + sensu['name'])
 
     def main(self):
