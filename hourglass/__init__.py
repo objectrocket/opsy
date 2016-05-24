@@ -1,7 +1,7 @@
 from flask import Flask
 from flask.ext.iniconfig import INIConfig
-from hourglass.models.poller import Poller
 from hourglass.models.backends import db
+
 
 def create_app(config):
     global app

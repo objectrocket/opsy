@@ -11,22 +11,21 @@ cache = sqlite:////tmp/hourglass-cache.db
 uchiwa_url = http://url.to.uchiwa.com/
 enabled_sensu_nodes = region1,region2
 enabled_dashboards = admin,support
+poll_interval = 30
 
 [admin]
-checkname = !datastore-connection,!mysqld-not-running
+check_name = !datastore-connection,!mysqld-not-running
 
 [support]
 datacenter = !region1
-checkname = mysqld-not-running,datastore-connection,guest-queues
+check_name = mysqld-not-running,datastore-connection,guest-queues
 
 [region1]
-name = test1
 host = localhost
 port = 4567
 timeout = 10
 
 [region2]
-name = test2
 host = localhost
 port = 4568
 timeout = 10

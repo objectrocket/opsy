@@ -49,7 +49,7 @@ def ping():
 def list_datacenters():
     dashboard = request.args.get('dashboard')
     config = current_app.config
-    datacenters = [x for x in config['sensu_nodes'].keys()]
+    datacenters = [x for x in config['sensu_nodes']]
     if dashboard:
         datacenters_string = config['dashboards'][dashboard].get('datacenter')
         include, exclude = parse_include_excludes(datacenters_string)
