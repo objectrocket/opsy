@@ -1,7 +1,7 @@
 from time import time
 from . import api
-from hourglass.models.backends import db
-from hourglass.models.backends.sensu.cache import *
+from hourglass.backends import db
+from hourglass.backends.cache import *
 from flask import current_app, jsonify, request
 
 
@@ -29,7 +29,7 @@ def parse_include_excludes(items):
 
 
 def get_dashboard_filters_list(config, dashboard):
-    datacenters = config['dashboards'][dashboard].get('datacenter')
+    datacenters = config['dashboards'][dashboard].get('source')
     check_names = config['dashboards'][dashboard].get('check_name')
     client_names = config['dashboards'][dashboard].get('client_name')
     statuses = config['dashboards'][dashboard].get('status')
@@ -49,9 +49,9 @@ def ping():
 def list_datacenters():
     dashboard = request.args.get('dashboard')
     config = current_app.config
-    datacenters = [x for x in config['sensu_nodes']]
+    datacenters = [x for x in config['sources']]
     if dashboard:
-        datacenters_string = config['dashboards'][dashboard].get('datacenter')
+        datacenters_string = config['dashboards'][dashboard].get('source')
         include, exclude = parse_include_excludes(datacenters_string)
         if include:
             datacenters = include
@@ -76,11 +76,12 @@ def list_checks():
 
 @api.route('/events')
 def events():
+    # TOO DO - change args from checkname/clientname to check_name/client_name
     dashboard = request.args.get('dashboard')
     hide_silenced = request.args.get('hide_silenced') or ''
     datacenters = request.args.get('datacenter')
-    check_names = request.args.get('check_name')
-    client_names = request.args.get('client_name')
+    check_names = request.args.get('checkname')
+    client_names = request.args.get('clientname')
     statuses = request.args.get('status')
     filters = ((datacenters, Event.datacenter),
                (check_names, Event.check_name),
