@@ -17,17 +17,17 @@ poll_interval = 30
 check_name = !datastore-connection,!mysqld-not-running
 
 [support]
-datacenter = !region1
+source = !region1
 check_name = mysqld-not-running,datastore-connection,guest-queues
 
 [region1]
-backend = hourglass.backends.sensu:SensuPoller
+backend = hourglass.backends.sensu.poller:SensuPoller
 host = localhost
 port = 4567
 timeout = 10
 
 [region2]
-backend = hourglass.backends.sensu:SensuPoller
+backend = hourglass.backends.sensu.poller:SensuPoller
 host = localhost
 port = 4568
 timeout = 10

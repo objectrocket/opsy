@@ -2,22 +2,18 @@ from flask import Flask
 from flask.ext.iniconfig import INIConfig
 from hourglass.backends import db
 from hourglass.scheduler import UwsgiScheduler
-from logging import Formatter
 import importlib
 
 
 def create_app(config):
     global app
     app = Flask(__name__)
-    # log_format = Formatter('%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
-    # app.logger.setFormatter(log_format)
     INIConfig(app)
     app.config.from_inifile(config)
     parse_config(app)
     db.init_app(app)
     poll_interval = int(app.config['hourglass'].get('poll_interval', 30))
-    app.scheduler = UwsgiScheduler(poll_interval, load_pollers(app))
-    app.scheduler.start()
+    app.scheduler = UwsgiScheduler(app, poll_interval, load_pollers(app))
     register_blueprints(app)
     return app
 
@@ -44,7 +40,7 @@ def load_pollers(app):
         class_name = backend.split(':')[1]
         poller_module = importlib.import_module(package)
         poller_class = getattr(poller_module, class_name)
-        pollers.append(poller_class(app, name, config))
+        pollers.append(poller_class(name, config))
     return pollers
 
 

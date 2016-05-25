@@ -5,7 +5,8 @@ from time import sleep
 
 class Scheduler(object):
 
-    def __init__(self, interval, pollers):
+    def __init__(self, app, interval, pollers):
+        self.app = app
         self.loop = asyncio.get_event_loop()
         self.interval = interval
         self.pollers = pollers
@@ -35,19 +36,22 @@ class Scheduler(object):
             self._run()
 
     def run_tasks(self, loop=None):
-        if loop:
-            run_loop = loop
-        else:
-            run_loop = self.loop
-        tasks = []
-        for poller in self.pollers:
-            tasks.append(asyncio.async(asyncio.wait_for(poller.update_cache(), self.interval - 1)))
-        run_loop.run_until_complete(asyncio.gather(*tasks))
+        with self.app.app_context():
+            if loop:
+                run_loop = loop
+            else:
+                run_loop = self.loop
+            tasks = []
+            for poller in self.pollers:
+                tasks.append(asyncio.async(asyncio.wait_for(
+                    poller.update_cache(self.app), self.interval - 1)))
+            run_loop.run_until_complete(asyncio.gather(*tasks))
 
 
 class UwsgiScheduler(object):
 
-    def __init__(self, interval, pollers):
+    def __init__(self, app, interval, pollers):
+        self.app = app
         self.loop = asyncio.get_event_loop()
         self.interval = interval
         self.pollers = pollers
@@ -61,7 +65,9 @@ class UwsgiScheduler(object):
         self.loop.close()
 
     def run_tasks(self):
-        tasks = []
-        for poller in self.pollers:
-            tasks.append(asyncio.async(asyncio.wait_for(poller.update_cache(), self.interval - 1)))
-        self.loop.run_until_complete(asyncio.gather(*tasks))
+        with self.app.app_context():
+            tasks = []
+            for poller in self.pollers:
+                tasks.append(asyncio.async(asyncio.wait_for(
+                    poller.update_cache(self.app), self.interval - 1)))
+            self.loop.run_until_complete(asyncio.gather(*tasks))
