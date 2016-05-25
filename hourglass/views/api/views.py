@@ -1,7 +1,7 @@
 from time import time
 from . import api
-from hourglass.models.backends import db
-from hourglass.models.backends.sensu.cache import *
+from hourglass.backends import db
+from hourglass.backends.cache import *
 from flask import current_app, jsonify, request
 
 
@@ -49,7 +49,7 @@ def ping():
 def list_datacenters():
     dashboard = request.args.get('dashboard')
     config = current_app.config
-    datacenters = [x for x in config['sensu_nodes']]
+    datacenters = [x for x in config['sources']]
     if dashboard:
         datacenters_string = config['dashboards'][dashboard].get('datacenter')
         include, exclude = parse_include_excludes(datacenters_string)
