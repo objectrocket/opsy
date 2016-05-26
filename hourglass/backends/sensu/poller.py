@@ -8,7 +8,8 @@ class SensuPoller(Poller):
 
     def __init__(self, app, loop, name, config):
         super().__init__(app, loop, name, config)
-        self.models = [SensuCheck, SensuClient, SensuEvent, SensuStash]
+        self.models = [SensuCheck, SensuClient, SensuEvent, SensuStash,
+                       SensuResult]
 
     @asyncio.coroutine
     def query_api(self, session, uri):

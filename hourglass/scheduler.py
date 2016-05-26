@@ -8,7 +8,8 @@ class UwsgiScheduler(object):
     def __init__(self, app):
         self.app = app
         self.loop = asyncio.get_event_loop()
-        self.interval = int(app.config['hourglass'].get('poll_interval', 30))
+        self.interval = int(app.config['hourglass'].get(
+            'scheduler_interval', 30))
         self.pollers = self._load_pollers()
 
     def _load_pollers(self):
@@ -23,8 +24,8 @@ class UwsgiScheduler(object):
         return pollers
 
     def run_tasks(self):
-        tasks = []
         with self.app.app_context():
+            tasks = []
             for poller in self.pollers:
                 tasks.extend(poller.get_update_tasks())
             results = self.loop.run_until_complete(asyncio.gather(*tasks))

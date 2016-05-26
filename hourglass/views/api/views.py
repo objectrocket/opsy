@@ -113,7 +113,7 @@ def events():
 @api.route('/checks')
 def checks():
     datacenters = request.args.get('datacenter')
-    check_names = request.args.get('check_name')
+    check_names = request.args.get('checkname')
     filters = ((datacenters, Check.datacenter),
                (check_names, Check.name))
     filters_list = get_filters_list(filters)
@@ -124,7 +124,7 @@ def checks():
 @api.route('/clients')
 def clients():
     datacenters = request.args.get('datacenter')
-    client_names = request.args.get('client_name')
+    client_names = request.args.get('clientname')
     filters = ((datacenters, Client.datacenter),
                (client_names, Client.name))
     filters_list = get_filters_list(filters)
@@ -135,8 +135,8 @@ def clients():
 @api.route('/results')
 def results():
     datacenters = request.args.get('datacenter')
-    check_names = request.args.get('check_name')
-    client_names = request.args.get('client_name')
+    check_names = request.args.get('checkname')
+    client_names = request.args.get('clientname')
     statuses = request.args.get('status')
     filters = ((datacenters, Result.datacenter),
                (check_names, Result.check_name),
@@ -150,8 +150,8 @@ def results():
 @api.route('/stashes')
 def stashes():
     datacenters = request.args.get('datacenter')
-    client_names = request.args.get('client_name')
-    check_names = request.args.get('check_name')
+    client_names = request.args.get('clientname')
+    check_names = request.args.get('checkname')
     flavor = request.args.get('flavor')
     filters = ((datacenters, Stash.datacenter),
                (client_names, Stash.client_name),
