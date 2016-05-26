@@ -1,73 +1,34 @@
 import asyncio
-from threading import Thread
-from time import sleep
-
-
-class Scheduler(object):
-
-    def __init__(self, app, interval, pollers):
-        self.app = app
-        self.loop = asyncio.get_event_loop()
-        self.interval = interval
-        self.pollers = pollers
-        self.loop = asyncio.get_event_loop()
-        self._thread_stop = 0
-        self._thread = None
-
-    def start(self):
-        if not self._thread:
-            self._thread = Thread(target=self._run)
-            self._thread.start()
-
-    def stop(self):
-        self._thread_stop = 1
-        self.loop.stop()
-        self.loop.close()
-
-    def _run(self):
-        if not self._thread_stop:
-            try:
-                loop = asyncio.get_event_loop()
-            except RuntimeError:
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-            self.run_tasks(loop=loop)
-            sleep(self.interval)
-            self._run()
-
-    def run_tasks(self, loop=None):
-        with self.app.app_context():
-            if loop:
-                run_loop = loop
-            else:
-                run_loop = self.loop
-            tasks = []
-            for poller in self.pollers:
-                tasks.append(asyncio.async(asyncio.wait_for(
-                    poller.update_cache(self.app), self.interval - 1)))
-            run_loop.run_until_complete(asyncio.gather(*tasks))
+import importlib
+from hourglass.backends import db
 
 
 class UwsgiScheduler(object):
 
-    def __init__(self, app, interval, pollers):
+    def __init__(self, app):
         self.app = app
         self.loop = asyncio.get_event_loop()
-        self.interval = interval
-        self.pollers = pollers
-        self.loop = asyncio.get_event_loop()
+        self.interval = int(app.config['hourglass'].get('poll_interval', 30))
+        self.pollers = self._load_pollers()
 
-    def start(self):
-        self.run_tasks()
-
-    def stop(self):
-        self.loop.stop()
-        self.loop.close()
+    def _load_pollers(self):
+        pollers = []
+        for name, config in self.app.config['sources'].items():
+            backend = config.get('backend')
+            package = backend.split(':')[0]
+            class_name = backend.split(':')[1]
+            poller_module = importlib.import_module(package)
+            poller_class = getattr(poller_module, class_name)
+            pollers.append(poller_class(self.app, self.loop, name, config))
+        return pollers
 
     def run_tasks(self):
+        tasks = []
         with self.app.app_context():
-            tasks = []
             for poller in self.pollers:
-                tasks.append(asyncio.async(asyncio.wait_for(
-                    poller.update_cache(self.app), self.interval - 1)))
-            self.loop.run_until_complete(asyncio.gather(*tasks))
+                tasks.extend(poller.get_update_tasks())
+            results = self.loop.run_until_complete(asyncio.gather(*tasks))
+            for result in results:
+                db.session.bulk_save_objects(result)
+            db.session.commit()
+            self.app.logger.info('Cache database updated')
