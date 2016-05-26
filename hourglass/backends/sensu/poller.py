@@ -1,26 +1,22 @@
 from hourglass.backends.sensu.cache import *
 from hourglass.backends.poller import Poller
-import requests
+import aiohttp
+import asyncio
 
 
 class SensuPoller(Poller):
 
-    def __init__(self, name, config):
-        super().__init__(name, config)
-        self.models = [SensuCheck, SensuClient, SensuEvent, SensuStash,
-                       SensuResult]
+    def __init__(self, app, loop, name, config):
+        super().__init__(app, loop, name, config)
+        self.models = [SensuCheck, SensuClient, SensuEvent, SensuStash]
 
-    def query_api(self, app, uri):
+    @asyncio.coroutine
+    def query_api(self, session, uri):
         url = "http://%s:%s/%s" % (self.host, self.port, uri)
-        app.logger.debug('Making request to %s' % url)
-        try:
-                response = requests.get(url, timeout=self.timeout)
-                app.logger.debug('Response %s from %s' % (
-                    response.status_code, url))
-                return response.json()
-        except requests.exceptions.Timeout:
-            app.logger.debug('Reached timeout on request to %s' % url)
-            return None
+        self.app.logger.debug('Making request to %s' % url)
+        with aiohttp.Timeout(self.timeout):
+            response = yield from session.get(url)
+            return (yield from response.json())
 
     def __repr__(self):
         return '<Poller sensu/%s>' % self.name
