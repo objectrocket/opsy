@@ -11,7 +11,7 @@ cache = sqlite:////tmp/hourglass-cache.db
 uchiwa_url = http://url.to.uchiwa.com/
 enabled_sources = source1,source2
 enabled_dashboards = admin,support
-poll_interval = 30
+scheduler_interval = 30
 
 [admin]
 check_name = !datastore-connection,!mysqld-not-running
