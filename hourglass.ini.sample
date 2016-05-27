@@ -9,25 +9,25 @@ cache = sqlite:////tmp/hourglass-cache.db
 
 [hourglass]
 uchiwa_url = http://url.to.uchiwa.com/
-enabled_sources = source1,source2
+enabled_zones = zone1,zone2
 enabled_dashboards = admin,support
 scheduler_interval = 30
 
 [admin]
-check_name = !datastore-connection,!mysqld-not-running
+check = !datastore-connection,!mysqld-not-running
 
 [support]
-source = !source1
-check_name = mysqld-not-running,datastore-connection,guest-queues
+zone = !zone1
+check = mysqld-not-running,datastore-connection,guest-queues
 
-[source1]
-backend = hourglass.backends.sensu.poller:SensuPoller
+[zone1]
+backend = hourglass.backends.sensu.cache:SensuZone
 host = localhost
 port = 4567
 timeout = 10
 
-[source2]
-backend = hourglass.backends.sensu.poller:SensuPoller
+[zone2]
+backend = hourglass.backends.sensu.cache:SensuZone
 host = localhost
 port = 4568
 timeout = 10
