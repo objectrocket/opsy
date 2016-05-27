@@ -18,17 +18,31 @@ def create_app(config):
 
 def parse_config(app):
     hourglass_config = app.config.get('hourglass')
-    app.config['sources'] = {}
+    app.config['zones'] = {}
     app.config['dashboards'] = {}
-    if hourglass_config.get('enabled_sources'):
-        enabled_sources = hourglass_config.get('enabled_sources').split(',')
-        for source in enabled_sources:
-            app.config['sources'][source] = app.config.get(source)
+    if hourglass_config.get('enabled_zones'):
+        enabled_zones = hourglass_config.get('enabled_zones').split(',')
+        for zone in enabled_zones:
+            required_keys = ['backend', 'host', 'port']
+            if any(app.config[zone].get(key) is None for key in required_keys):
+                pass  # TODO: raise an exception here
+            app.config['zones'][zone] = {}
+            app.config['zones'][zone]['backend'] = app.config[zone].get('backend')
+            app.config['zones'][zone]['host'] = app.config[zone].get('host')
+            app.config['zones'][zone]['port'] = app.config[zone].get('port')
+            app.config['zones'][zone]['timeout'] = int(app.config[zone].get('timeout', 10))
     if hourglass_config.get('enabled_dashboards'):
         enabled_dashboards = hourglass_config.get(
             'enabled_dashboards').split(',')
         for dashboard in enabled_dashboards:
-            app.config['dashboards'][dashboard] = app.config.get(dashboard)
+            if app.config.get(dashboard):
+                app.config['dashboards'][dashboard] = {}
+                dash_config = app.config['dashboards'][dashboard]
+                dash_config['zone'] = app.config[dashboard].get('zone')
+                dash_config['check'] = app.config[dashboard].get('check')
+                dash_config['check'] = app.config[dashboard].get('check')
+            else:
+                pass  # TODO: raise and exception here
 
 
 def register_blueprints(app):

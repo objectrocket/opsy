@@ -1,43 +1,84 @@
+import aiohttp
+import asyncio
 from flask import json
 from ..cache import *
 
 
-# Laying out the framework for the api caching layer.
-# class Node(db.Model):
-#     __bind_key__ = 'cache'
-#     __tablename__ = 'nodes'
+class SensuZone(Zone):
+
+    def __init__(self, name, host, port, timeout):
+        self.models = [SensuCheck, SensuClient, SensuEvent, SensuStash,
+                       SensuResult]
+        self.backend_type = 'sensu'
+        self.name = name
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+
+    @asyncio.coroutine
+    def query_api(self, session, url):
+        with aiohttp.Timeout(self.timeout):
+            response = yield from session.get(url)
+            return (yield from response.json())
+
+    @asyncio.coroutine
+    def update_objects(self, app, loop, model):
+        init_objects = []
+        try:
+            with aiohttp.ClientSession(loop=loop) as session:
+                url = "http://%s:%s/%s" % (self.host, self.port, model.uri)
+                app.logger.debug('Making request to %s' % url)
+                results = yield from self.query_api(session, url)
+        except aiohttp.errors.ClientError as e:
+            app.logger.error('Error updating %s cache for %s: %s' % (
+                model.__tablename__, self.name, e))
+            return init_objects
+        model.query.filter(model.zone_name == self.name).delete()
+        for result in results:
+            init_objects.append(model(self.name, result))
+        app.logger.debug('Updated %s cache for %s' % (
+            model.__tablename__, self.name))
+        return init_objects
+
+
+class SensuZoneMetadata(ZoneMetadata):
+
+    def __init__(self, zone_name, key, value):
+        self.zone_name = zone_name
+        self.key = key
+        self.value = value
 
 
 class SensuClient(Client):
     uri = 'clients'
 
-    def __init__(self, datacenter, extra):
-        self.datacenter = datacenter
+    def __init__(self, zone_name, extra):
+        self.zone_name = zone_name
         self.name = extra['name']
-        extra['datacenter'] = datacenter
+        extra['zone_name'] = zone_name
         self.extra = json.dumps(extra)
 
 
 class SensuCheck(Check):
     uri = 'checks'
 
-    def __init__(self, datacenter, extra):
-        self.datacenter = datacenter
+    def __init__(self, zone_name, extra):
+        self.zone_name = zone_name
         self.name = extra['name']
-        extra['datacenter'] = datacenter
+        extra['zone_name'] = zone_name
         self.extra = json.dumps(extra)
 
 
 class SensuResult(Result):
     uri = 'results'
 
-    def __init__(self, datacenter, extra):
-        self.datacenter = datacenter
+    def __init__(self, zone_name, extra):
+        self.zone_name = zone_name
         self.extra = extra
         self.client_name = extra['client']
         self.check_name = extra['check']['name']
         self.status = extra['check']['status']
-        extra['datacenter'] = datacenter
+        extra['zone_name'] = zone_name
         self.extra = json.dumps(extra)
 
 
@@ -49,22 +90,22 @@ class SensuResult(Result):
 class SensuEvent(Event):
     uri = 'events'
 
-    def __init__(self, datacenter, extra):
-        self.datacenter = datacenter
+    def __init__(self, zone_name, extra):
+        self.zone_name = zone_name
         self.client_name = extra['client']['name']
         self.check_name = extra['check']['name']
         self.check_occurrences = extra['check'].get('occurrences')
         self.event_occurrences = extra['occurrences']
         self.status = extra['check']['status']
-        extra['datacenter'] = datacenter
+        extra['zone_name'] = zone_name
         self.extra = json.dumps(extra)
 
 
 class SensuStash(Stash):
     uri = 'stashes'
 
-    def __init__(self, datacenter, extra):
-        self.datacenter = datacenter
+    def __init__(self, zone_name, extra):
+        self.zone_name = zone_name
         self.path = extra['path']
         try:
             path_list = self.path.split('/')
@@ -82,7 +123,7 @@ class SensuStash(Stash):
             self.source = None
             self.created_at = None
             self.expire_at = None
-        extra['datacenter'] = self.datacenter
+        extra['zone_name'] = self.zone_name
         extra['check_name'] = self.check_name
         extra['client_name'] = self.client_name
         extra['flavor'] = self.flavor

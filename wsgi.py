@@ -3,6 +3,7 @@ from uwsgidecorators import timer
 
 
 app = create_app('./hourglass.ini')
+app.scheduler.create_cache_db()
 
 
 @timer(app.scheduler.interval)

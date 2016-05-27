@@ -1,6 +1,6 @@
 import os
 from flask.ext.script import Command, Manager, Shell
-from hourglass.backends.cache import Client, Check, Event, Result, Stash
+from hourglass.backends.cache import *
 from hourglass.backends import db
 from . import create_app
 
@@ -9,7 +9,8 @@ BASEDIR = os.path.abspath(os.path.curdir)
 
 def make_shell_context():
     return dict(create_app=create_app, db=db, Check=Check, Client=Client,
-                Event=Event, Stash=Stash, Result=Result)
+                Event=Event, Stash=Stash, Result=Result, Zone=Zone,
+                ZoneMetadata=ZoneMetadata)
 
 
 class init_db(Command):
