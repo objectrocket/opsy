@@ -22,7 +22,7 @@ var filters = {
         {label: 'Below Occurrence Threshold', title: 'Below Occurrence Threshold', value: 'occurrences'},
     ],
 
-    datacenterOptions: [],
+    zoneOptions: [],
 
     checknameOptions: [],
 
@@ -65,7 +65,7 @@ var filters = {
         self.addFormGroup('status');
         $('#status-filter').multiselect(self.multiselectOptions);
         $('#status-filter').multiselect('dataprovider', self.statusOptions);
-        self.addFormGroup('datacenter');
+        self.addFormGroup('zone');
         self.updateDatacenters(true);
         self.addFormGroup('checkname');
         self.updateChecknames(true);
@@ -81,16 +81,16 @@ var filters = {
 
     updateDatacenters: function(init) {
         var self = this;
-        $.getJSON('/api/list/datacenters', function(data) {
-            newdatacenters = []
-            $.each(data.datacenters, function(idx, obj) {
-                newdatacenters.push({label: obj, title: obj, value: obj});
+        $.getJSON('/api/list/zones', function(data) {
+            newzones = []
+            $.each(data.zones, function(idx, obj) {
+                newzones.push({label: obj, title: obj, value: obj});
             });
-            self.datacenterOptions = newdatacenters;
+            self.zoneOptions = newzones;
         }).success(function() {
             if (init == true ) {
-                $('#datacenter-filter').multiselect(self.multiselectOptions);
-                $('#datacenter-filter').multiselect('dataprovider', self.datacenterOptions);
+                $('#zone-filter').multiselect(self.multiselectOptions);
+                $('#zone-filter').multiselect('dataprovider', self.zoneOptions);
             } else {
                 $('#checkname-filter').multiselect('rebuild');
             }
@@ -187,12 +187,12 @@ $(document).ready(function() {
             dataSrc: 'events',
         },
         //'dom': "<'row'<'col-sm-2'l><'col-sm-8'<'#filters'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
-        'dom': "<'row'<'col-sm-2'l><'col-sm-2'<'#status-filter-div'>><'col-sm-2'<'#datacenter-filter-div'>><'col-sm-2'<'#checkname-filter-div'>><'col-sm-2'<'#hide-events-filter-div'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
+        'dom': "<'row'<'col-sm-2'l><'col-sm-2'<'#status-filter-div'>><'col-sm-2'<'#zone-filter-div'>><'col-sm-2'<'#checkname-filter-div'>><'col-sm-2'<'#hide-events-filter-div'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
         'columns': [
             {data: 'check.status',
              name: 'status'},
-            {data: 'datacenter',
-             name: 'datacenter'},
+            {data: 'zone_name',
+             name: 'zone'},
             {data: 'client.name',
              name: 'source'},
             {data: 'check.name',
@@ -213,7 +213,7 @@ $(document).ready(function() {
         },
         'createdRow': function(nRow, aData, iDataIndex) {
             aData['check']['status'] = statusnames[aData['check']['status']];
-            aData['href'] = UCHIWA_URL+'/#/client/'+aData['datacenter']+'/'+aData['client']['name']+'?check='+aData['check']['name'];
+            aData['href'] = UCHIWA_URL+'/#/client/'+aData['zone']+'/'+aData['client']['name']+'?check='+aData['check']['name'];
             $(nRow).data('href', aData['href']);
             $(nRow).click(function(e) {
                 window.open($(this).data("href"), '_blank');
