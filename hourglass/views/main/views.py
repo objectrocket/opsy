@@ -1,6 +1,13 @@
 from . import main
 from flask import render_template, redirect, url_for, current_app
 
+@main.context_processor
+def inject_data():
+    data = {
+        'dashboards': current_app.config['dashboards'],
+        'uchiwa_url': current_app.config['hourglass']['uchiwa_url'],
+    }
+    return data
 
 @main.route('/')
 def index():
@@ -9,11 +16,7 @@ def index():
 
 @main.route('/events')
 def events():
-    data = {}
-    data['title'] = 'Events'
-    data['dashboards'] = current_app.config['dashboards']
-    data['uchiwa_url'] = current_app.config['hourglass']['uchiwa_url']
-    return render_template('events.html', **data)
+    return render_template('events.html', title='Events')
 
 
 @main.route('/checks')
