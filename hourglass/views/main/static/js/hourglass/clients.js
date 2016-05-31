@@ -72,31 +72,12 @@ var clientsfilters = {
     }
 }
 
-var getStatusCount = function(state) {
-    return document.eventstable.column(0).data().filter( function(value, idx){
-          return value == state ? true : false;
-    }).length
-}
-
-var updateTitle = function() {
-    crits = getStatusCount("Critical");
-    warns = getStatusCount("Warning");
-    document.title = crits+' Critical, '+warns+' Warning | Events | Hourglass';
-}
-
 $(document).ready(function() {
 
     document.eventstable = $('#clients').DataTable({
         'lengthMenu': [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
         'autoWidth': false,
         //'stateSave' : true,
-/*        'columnDefs': [
-            {
-                "targets": [ 0 ],
-                "visible": true,
-                "searchable": true
-            },
-        ],*/
         'order': [
             [ 0, 'asc' ],
             [ 1, 'asc' ],
@@ -105,7 +86,6 @@ $(document).ready(function() {
             url: clientsfilters.setDataTablesUrl(),
             dataSrc: 'clients',
         },
-        //'dom': "<'row'<'col-sm-2'l><'col-sm-8'<'#filters'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
         'dom': "<'row'<'col-sm-2'l><'col-sm-2'<'#zone-filter-div'>><'col-sm-6'><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
         'columns': [
             {data: 'zone_name',
@@ -127,18 +107,7 @@ $(document).ready(function() {
                 $('td:last', nRow).html('<time class="timeago" datetime="'+d.toISOString()+'">'+d+'</time>');
             } catch(err){
             }
-            //$('td:first', nRow).addClass(hourglass.statusclasses[aData['check']['status']]);
-            //$('td:first', nRow).html(aData['check']['status']);
         },
-        /*'createdRow': function(nRow, aData, iDataIndex) {
-            //aData['check']['status'] = hourglass.statusnames[aData['check']['status']];
-            //aData['href'] = UCHIWA_URL+'/#/client/'+aData['zone']+'/'+aData['client']['name']+'?check='+aData['check']['name'];
-            //$(nRow).data('href', aData['href']);
-            $(nRow).click(function(e) {
-                window.open($(this).data("href"), '_blank');
-                e.stopPropagation();
-            });
-        },*/
         'initComplete': function (foo) {
             clientsfilters.create();
             setInterval( function() {
@@ -147,7 +116,6 @@ $(document).ready(function() {
             }, 30000);
         }
     }).on('draw.dt', function() {
-        updateTitle();
         $('time.timeago').timeago();
     });
 });
