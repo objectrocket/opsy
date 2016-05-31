@@ -100,12 +100,6 @@ var getStatusCount = function(state) {
     }).length
 }
 
-var updateTitle = function() {
-    crits = getStatusCount("Critical");
-    warns = getStatusCount("Warning");
-    document.title = crits+' Critical, '+warns+' Warning | Events | Hourglass';
-}
-
 $(document).ready(function() {
 
     document.checkstable = $('#checks').DataTable({
@@ -134,7 +128,5 @@ $(document).ready(function() {
                 document.checkstable.ajax.reload(null, false);
             }, 30000);
         }
-    }).on('draw.dt', function() {
-        updateTitle();
-    });
+    })
 });
