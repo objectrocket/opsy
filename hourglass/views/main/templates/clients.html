@@ -1,5 +1,5 @@
 {% extends "layout.html" %}
-{% set active_page = 'checks' %}
+{% set active_page = 'clients' %}
 {% block head %}
   {{ super() }}
       <!-- Custom styles for this template -->
@@ -10,13 +10,14 @@
 {% block content %}
       <div class="row">
         <div class="col-md-12">
-          <table id="checks" class="dt table table-striped table-bordered table-hover table-condensed">
+          <table id="clients" class="dt table table-striped table-bordered table-hover table-condensed">
             <thead>
               <tr>
                 <th id="zone">Zone</th>
-                <th id="checkname">Name</th>
-                <th id="command">Command</th>
-                <th id="interval">Interval</th>
+                <th id="clientname">Name</th>
+                <th id="ip">IP</th>
+                <th id="version">Client Version</th>
+                <th id="lastcheck">Last Check</th>
               </tr>
             </thead>
             <tbody>
@@ -33,5 +34,5 @@
     <script src="{{url_for('main.static', filename='js/datatables-responsive/responsive.bootstrap.min.js')}}"></script>
     <script src="{{url_for('main.static', filename='js/bootstrap-multiselect/bootstrap-multiselect.js')}}"></script>
     <script src="{{url_for('main.static', filename='js/timeago/jquery.timeago.js')}}"></script>
-    <script src="{{url_for('main.static', filename='js/hourglass/checks.js')}}"></script>
+    <script src="{{url_for('main.static', filename='js/hourglass/clients.js')}}"></script>
 {% endblock %}
