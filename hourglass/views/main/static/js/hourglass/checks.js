@@ -1,16 +1,4 @@
-var eventsfilters = {
-
-    statusOptions: [
-        {label: 'Critical', title: 'Critical', value: 2},
-        {label: 'Warning', title: 'Warning', value: 1},
-        {label: 'OK', title: 'OK', value: 0},
-    ],
-
-    hideOptions: [
-        {label: 'Silenced Checks', title: 'Silenced Checks', value: 'checks'},
-        {label: 'Silenced Clients', title: 'Silenced Clients', value: 'clients'},
-        {label: 'Below Occurrence Threshold', title: 'Below Occurrence Threshold', value: 'occurrences'},
-    ],
+var checksfilters = {
 
     zoneOptions: [],
 
@@ -37,23 +25,16 @@ var eventsfilters = {
             return $(select).data('name').replace('-', ' ').capitalize(true);
         },
         onDropdownHidden: function() {
-            eventsfilters.setDataTablesUrl();
-            document.eventstable.ajax.reload(null, false);
+            checksfilters.setDataTablesUrl();
+            document.checkstable.ajax.reload(null, false);
         },
     },
 
     create: function() {
-        var self = this;
-        hourglass.addFormGroup('status');
-        $('#status-filter').multiselect(self.multiselectOptions);
-        $('#status-filter').multiselect('dataprovider', self.statusOptions);
         hourglass.addFormGroup('zone');
-        self.updateZones(true);
+        this.updateZones(true);
         hourglass.addFormGroup('check');
-        self.updateChecks(true);
-        hourglass.addFormGroup('hide-events', 'hide_silenced');
-        $('#hide-events-filter').multiselect(self.multiselectOptions);
-        $('#hide-events-filter').multiselect('dataprovider', self.hideOptions);
+        this.updateChecks(true);
     },
 
     update: function() {
@@ -106,15 +87,15 @@ var eventsfilters = {
             params['dashboard'] = $.QueryString['dashboard'];
         }
         try {
-            document.eventstable.ajax.url('/api/events?'+$.param(params));
+            document.checkstable.ajax.url('/api/checks?'+$.param(params));
         } catch(err) {
         }
-        return '/api/events?'+$.param(params);
+        return '/api/checks?'+$.param(params);
     }
 }
 
 var getStatusCount = function(state) {
-    return document.eventstable.column(0).data().filter( function(value, idx){
+    return document.checkstable.column(0).data().filter( function(value, idx){
           return value == state ? true : false;
     }).length
 }
@@ -127,68 +108,33 @@ var updateTitle = function() {
 
 $(document).ready(function() {
 
-    document.eventstable = $('#events').DataTable({
+    document.checkstable = $('#checks').DataTable({
         'lengthMenu': [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
         'autoWidth': false,
         //'stateSave' : true,
-        'columnDefs': [
-            {
-                "targets": [ 0 ],
-                "visible": true,
-                "searchable": true
-            },
-        ],
-        'order': [
-            [ 0, 'asc' ],
-            [ 5, 'desc' ],
-        ],
         'ajax': {
-            url: eventsfilters.setDataTablesUrl(),
-            dataSrc: 'events',
+            url: checksfilters.setDataTablesUrl(),
+            dataSrc: 'checks',
         },
-        //'dom': "<'row'<'col-sm-2'l><'col-sm-8'<'#filters'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
-        'dom': "<'row'<'col-sm-2'l><'col-sm-2'<'#status-filter-div'>><'col-sm-2'<'#zone-filter-div'>><'col-sm-2'<'#check-filter-div'>><'col-sm-2'<'#hide-events-filter-div'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
+        'dom': "<'row'<'col-sm-2'l><'col-sm-2'<'#zone-filter-div'>><'col-sm-2'<'#check-filter-div'>><'col-sm-4'><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
         'columns': [
-            {data: 'check.status',
-             name: 'status'},
             {data: 'zone_name',
              name: 'zone'},
-            {data: 'client.name',
-             name: 'source'},
-            {data: 'check.name',
-             name: 'check-name'},
-            {data: 'check.output',
-             name: 'check-output'},
-            {data: 'occurrences',
-             name: 'occurrences'},
-            {data: 'timestamp',
-             name: 'timestamp'},
+            {data: 'name',
+             name: 'name'},
+            {data: 'command',
+             name: 'command'},
+            {data: 'interval',
+             name: 'interval'},
         ],
-        'rowCallback': function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
-            var d = new Date(0);
-            d.setUTCSeconds(aData['timestamp']);
-            $('td:last', nRow).html('<time class="timeago" datetime="'+d.toISOString()+'">'+d+'</time>');
-            $('td:first', nRow).addClass(hourglass.statusclasses[aData['check']['status']]);
-            $('td:first', nRow).html(aData['check']['status']);
-        },
-        'createdRow': function(nRow, aData, iDataIndex) {
-            aData['check']['status'] = hourglass.statusnames[aData['check']['status']];
-            aData['href'] = UCHIWA_URL+'/#/client/'+aData['zone']+'/'+aData['client']['name']+'?check='+aData['check']['name'];
-            $(nRow).data('href', aData['href']);
-            $(nRow).click(function(e) {
-                window.open($(this).data("href"), '_blank');
-                e.stopPropagation();
-            });
-        },
         'initComplete': function (foo) {
-            eventsfilters.create();
+            checksfilters.create();
             setInterval( function() {
                 //filters.update();
-                document.eventstable.ajax.reload(null, false);
+                document.checkstable.ajax.reload(null, false);
             }, 30000);
         }
     }).on('draw.dt', function() {
         updateTitle();
-        $('time.timeago').timeago();
     });
 });

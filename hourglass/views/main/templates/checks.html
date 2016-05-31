@@ -4,6 +4,8 @@
   {{ super() }}
       <!-- Custom styles for this template -->
       <link href="{{url_for('main.static', filename='css/datatables/dataTables.bootstrap.min.css')}}" rel="stylesheet">
+      <link href="{{url_for('main.static', filename='css/datatables-responsive/responsive.bootstrap.min.css')}}" rel="stylesheet">
+      <link href="{{url_for('main.static', filename='css/bootstrap-multiselect/bootstrap-multiselect.css')}}" rel="stylesheet">
 {% endblock %}
 {% block content %}
       <div class="row">
@@ -11,7 +13,7 @@
           <table id="checks" class="dt table table-striped table-bordered table-hover table-condensed">
             <thead>
               <tr>
-                <th id="datacenter">DC</th>
+                <th id="zone">Zone</th>
                 <th id="name">Name</th>
                 <th id="command">Command</th>
                 <th id="interval">Interval</th>
@@ -25,6 +27,11 @@
 {% endblock %}
 {% block footer %}
   {{ super() }}
-  <script src="{{url_for('main.static', filename='js/datatables/jquery.dataTables.min.js')}}"></script>
-  <script src="{{url_for('main.static', filename='js/datatables/dataTables.bootstrap.min.js')}}"></script>
+    <script src="{{url_for('main.static', filename='js/datatables/jquery.dataTables.min.js')}}"></script>
+    <script src="{{url_for('main.static', filename='js/datatables/dataTables.bootstrap.min.js')}}"></script>
+    <script src="{{url_for('main.static', filename='js/datatables-responsive/dataTables.responsive.min.js')}}"></script>
+    <script src="{{url_for('main.static', filename='js/datatables-responsive/responsive.bootstrap.min.js')}}"></script>
+    <script src="{{url_for('main.static', filename='js/bootstrap-multiselect/bootstrap-multiselect.js')}}"></script>
+    <script src="{{url_for('main.static', filename='js/timeago/jquery.timeago.js')}}"></script>
+    <script src="{{url_for('main.static', filename='js/hourglass/checks.js')}}"></script>
 {% endblock %}
