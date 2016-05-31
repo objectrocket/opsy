@@ -23,6 +23,10 @@ def events():
 def checks():
     return render_template('checks.html', title='Checks')
 
+@main.route('/clients')
+def clients():
+    return render_template('clients.html', title='Clients')
+
 
 @main.route('/about')
 def about():

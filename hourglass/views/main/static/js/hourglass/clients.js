@@ -1,20 +1,6 @@
-var eventsfilters = {
-
-    statusOptions: [
-        {label: 'Critical', title: 'Critical', value: 2},
-        {label: 'Warning', title: 'Warning', value: 1},
-        {label: 'OK', title: 'OK', value: 0},
-    ],
-
-    hideOptions: [
-        {label: 'Silenced Checks', title: 'Silenced Checks', value: 'checks'},
-        {label: 'Silenced Clients', title: 'Silenced Clients', value: 'clients'},
-        {label: 'Below Occurrence Threshold', title: 'Below Occurrence Threshold', value: 'occurrences'},
-    ],
+var clientsfilters = {
 
     zoneOptions: [],
-
-    checkOptions: [],
 
     multiselectOptions: {
         buttonWidth: '100%',
@@ -37,22 +23,14 @@ var eventsfilters = {
             return $(select).data('name').replace('-', ' ').capitalize(true);
         },
         onDropdownHidden: function() {
-            eventsfilters.setDataTablesUrl();
+            clientsfilters.setDataTablesUrl();
             document.eventstable.ajax.reload(null, false);
         },
     },
 
     create: function() {
-        hourglass.addFormGroup('status');
-        $('#status-filter').multiselect(self.multiselectOptions);
-        $('#status-filter').multiselect('dataprovider', self.statusOptions);
         hourglass.addFormGroup('zone');
         this.updateZones(true);
-        hourglass.addFormGroup('check');
-        this.updateChecks(true);
-        hourglass.addFormGroup('hide-events', 'hide_silenced');
-        $('#hide-events-filter').multiselect(self.multiselectOptions);
-        $('#hide-events-filter').multiselect('dataprovider', self.hideOptions);
     },
 
     update: function() {
@@ -78,24 +56,6 @@ var eventsfilters = {
         });
     },
 
-    updateChecks: function(init) {
-        var self = this;
-        $.getJSON('/api/list/checks', function(data) {
-            newchecks = []
-            $.each(data.checks.sort(), function(idx, obj) {
-                newchecks.push({label: obj, title: obj, value: obj});
-            });
-            self.checkOptions = newchecks;
-        }).success(function() {
-            if (init == true ) {
-                $('#check-filter').multiselect(self.multiselectOptions);
-                $('#check-filter').multiselect('dataprovider', self.checkOptions);
-            } else {
-                $('#check-filter').multiselect('rebuild');
-            }
-        });
-    },
-
     setDataTablesUrl: function() {
         params = {}
         $('select.ms').each(function(idx, obj) {
@@ -105,10 +65,10 @@ var eventsfilters = {
             params['dashboard'] = $.QueryString['dashboard'];
         }
         try {
-            document.eventstable.ajax.url('/api/events?'+$.param(params));
+            document.eventstable.ajax.url('/api/clients?'+$.param(params));
         } catch(err) {
         }
-        return '/api/events?'+$.param(params);
+        return '/api/clients?'+$.param(params);
     }
 }
 
@@ -126,61 +86,61 @@ var updateTitle = function() {
 
 $(document).ready(function() {
 
-    document.eventstable = $('#events').DataTable({
+    document.eventstable = $('#clients').DataTable({
         'lengthMenu': [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
         'autoWidth': false,
         //'stateSave' : true,
-        'columnDefs': [
+/*        'columnDefs': [
             {
                 "targets": [ 0 ],
                 "visible": true,
                 "searchable": true
             },
-        ],
+        ],*/
         'order': [
             [ 0, 'asc' ],
-            [ 5, 'desc' ],
+            [ 1, 'asc' ],
         ],
         'ajax': {
-            url: eventsfilters.setDataTablesUrl(),
-            dataSrc: 'events',
+            url: clientsfilters.setDataTablesUrl(),
+            dataSrc: 'clients',
         },
         //'dom': "<'row'<'col-sm-2'l><'col-sm-8'<'#filters'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
-        'dom': "<'row'<'col-sm-2'l><'col-sm-2'<'#status-filter-div'>><'col-sm-2'<'#zone-filter-div'>><'col-sm-2'<'#check-filter-div'>><'col-sm-2'<'#hide-events-filter-div'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
+        'dom': "<'row'<'col-sm-2'l><'col-sm-2'<'#zone-filter-div'>><'col-sm-6'><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
         'columns': [
-            {data: 'check.status',
-             name: 'status'},
             {data: 'zone_name',
              name: 'zone'},
-            {data: 'client.name',
-             name: 'source'},
-            {data: 'check.name',
-             name: 'check-name'},
-            {data: 'check.output',
-             name: 'check-output'},
-            {data: 'occurrences',
-             name: 'occurrences'},
+            {data: 'name',
+             name: 'name'},
+            {data: 'address',
+             name: 'ip'},
+            {data: 'version',
+             name: 'version'},
             {data: 'timestamp',
-             name: 'timestamp'},
+             name: 'timestamp',
+             defaultContent: ''},
         ],
         'rowCallback': function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
             var d = new Date(0);
             d.setUTCSeconds(aData['timestamp']);
-            $('td:last', nRow).html('<time class="timeago" datetime="'+d.toISOString()+'">'+d+'</time>');
-            $('td:first', nRow).addClass(hourglass.statusclasses[aData['check']['status']]);
-            $('td:first', nRow).html(aData['check']['status']);
+            try {
+                $('td:last', nRow).html('<time class="timeago" datetime="'+d.toISOString()+'">'+d+'</time>');
+            } catch(err){
+            }
+            //$('td:first', nRow).addClass(hourglass.statusclasses[aData['check']['status']]);
+            //$('td:first', nRow).html(aData['check']['status']);
         },
-        'createdRow': function(nRow, aData, iDataIndex) {
-            aData['check']['status'] = hourglass.statusnames[aData['check']['status']];
-            aData['href'] = UCHIWA_URL+'/#/client/'+aData['zone']+'/'+aData['client']['name']+'?check='+aData['check']['name'];
-            $(nRow).data('href', aData['href']);
+        /*'createdRow': function(nRow, aData, iDataIndex) {
+            //aData['check']['status'] = hourglass.statusnames[aData['check']['status']];
+            //aData['href'] = UCHIWA_URL+'/#/client/'+aData['zone']+'/'+aData['client']['name']+'?check='+aData['check']['name'];
+            //$(nRow).data('href', aData['href']);
             $(nRow).click(function(e) {
                 window.open($(this).data("href"), '_blank');
                 e.stopPropagation();
             });
-        },
+        },*/
         'initComplete': function (foo) {
-            eventsfilters.create();
+            clientsfilters.create();
             setInterval( function() {
                 //filters.update();
                 document.eventstable.ajax.reload(null, false);

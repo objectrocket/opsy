@@ -65,10 +65,18 @@ th#lastcheck {
 }
 
 /* CHECKS TABLE */
-th#name {
+th#checkname {
     width: 15%;
 }
 th#interval {
+    width: 10%;
+}
+
+/* CLIENTS TABLE */
+th#ip {
+    width: 10%;
+}
+th#version {
     width: 10%;
 }
 
