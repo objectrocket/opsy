@@ -94,12 +94,6 @@ var checksfilters = {
     }
 }
 
-var getStatusCount = function(state) {
-    return document.checkstable.column(0).data().filter( function(value, idx){
-          return value == state ? true : false;
-    }).length
-}
-
 $(document).ready(function() {
 
     document.checkstable = $('#checks').DataTable({
