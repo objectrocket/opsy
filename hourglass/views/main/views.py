@@ -1,6 +1,7 @@
 from . import main
 from flask import render_template, redirect, url_for, current_app
 
+
 @main.context_processor
 def inject_data():
     data = {
@@ -8,6 +9,7 @@ def inject_data():
         'uchiwa_url': current_app.config['hourglass']['uchiwa_url'],
     }
     return data
+
 
 @main.route('/')
 def index():
@@ -22,6 +24,7 @@ def events():
 @main.route('/checks')
 def checks():
     return render_template('checks.html', title='Checks')
+
 
 @main.route('/clients')
 def clients():

@@ -44,15 +44,15 @@ var eventsfilters = {
 
     create: function() {
         hourglass.addFormGroup('status');
-        $('#status-filter').multiselect(self.multiselectOptions);
-        $('#status-filter').multiselect('dataprovider', self.statusOptions);
+        $('#status-filter').multiselect(this.multiselectOptions);
+        $('#status-filter').multiselect('dataprovider', this.statusOptions);
         hourglass.addFormGroup('zone');
         this.updateZones(true);
         hourglass.addFormGroup('check');
         this.updateChecks(true);
         hourglass.addFormGroup('hide-events', 'hide_silenced');
-        $('#hide-events-filter').multiselect(self.multiselectOptions);
-        $('#hide-events-filter').multiselect('dataprovider', self.hideOptions);
+        $('#hide-events-filter').multiselect(this.multiselectOptions);
+        $('#hide-events-filter').multiselect('dataprovider', this.hideOptions);
     },
 
     update: function() {
@@ -171,7 +171,7 @@ $(document).ready(function() {
         },
         'createdRow': function(nRow, aData, iDataIndex) {
             aData['check']['status'] = hourglass.statusnames[aData['check']['status']];
-            aData['href'] = UCHIWA_URL+'/#/client/'+aData['zone']+'/'+aData['client']['name']+'?check='+aData['check']['name'];
+            aData['href'] = UCHIWA_URL+'/#/client/'+aData['zone_name']+'/'+aData['client']['name']+'?check='+aData['check']['name'];
             $(nRow).data('href', aData['href']);
             $(nRow).click(function(e) {
                 window.open($(this).data("href"), '_blank');
