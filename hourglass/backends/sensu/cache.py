@@ -29,7 +29,7 @@ class SensuZone(Zone):
                 url = "http://%s:%s/%s" % (self.host, self.port, model.uri)
                 app.logger.debug('Making request to %s' % url)
                 results = yield from self.query_api(session, url)
-        except aiohttp.errors.ClientError as e:
+        except Exception as e:
             app.logger.error('Error updating %s cache for %s: %s' % (
                 model.__tablename__, self.name, e))
             return init_objects
