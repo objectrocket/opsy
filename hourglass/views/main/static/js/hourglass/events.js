@@ -62,7 +62,8 @@ var eventsfilters = {
 
     updateZones: function(init) {
         var self = this;
-        $.getJSON('/api/list/zones', function(data) {
+        url = hourglass.get_dashboard_url('/api/list/zones');
+        $.getJSON(url, function(data) {
             newzones = []
             $.each(data.zones, function(idx, obj) {
                 newzones.push({label: obj, title: obj, value: obj});
@@ -80,7 +81,8 @@ var eventsfilters = {
 
     updateChecks: function(init) {
         var self = this;
-        $.getJSON('/api/list/checks', function(data) {
+        url = hourglass.get_dashboard_url('/api/list/checks');
+        $.getJSON(url, function(data) {
             newchecks = []
             $.each(data.checks.sort(), function(idx, obj) {
                 newchecks.push({label: obj, title: obj, value: obj});
