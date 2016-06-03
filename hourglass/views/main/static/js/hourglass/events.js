@@ -171,6 +171,9 @@ $(document).ready(function() {
         },
         'createdRow': function(nRow, aData, iDataIndex) {
             aData['check']['status'] = hourglass.statusnames[aData['check']['status']];
+            if ( aData['check']['status'] === undefined ) {
+                aData['check']['status'] = 'Unknown';
+            }
             aData['href'] = UCHIWA_URL+'/#/client/'+aData['zone_name']+'/'+aData['client']['name']+'?check='+aData['check']['name'];
             $(nRow).data('href', aData['href']);
             $(nRow).click(function(e) {
