@@ -1,3 +1,7 @@
+import logging
+from logging.handlers import WatchedFileHandler
+from logging import StreamHandler
+import sys
 from flask import Flask
 from flask.ext.iniconfig import INIConfig
 from hourglass.backends import db
@@ -9,11 +13,29 @@ def create_app(config):
     app = Flask(__name__)
     INIConfig(app)
     app.config.from_inifile(config)
+    setup_logging(app)
     parse_config(app)
     db.init_app(app)
     app.scheduler = UwsgiScheduler(app)
     register_blueprints(app)
     return app
+
+
+def setup_logging(app):
+    if not app.debug:
+        config = app.config
+        hourglass_config = config.get('hourglass')
+        log_file = hourglass_config.get('log_file')
+        formatter = logging.Formatter(
+            "%(asctime)s %(process)d %(levelname)s %(module)s - %(message)s")
+        if log_file:
+            log_handler = WatchedFileHandler(log_file)
+            log_handler.setFormatter(formatter)
+            app.logger.addHandler(log_handler)
+        log_handler = StreamHandler(sys.stdout)
+        log_handler.setFormatter(formatter)
+        app.logger.addHandler(log_handler)
+        app.logger.setLevel(logging.INFO)
 
 
 def parse_config(app):
@@ -25,12 +47,14 @@ def parse_config(app):
         for zone in enabled_zones:
             required_keys = ['backend', 'host', 'port']
             if any(app.config[zone].get(key) is None for key in required_keys):
-                pass  # TODO: raise an exception here
+                continue  # TODO: raise an exception here
             app.config['zones'][zone] = {}
-            app.config['zones'][zone]['backend'] = app.config[zone].get('backend')
+            app.config['zones'][zone]['backend'] = app.config[zone].get(
+                'backend')
             app.config['zones'][zone]['host'] = app.config[zone].get('host')
             app.config['zones'][zone]['port'] = app.config[zone].get('port')
-            app.config['zones'][zone]['timeout'] = int(app.config[zone].get('timeout', 10))
+            app.config['zones'][zone]['timeout'] = int(app.config[zone].get(
+                'timeout', 10))
     if hourglass_config.get('enabled_dashboards'):
         enabled_dashboards = hourglass_config.get(
             'enabled_dashboards').split(',')
@@ -42,7 +66,7 @@ def parse_config(app):
                 dash_config['check'] = app.config[dashboard].get('check')
                 dash_config['check'] = app.config[dashboard].get('check')
             else:
-                pass  # TODO: raise and exception here
+                continue  # TODO: raise and exception here
 
 
 def register_blueprints(app):
