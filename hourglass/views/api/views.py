@@ -29,7 +29,7 @@ def list_checks():
     dashboard = request.args.get('dashboard')
     if dashboard:
         config = current_app.config
-        dash_filters_list = get_dashboard_filters_list(config, dashboard)
+        dash_filters_list = Event.get_dashboard_filters_list(config, dashboard)
         events_query = Event.query.filter(*dash_filters_list)
     else:
         events_query = Event.query

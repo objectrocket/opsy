@@ -1,8 +1,10 @@
 from hourglass import create_app
 from uwsgidecorators import timer
+import uwsgi
 
 
-app = create_app('./hourglass.ini')
+config = uwsgi.opt.get('hourglass_config', './hourglass.ini')
+app = create_app(config)
 app.scheduler.create_cache_db()
 
 

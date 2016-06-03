@@ -36,7 +36,7 @@ class SensuZone(Zone):
         model.query.filter(model.zone_name == self.name).delete()
         for result in results:
             init_objects.append(model(self.name, result))
-        app.logger.debug('Updated %s cache for %s' % (
+        app.logger.info('Updated %s cache for %s' % (
             model.__tablename__, self.name))
         return init_objects
 

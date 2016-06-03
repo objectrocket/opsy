@@ -8,6 +8,7 @@ data = sqlite:////tmp/hourglass.db
 cache = sqlite:////tmp/hourglass-cache.db
 
 [hourglass]
+log_file = /tmp/hourglass.log
 uchiwa_url = http://url.to.uchiwa.com/
 enabled_zones = zone1,zone2
 enabled_dashboards = admin,support
