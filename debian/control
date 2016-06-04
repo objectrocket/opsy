@@ -1,0 +1,16 @@
+Source: hourglass
+Section: python
+Priority: extra
+Maintainer: Chris Jowett <chris.jowett@rackspace.com>
+Build-Depends: debhelper (>= 9), python3.4-dev | python3.5-dev, dh-virtualenv (>= 0.8)
+Standards-Version: 3.9.5
+
+Package: hourglass
+Architecture: any
+Pre-Depends: dpkg (>= 1.16.1), python3.4 | python3.5, ${misc:Pre-Depends}
+Depends: ${python:Depends}, ${misc:Depends}
+Description: An alternative web panel for Sensu.
+ Hourglass aims to be a dashboard for the Sensu monitoring framework that has some features that the base dashboard (Uchiwa) is lacking
+ .
+ The Hourglass back-end is written in Python and uses the Flask framework. The front-end uses Bootstrap, jQuery, DataTables and many others
+
