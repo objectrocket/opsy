@@ -1,6 +1,14 @@
 #Hourglass files
-hourglass.ini
+/hourglass.ini
 *fakeapi*
+
+#Debian packaging
+debian/debhelper-build-stamp
+debian/files
+debian/hourglass.postinst.debhelper
+debian/hourglass.substvars
+debian/hourglass
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

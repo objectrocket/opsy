@@ -16,6 +16,14 @@ Run the app via uWSGI
 
 This should start the app server on http://127.0.0.1:5000/
 
+# Building a deb package
+
+Install the packaging dependencies:
+`apt-get install dh-virtualenv debhelper`
+
+Enter the root of the repository and build the package:
+`dpkg-buildpackage -us -uc`
+
 # F.A.Q.
 
 - Why Python3.4... Python 2.7 is where it's at!
