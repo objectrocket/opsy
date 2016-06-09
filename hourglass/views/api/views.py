@@ -38,6 +38,19 @@ def list_checks():
     return jsonify({'checks': event_checks, 'timestamp': time()})
 
 
+@api.route('/zones')
+def zones():
+    dashboard = request.args.get('dashboard')
+    if dashboard:
+        config = current_app.config
+        dash_filters_list = Zone.get_dashboard_filters_list(config, dashboard)
+        zones = [x[0] for x in Zone.query.filter(
+            *dash_filters_list).with_entities(Zone.name).all()]
+    else:
+        zones = [x[0] for x in Zone.query.with_entities(Zone.name).all()]
+    return jsonify({'zones': zones, 'timestamp': time()})
+
+
 @api.route('/events')
 def events():
     # TOO DO - change args from checkname/clientname to check_name/client_name
@@ -110,6 +123,42 @@ def clients():
     return jsonify({'clients': clients, 'timestamp': time()})
 
 
+@api.route('/clients/<zone>/<client>')
+def client(zone, client):
+    filters = ((zone, Client.zone_name),
+               (client, Client.name))
+    filters_list = get_filters_list(filters)
+    clients = Client.query.filter(*filters_list).all_extra_as_dict()
+    return jsonify({'clients': clients, 'timestamp': time()})
+
+
+@api.route('/clients/<zone>/<client>/events')
+def client_events(zone, client):
+    filters = ((zone, Event.zone_name),
+               (client, Event.client_name))
+    filters_list = get_filters_list(filters)
+    events = Event.query.filter(*filters_list).all_extra_as_dict()
+    return jsonify({'events': events, 'timestamp': time()})
+
+
+@api.route('/clients/<zone>/<client>/results')
+def client_results(zone, client):
+    filters = ((zone, Result.zone_name),
+               (client, Result.client_name))
+    filters_list = get_filters_list(filters)
+    results = Result.query.filter(*filters_list).all_extra_as_dict()
+    return jsonify({'results': results, 'timestamp': time()})
+
+
+@api.route('/clients/<zone>/<client>/stashes')
+def client_stashes(zone, client):
+    filters = ((zone, Stash.zone_name),
+               (client, Stash.client_name))
+    filters_list = get_filters_list(filters)
+    stashes = Stash.query.filter(*filters_list).all_extra_as_dict()
+    return jsonify({'stashes': stashes, 'timestamp': time()})
+
+
 @api.route('/results')
 def results():
     dashboard = request.args.get('dashboard')
@@ -143,5 +192,5 @@ def stashes():
                (checks, Stash.check_name),
                (flavor, Stash.flavor))
     filters_list = get_filters_list(filters)
-    sensu_stashes = Stash.query.filter(*filters_list).all_extra_as_dict()
-    return jsonify({'stashes': sensu_stashes, 'timestamp': time()})
+    stashes = Stash.query.filter(*filters_list).all_extra_as_dict()
+    return jsonify({'stashes': stashes, 'timestamp': time()})
