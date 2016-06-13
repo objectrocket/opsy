@@ -2,14 +2,14 @@ import aiohttp
 import asyncio
 from flask import json
 from ..cache import *
+from . import SensuBase
 
 
-class SensuZone(Zone):
+class SensuZone(SensuBase, Zone):
 
     def __init__(self, name, host, port, timeout):
         self.models = [SensuCheck, SensuClient, SensuEvent, SensuStash,
                        SensuResult]
-        self.backend_type = 'sensu'
         self.name = name
         self.host = host
         self.port = port
@@ -41,7 +41,7 @@ class SensuZone(Zone):
         return init_objects
 
 
-class SensuZoneMetadata(ZoneMetadata):
+class SensuZoneMetadata(SensuBase, ZoneMetadata):
 
     def __init__(self, zone_name, key, value):
         self.zone_name = zone_name
@@ -49,7 +49,7 @@ class SensuZoneMetadata(ZoneMetadata):
         self.value = value
 
 
-class SensuClient(Client):
+class SensuClient(SensuBase, Client):
     uri = 'clients'
 
     def __init__(self, zone_name, extra):
@@ -59,7 +59,7 @@ class SensuClient(Client):
         self.extra = json.dumps(extra)
 
 
-class SensuCheck(Check):
+class SensuCheck(SensuBase, Check):
     uri = 'checks'
 
     def __init__(self, zone_name, extra):
@@ -69,7 +69,7 @@ class SensuCheck(Check):
         self.extra = json.dumps(extra)
 
 
-class SensuResult(Result):
+class SensuResult(SensuBase, Result):
     uri = 'results'
 
     def __init__(self, zone_name, extra):
@@ -82,12 +82,7 @@ class SensuResult(Result):
         self.extra = json.dumps(extra)
 
 
-# class SensuAggregate(db.Model):
-#     __bind_key__ = 'cache'
-#     __tablename__ = 'aggregates'
-
-
-class SensuEvent(Event):
+class SensuEvent(SensuBase, Event):
     uri = 'events'
 
     def __init__(self, zone_name, extra):
@@ -101,7 +96,7 @@ class SensuEvent(Event):
         self.extra = json.dumps(extra)
 
 
-class SensuStash(Stash):
+class SensuStash(SensuBase, Stash):
     uri = 'stashes'
 
     def __init__(self, zone_name, extra):

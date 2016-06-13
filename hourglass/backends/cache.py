@@ -1,10 +1,10 @@
 import asyncio
 from flask import json
 from hourglass.utils import get_filters_list
-from . import db, ExtraOut, HourglassCacheMixin
+from . import db, ExtraOut, CacheBase
 
 
-class Zone(db.Model):
+class Zone(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
     __tablename__ = 'zones'
@@ -14,8 +14,6 @@ class Zone(db.Model):
     host = db.Column(db.String(64))
     port = db.Column(db.Integer())
     timeout = db.Column(db.Integer())
-    updated_at = db.Column(db.DateTime, default=db.func.now(),
-                           onupdate=db.func.now())
 
     meta_data = db.relationship('ZoneMetadata', backref='zone', lazy='dynamic',
                                 query_class=ExtraOut)
@@ -63,7 +61,7 @@ class Zone(db.Model):
         return '<Zone %s>' % self.name
 
 
-class ZoneMetadata(db.Model):
+class ZoneMetadata(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
     __tablename__ = 'zone_metadata'
@@ -71,8 +69,6 @@ class ZoneMetadata(db.Model):
     zone_name = db.Column(db.String(64), primary_key=True)
     key = db.Column(db.String(64))
     value = db.Column(db.String(64))
-    updated_at = db.Column(db.DateTime, default=db.func.now(),
-                           onupdate=db.func.now())
 
     __table_args__ = (db.ForeignKeyConstraint(['zone_name'], ['zones.name']),)
 
@@ -86,17 +82,18 @@ class ZoneMetadata(db.Model):
                                                self.value)
 
 
-class Client(HourglassCacheMixin, db.Model):
+class Client(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
     __tablename__ = 'clients'
 
     zone_name = db.Column(db.String(64), primary_key=True)
     name = db.Column(db.String(256), primary_key=True)
-    extra = db.Column(db.Text)
 
     events = db.relationship('Event', backref='client', lazy='dynamic',
-                             query_class=ExtraOut)
+                             query_class=ExtraOut, viewonly=True)
+    results = db.relationship('Result', backref='client', lazy='dynamic',
+                              query_class=ExtraOut, viewonly=True)
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
@@ -126,14 +123,13 @@ class Client(HourglassCacheMixin, db.Model):
         return '<Client %s/%s>' % (self.zone_name, self.name)
 
 
-class Check(HourglassCacheMixin, db.Model):
+class Check(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
     __tablename__ = 'checks'
 
     zone_name = db.Column(db.String(64), primary_key=True)
     name = db.Column(db.String(256), primary_key=True)
-    extra = db.Column(db.Text)
 
     __table_args__ = (db.ForeignKeyConstraint(['zone_name'], ['zones.name']),)
 
@@ -157,7 +153,7 @@ class Check(HourglassCacheMixin, db.Model):
         return '<Check %s/%s>' % (self.zone_name, self.name)
 
 
-class Result(HourglassCacheMixin, db.Model):
+class Result(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
     __tablename__ = 'results'
@@ -166,7 +162,6 @@ class Result(HourglassCacheMixin, db.Model):
     client_name = db.Column(db.String(256), primary_key=True)
     check_name = db.Column(db.String(256), primary_key=True)
     status = db.Column(db.Integer)
-    extra = db.Column(db.Text)
 
     __table_args__ = (
         db.ForeignKeyConstraint(
@@ -211,12 +206,7 @@ class Result(HourglassCacheMixin, db.Model):
                                       self.check_name)
 
 
-# class Aggregate(db.Model):
-#     __bind_key__ = 'cache'
-#     __tablename__ = 'aggregates'
-
-
-class Event(HourglassCacheMixin, db.Model):
+class Event(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
     __tablename__ = 'events'
@@ -227,7 +217,6 @@ class Event(HourglassCacheMixin, db.Model):
     check_occurrences = db.Column(db.BigInteger)
     event_occurrences = db.Column(db.BigInteger)
     status = db.Column(db.Integer)
-    extra = db.Column(db.Text)
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
@@ -270,7 +259,7 @@ class Event(HourglassCacheMixin, db.Model):
                                      self.check_name)
 
 
-class Stash(HourglassCacheMixin, db.Model):
+class Stash(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
     __tablename__ = 'stashes'
@@ -280,7 +269,6 @@ class Stash(HourglassCacheMixin, db.Model):
     client_name = db.Column(db.String(256), primary_key=True)
     check_name = db.Column(db.String(256), nullable=True, primary_key=True)
     flavor = db.Column(db.String(64))
-    extra = db.Column(db.Text)
 
     __table_args__ = (db.ForeignKeyConstraint(['zone_name'], ['zones.name']),)
 
