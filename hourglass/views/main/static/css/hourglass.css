@@ -47,23 +47,6 @@ table.dataTable thead .sorting_desc:before {
     content: "\e156 "
 }
 
-/* EVENTS TABLE */
-th#status{
-    width: 5%
-}
-th#source {
-    width: 25%;
-}
-th#check {
-    width: 10%;
-}
-th#occurrences {
-    width: 5%;
-}
-th#lastcheck {
-    width: 10%;
-}
-
 /* CHECKS TABLE */
 th#checkname {
     width: 15%;

@@ -132,53 +132,54 @@ $(document).ready(function() {
         'lengthMenu': [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
         'autoWidth': false,
         //'stateSave' : true,
-        'columnDefs': [
-            {
-                "targets": [ 0 ],
-                "visible": true,
-                "searchable": true
-            },
-        ],
         'order': [
             [ 0, 'asc' ],
             [ 5, 'desc' ],
         ],
         'ajax': {
             url: eventsfilters.setDataTablesUrl(),
-            dataSrc: 'events',
+            dataSrc: function(json) {
+                json = json['events'];
+                return_data = new Array();
+                for (var i=0; i<json.length; i++) {
+                    var row = json[i];
+                    row['check']['status'] = hourglass.statusnames[row['check']['status']];
+                    if ( row['check']['status'] === undefined ) {
+                        row['check']['status'] = 'Unknown';
+                    }
+                    var d = new Date(0);
+                    d.setUTCSeconds(row['timestamp']);
+                    return_data.push({
+                        'status': row['check']['status'],
+                        'zone': row['zone_name'],
+                        'source': "<a href='/clients/"+row['zone_name']+"/"+row['client']['name']+"'>"+row['client']['name']+"</a>",
+                        'check_name': row['check']['name'],
+                        'check_output': row['check']['output'],
+                        'count': row['occurrences'],
+                        'timestamp': '<time class="timeago" datetime="'+d.toISOString()+'">'+d+'</time>',
+                        'href': UCHIWA_URL+'/#/client/'+row['zone_name']+'/'+row['client']['name']+'?check='+row['check']['name'],
+                    })
+                }
+                return return_data;
+            },
         },
         'dom': "<'row'<'col-sm-2'l><'col-sm-2'<'#status-filter-div'>><'col-sm-2'<'#zone-filter-div'>><'col-sm-2'<'#check-filter-div'>><'col-sm-2'<'#hide-events-filter-div'>><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
         'columns': [
-            {data: 'check.status',
-             name: 'status'},
-            {data: 'zone_name',
-             name: 'zone'},
-            {data: 'client.name',
-             name: 'source'},
-            {data: 'check.name',
-             name: 'check-name'},
-            {data: 'check.output',
-             name: 'check-output'},
-            {data: 'occurrences',
-             name: 'occurrences'},
-            {data: 'timestamp',
-             name: 'timestamp'},
+            {data: 'status'},
+            {data: 'zone'},
+            {data: 'source'},
+            {data: 'check_name'},
+            {data: 'check_output'},
+            {data: 'count'},
+            {data: 'timestamp'},
         ],
         'rowCallback': function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
-            var d = new Date(0);
-            d.setUTCSeconds(aData['timestamp']);
-            $('td:last', nRow).html('<time class="timeago" datetime="'+d.toISOString()+'">'+d+'</time>');
-            $('td:first', nRow).addClass(hourglass.statusclasses[aData['check']['status']]);
-            $('td:first', nRow).html(aData['check']['status']);
+            $('td:first', nRow).addClass(hourglass.statusclasses[aData['status']]);
         },
         'createdRow': function(nRow, aData, iDataIndex) {
-            aData['check']['status'] = hourglass.statusnames[aData['check']['status']];
-            if ( aData['check']['status'] === undefined ) {
-                aData['check']['status'] = 'Unknown';
-            }
-            aData['href'] = UCHIWA_URL+'/#/client/'+aData['zone_name']+'/'+aData['client']['name']+'?check='+aData['check']['name'];
             $(nRow).data('href', aData['href']);
             $(nRow).click(function(e) {
+                console.log(e.target);
                 window.open($(this).data("href"), '_blank');
                 e.stopPropagation();
             });
@@ -189,6 +190,9 @@ $(document).ready(function() {
                 //filters.update();
                 document.eventstable.ajax.reload(null, false);
             }, 30000);
+            $('tr').find('a').click(function(e) {
+                e.stopPropagation();
+            });
         }
     }).on('draw.dt', function() {
         updateTitle();
