@@ -31,6 +31,12 @@ def clients():
     return render_template('clients.html', title='Clients')
 
 
+@main.route('/clients/<zone>/<client>')
+def client(zone, client):
+    return render_template('client_details.html', zone=zone,
+                           client=client, title='Client Details')
+
+
 @main.route('/about')
 def about():
     return render_template('about.html', title='About')
