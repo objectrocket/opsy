@@ -14,7 +14,14 @@ class ExtraOut(BaseQuery):
         return json.dumps(self.all_extra_as_dict())
 
 
-class HourglassCacheMixin(object):  # pylint: disable=too-few-public-methods
+class CacheBase(object):  # pylint: disable=too-few-public-methods
     query_class = ExtraOut
+    extra = db.Column(db.Text)
     updated_at = db.Column(db.DateTime, default=db.func.now(),
                            onupdate=db.func.now())
+    backend = db.Column(db.String(20))
+
+    __mapper_args__ = {
+        'polymorphic_on': backend,
+        'polymorphic_identity': 'base'
+    }
