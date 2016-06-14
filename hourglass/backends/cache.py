@@ -265,9 +265,9 @@ class Stash(CacheBase, db.Model):
     __tablename__ = 'stashes'
 
     zone_name = db.Column(db.String(64), primary_key=True)
-    path = db.Column(db.String(256), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
     check_name = db.Column(db.String(256), nullable=True, primary_key=True)
+    path = db.Column(db.String(256), primary_key=True)
     flavor = db.Column(db.String(64))
 
     __table_args__ = (db.ForeignKeyConstraint(['zone_name'], ['zones.name']),)
