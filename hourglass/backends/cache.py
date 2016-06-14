@@ -70,7 +70,9 @@ class ZoneMetadata(CacheBase, db.Model):
     key = db.Column(db.String(64))
     value = db.Column(db.String(64))
 
-    __table_args__ = (db.ForeignKeyConstraint(['zone_name'], ['zones.name']),)
+    __table_args__ = (
+        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+    )
 
     def __init__(self, zone_name, key, value):
         self.zone_name = zone_name
@@ -91,16 +93,20 @@ class Client(CacheBase, db.Model):
     name = db.Column(db.String(256), primary_key=True)
 
     events = db.relationship('Event', backref='client', lazy='dynamic',
-                             query_class=ExtraOut, viewonly=True)
+                             query_class=ExtraOut,
+                             primaryjoin="and_(Client.zone_name==foreign(Event.zone_name), "
+                             "Client.name==foreign(Event.client_name))")
     results = db.relationship('Result', backref='client', lazy='dynamic',
-                              query_class=ExtraOut, viewonly=True)
+                              query_class=ExtraOut,
+                              primaryjoin="and_(Client.zone_name==foreign(Result.zone_name), "
+                              "Client.name==foreign(Result.client_name))")
+    stash = db.relationship('Stash', backref='clients', lazy='dynamic',
+                            query_class=ExtraOut,
+                            primaryjoin="and_(Client.zone_name==foreign(Stash.zone_name), "
+                            "Client.name==foreign(Stash.client_name))")
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
-        db.ForeignKeyConstraint(
-            ['zone_name', 'name'],
-            ['stashes.zone_name', 'stashes.client_name']
-        )
     )
 
     def __init__(self, zone_name, extra):
@@ -131,7 +137,18 @@ class Check(CacheBase, db.Model):
     zone_name = db.Column(db.String(64), primary_key=True)
     name = db.Column(db.String(256), primary_key=True)
 
-    __table_args__ = (db.ForeignKeyConstraint(['zone_name'], ['zones.name']),)
+    results = db.relationship('Result', backref='check', lazy='dynamic',
+                              query_class=ExtraOut,
+                              primaryjoin="and_(Check.zone_name==foreign(Result.zone_name), "
+                              "Check.name==foreign(Result.check_name))")
+    events = db.relationship('Event', backref='check', lazy='dynamic',
+                             query_class=ExtraOut,
+                             primaryjoin="and_(Check.zone_name==foreign(Event.zone_name), "
+                             "Check.name==foreign(Event.check_name))")
+
+    __table_args__ = (
+        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+    )
 
     def __init__(self, zone_name, extra):
         self.zone_name = zone_name
@@ -165,17 +182,8 @@ class Result(CacheBase, db.Model):
 
     __table_args__ = (
         db.ForeignKeyConstraint(
-            ['zone_name'],
-            ['zones.name']
+            ['zone_name'], ['zones.name']
         ),
-        db.ForeignKeyConstraint(
-            ['zone_name', 'client_name'],
-            ['clients.zone_name', 'clients.name']
-        ),
-        db.ForeignKeyConstraint(
-            ['zone_name', 'client_name', 'check_name'],
-            ['stashes.zone_name', 'stashes.client_name', 'stashes.check_name']
-        )
     )
 
     def __init__(self, zone_name, extra):
@@ -218,16 +226,14 @@ class Event(CacheBase, db.Model):
     event_occurrences = db.Column(db.BigInteger)
     status = db.Column(db.Integer)
 
+    stash = db.relationship('Stash', backref='events', lazy='dynamic',
+                            query_class=ExtraOut,
+                            primaryjoin="and_(Event.zone_name==foreign(Stash.zone_name),"
+                            "Event.client_name==foreign(Stash.client_name), "
+                            "Event.check_name==foreign(Stash.check_name))")
+
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
-        db.ForeignKeyConstraint(
-            ['zone_name', 'client_name'],
-            ['clients.zone_name', 'clients.name']
-        ),
-        db.ForeignKeyConstraint(
-            ['zone_name', 'client_name', 'check_name'],
-            ['stashes.zone_name', 'stashes.client_name', 'stashes.check_name']
-        )
     )
 
     def __init__(self, zone_name, extra):
@@ -266,16 +272,13 @@ class Stash(CacheBase, db.Model):
 
     zone_name = db.Column(db.String(64), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
-    check_name = db.Column(db.String(256), nullable=True, primary_key=True)
-    path = db.Column(db.String(256), primary_key=True)
+    check_name = db.Column(db.String(256), nullable=True, primary_key=True, default="")
+    #path = db.Column(db.String(256), primary_key=True)
     flavor = db.Column(db.String(64))
 
-    __table_args__ = (db.ForeignKeyConstraint(['zone_name'], ['zones.name']),)
-
-    events = db.relationship('Event', backref='stash', lazy='dynamic',
-                             query_class=ExtraOut, viewonly=True)
-    client = db.relationship('Client', backref='stash', lazy='dynamic',
-                             query_class=ExtraOut, viewonly=True)
+    __table_args__ = (
+        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+    )
 
     def __init__(self, zone_name, extra):
         self.zone_name = zone_name
