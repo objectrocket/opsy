@@ -259,7 +259,6 @@ class Zone(CacheBase, db.Model):
     models = [Check, Client, Event, Stash, Result]
 
     name = db.Column(db.String(64), primary_key=True)
-    backend_type = db.Column(db.String(64))
     host = db.Column(db.String(64))
     port = db.Column(db.Integer())
     timeout = db.Column(db.Integer())
@@ -278,7 +277,6 @@ class Zone(CacheBase, db.Model):
                               query_class=ExtraOut)
 
     def __init__(self, name, host, port, timeout):
-        self.backend_type = None
         self.name = name
         self.host = host
         self.port = port
