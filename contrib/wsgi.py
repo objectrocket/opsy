@@ -9,7 +9,7 @@ app = create_app(config)
 
 @timer(seconds=0, iterations=1)
 def run_poller_at_start(signum):
-    app.scheduler.run_tasks()
+    app.scheduler.create_cache_db()
 
 
 @timer(seconds=app.scheduler.interval)
