@@ -1,6 +1,7 @@
 import asyncio
 import importlib
 from hourglass.backends import db
+from hourglass.backends.cache import Zone
 
 
 class UwsgiScheduler(object):
@@ -10,7 +11,8 @@ class UwsgiScheduler(object):
         self.loop = asyncio.get_event_loop()
         self.interval = int(app.config['hourglass'].get(
             'scheduler_interval', 30))
-        self.zones = self._load_zones()
+        # load the modules so sqlalchemy knows about them
+        self._load_zones_modules()
 
     def _load_zones(self):
         zones = []
@@ -26,18 +28,25 @@ class UwsgiScheduler(object):
             zones.append(zone_class(name, host, port, timeout))
         return zones
 
+    def _load_zones_modules(self):
+        for name, config in self.app.config['zones'].items():
+            backend = config.get('backend')
+            package = backend.split(':')[0]
+            importlib.import_module(package)
+
     def create_cache_db(self):
         with self.app.app_context():
             db.drop_all(bind='cache')
             db.create_all(bind='cache')
-            db.session.bulk_save_objects(self.zones)
+            zones = self._load_zones()
+            db.session.bulk_save_objects(zones)
             db.session.commit()
         self.run_tasks()
 
     def run_tasks(self, kill_loop=False):
         with self.app.app_context():
             tasks = []
-            for zone in self.zones:
+            for zone in Zone.query.all():
                 tasks.extend(zone.get_update_tasks(self.app, self.loop))
             results = self.loop.run_until_complete(asyncio.gather(*tasks))
             for result in results:
