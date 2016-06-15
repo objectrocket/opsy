@@ -5,7 +5,6 @@ import uwsgi
 
 config = uwsgi.opt.get('hourglass_config', './hourglass.ini')
 app = create_app(config)
-app.scheduler.create_cache_db()
 
 
 @timer(app.scheduler.interval)
