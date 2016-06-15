@@ -12,7 +12,7 @@ Install hourglass for development (ensure you are in your previously created vir
 `~/hourglass $ pip install --editable .`
 
 Run the app via uWSGI
-`~/hourglass $ uwsgi -M --wsgi-file wsgi.py --callable app --http-socket 127.0.0.1:5000 --lazy --processes 2`
+`~/hourglass $ uwsgi -M --wsgi-file wsgi.py --callable app --http-socket 127.0.0.1:5000 --processes 2`
 
 This should start the app server on http://127.0.0.1:5000/
 
