@@ -140,6 +140,16 @@ def client_events(zone, client):
     return jsonify({'events': events, 'timestamp': time()})
 
 
+@api.route('/clients/<zone>/<client>/events/<check>')
+def client_events_check(zone, client, check):
+    filters = ((zone, Event.zone_name),
+               (client, Event.client_name),
+               (check, Event.check_name))
+    filters_list = get_filters_list(filters)
+    events = Event.query.filter(*filters_list).all_extra_as_dict()
+    return jsonify({'events': events, 'timestamp': time()})
+
+
 @api.route('/clients/<zone>/<client>/results')
 def client_results(zone, client):
     filters = ((zone, Result.zone_name),
