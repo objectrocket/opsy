@@ -32,6 +32,7 @@ class UwsgiScheduler(object):
             db.create_all(bind='cache')
             db.session.bulk_save_objects(self.zones)
             db.session.commit()
+        self.run_tasks()
 
     def run_tasks(self, kill_loop=False):
         with self.app.app_context():

@@ -17,6 +17,12 @@ def create_app(config):
     parse_config(app)
     db.init_app(app)
     app.scheduler = UwsgiScheduler(app)
+    try:
+        import uwsgi
+        if uwsgi.worker_id() == 1:
+            app.scheduler.create_cache_db()
+    except:
+        pass
     register_blueprints(app)
     return app
 
