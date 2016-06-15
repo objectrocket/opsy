@@ -18,6 +18,7 @@ setup(
         'Flask-INIConfig==0.0.9',
         'Flask-SQLAlchemy==2.1',
         'uWSGI==2.0.13.1',
+        'uwsgi-tasks==0.6.4',
     ],
     extras_require={
         'DEV': [

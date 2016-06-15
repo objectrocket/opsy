@@ -4,86 +4,6 @@ from hourglass.utils import get_filters_list
 from . import db, ExtraOut, CacheBase
 
 
-class Zone(CacheBase, db.Model):
-
-    __bind_key__ = 'cache'
-    __tablename__ = 'zones'
-
-    name = db.Column(db.String(64), primary_key=True)
-    backend_type = db.Column(db.String(64))
-    host = db.Column(db.String(64))
-    port = db.Column(db.Integer())
-    timeout = db.Column(db.Integer())
-
-    meta_data = db.relationship('ZoneMetadata', backref='zone', lazy='dynamic',
-                                query_class=ExtraOut)
-    clients = db.relationship('Client', backref='zone', lazy='dynamic',
-                              query_class=ExtraOut)
-    checks = db.relationship('Check', backref='zone', lazy='dynamic',
-                             query_class=ExtraOut)
-    events = db.relationship('Event', backref='zone', lazy='dynamic',
-                             query_class=ExtraOut)
-    results = db.relationship('Result', backref='zone', lazy='dynamic',
-                              query_class=ExtraOut)
-    stashes = db.relationship('Stash', backref='zone', lazy='dynamic',
-                              query_class=ExtraOut)
-
-    def __init__(self, name, host, port, timeout):
-        self.models = [Check, Client, Event, Stash, Result]
-        self.backend_type = None
-        self.name = name
-        self.host = host
-        self.port = port
-        self.timeout = timeout
-
-    def query_api(self, uri):
-        raise NotImplementedError
-
-    @asyncio.coroutine
-    def update_objects(self, model):
-        raise NotImplementedError
-
-    def get_update_tasks(self, app, loop):
-        tasks = []
-        for model in self.models:
-            tasks.append(asyncio.async(self.update_objects(app, loop, model)))
-        return tasks
-
-    @classmethod
-    def get_dashboard_filters_list(cls, config, dashboard):
-        if config['dashboards'].get(dashboard) is None:
-            return ()
-        zones = config['dashboards'][dashboard].get('zone')
-        filters = ((zones, cls.name),)
-        return get_filters_list(filters)
-
-    def __repr__(self):
-        return '<Zone %s>' % self.name
-
-
-class ZoneMetadata(CacheBase, db.Model):
-
-    __bind_key__ = 'cache'
-    __tablename__ = 'zone_metadata'
-
-    zone_name = db.Column(db.String(64), primary_key=True)
-    key = db.Column(db.String(64))
-    value = db.Column(db.String(64))
-
-    __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
-    )
-
-    def __init__(self, zone_name, key, value):
-        self.zone_name = zone_name
-        self.key = key
-        self.value = value
-
-    def __repr__(self):
-        return '<ZoneMetadata %s: %s - %s>' % (self.zone_name, self.key,
-                                               self.value)
-
-
 class Client(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
@@ -306,3 +226,84 @@ class Stash(CacheBase, db.Model):
 
     def __repr__(self):
         return '<Stash %s/%s>' % (self.zone_name, self.path)
+
+
+class ZoneMetadata(CacheBase, db.Model):
+
+    __bind_key__ = 'cache'
+    __tablename__ = 'zone_metadata'
+
+    zone_name = db.Column(db.String(64), primary_key=True)
+    key = db.Column(db.String(64))
+    value = db.Column(db.String(64))
+
+    __table_args__ = (
+        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+    )
+
+    def __init__(self, zone_name, key, value):
+        self.zone_name = zone_name
+        self.key = key
+        self.value = value
+
+    def __repr__(self):
+        return '<ZoneMetadata %s: %s - %s>' % (self.zone_name, self.key,
+                                               self.value)
+
+
+class Zone(CacheBase, db.Model):
+
+    __bind_key__ = 'cache'
+    __tablename__ = 'zones'
+
+    models = [Check, Client, Event, Stash, Result]
+
+    name = db.Column(db.String(64), primary_key=True)
+    backend_type = db.Column(db.String(64))
+    host = db.Column(db.String(64))
+    port = db.Column(db.Integer())
+    timeout = db.Column(db.Integer())
+
+    meta_data = db.relationship('ZoneMetadata', backref='zone', lazy='dynamic',
+                                query_class=ExtraOut)
+    clients = db.relationship('Client', backref='zone', lazy='dynamic',
+                              query_class=ExtraOut)
+    checks = db.relationship('Check', backref='zone', lazy='dynamic',
+                             query_class=ExtraOut)
+    events = db.relationship('Event', backref='zone', lazy='dynamic',
+                             query_class=ExtraOut)
+    results = db.relationship('Result', backref='zone', lazy='dynamic',
+                              query_class=ExtraOut)
+    stashes = db.relationship('Stash', backref='zone', lazy='dynamic',
+                              query_class=ExtraOut)
+
+    def __init__(self, name, host, port, timeout):
+        self.backend_type = None
+        self.name = name
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+
+    def query_api(self, uri):
+        raise NotImplementedError
+
+    @asyncio.coroutine
+    def update_objects(self, model):
+        raise NotImplementedError
+
+    def get_update_tasks(self, app, loop):
+        tasks = []
+        for model in self.models:
+            tasks.append(asyncio.async(self.update_objects(app, loop, model)))
+        return tasks
+
+    @classmethod
+    def get_dashboard_filters_list(cls, config, dashboard):
+        if config['dashboards'].get(dashboard) is None:
+            return ()
+        zones = config['dashboards'][dashboard].get('zone')
+        filters = ((zones, cls.name),)
+        return get_filters_list(filters)
+
+    def __repr__(self):
+        return '<Zone %s>' % self.name
