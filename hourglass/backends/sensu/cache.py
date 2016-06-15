@@ -113,10 +113,9 @@ class SensuZone(SensuBase, Zone):
                 url = "http://%s:%s/%s" % (self.host, self.port, model.uri)
                 app.logger.debug('Making request to %s' % url)
                 results = yield from self.query_api(session, url)
-        except Exception as e:
+        except aiohttp.errors.ClientError as e:
             app.logger.error('Error updating %s cache for %s: %s' % (
                 model.__tablename__, self.name, e))
-            app.logger.error(dir(e))
             return init_objects
         model.query.filter(model.zone_name == self.name).delete()
         for result in results:
