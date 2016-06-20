@@ -147,13 +147,26 @@ def client_events_check(zone, client, check):
                (check, Event.check_name))
     filters_list = get_filters_list(filters)
     events = Event.query.filter(*filters_list).all_extra_as_dict()
-    return jsonify({'events': events, 'timestamp': time()})
+    response = jsonify({'events': events, 'timestamp': time()})
+    if not events:
+        response.status_code = 404
+    return response
 
 
 @api.route('/clients/<zone>/<client>/results')
 def client_results(zone, client):
     filters = ((zone, Result.zone_name),
                (client, Result.client_name))
+    filters_list = get_filters_list(filters)
+    results = Result.query.filter(*filters_list).all_extra_as_dict()
+    return jsonify({'results': results, 'timestamp': time()})
+
+
+@api.route('/clients/<zone>/<client>/results/<check>')
+def client_results_check(zone, client, check):
+    filters = ((zone, Result.zone_name),
+               (client, Result.client_name),
+               (check, Result.check_name))
     filters_list = get_filters_list(filters)
     results = Result.query.filter(*filters_list).all_extra_as_dict()
     return jsonify({'results': results, 'timestamp': time()})
