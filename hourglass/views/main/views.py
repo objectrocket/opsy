@@ -37,6 +37,12 @@ def client(zone, client):
                            client=client, title='Client Details')
 
 
+@main.route('/clients/<zone>/<client>/events/<check>')
+def client_event(zone, client, check):
+    return render_template('client_event_details.html', zone=zone,
+                           client=client, check=check, title='Event Details')
+
+
 @main.route('/about')
 def about():
     return render_template('about.html', title='About')
