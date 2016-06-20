@@ -27,11 +27,10 @@ $(document).ready(function() {
                     return_data.push({
                         'status': row['check']['status'],
                         'check_name': row['check']['name'],
-                        'check_output': row['check']['output'],
+                        'check_output': '<a href="/clients/'+row['zone_name']+'/'+row['client']+'/events/'+row['check']['name']+'">'+row['check']['output']+'</a>',
                         'timestamp': '<time class="timeago" datetime="'+d.toISOString()+'">'+d+'</time>',
                     })
                 }
-                console.log(json);
                 return return_data;
             }
         },
