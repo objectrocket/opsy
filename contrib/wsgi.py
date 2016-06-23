@@ -1,10 +1,15 @@
-from hourglass import create_app
+from hourglass import create_app, create_devapp
 from uwsgi_tasks import timer
 import uwsgi
 
 
 config = uwsgi.opt.get('hourglass_config', './hourglass.ini')
-app = create_app(config)
+dev_mode = uwsgi.opt.get('dev_mode', 'False')
+
+if dev_mode == b'True':
+    app = create_devapp(config)
+else:
+    app = create_app(config)
 
 
 @timer(seconds=0, iterations=1)

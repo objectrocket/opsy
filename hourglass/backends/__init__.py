@@ -14,7 +14,36 @@ class ExtraOut(BaseQuery):
         return json.dumps(self.all_extra_as_dict())
 
 
+class BaseMetadata(db.Model):
+
+    __bind_key__ = 'cache'
+    __tablename__ = 'metadata'
+
+    zone_name = db.Column(db.String(64), primary_key=True)
+    entity = db.Column(db.String(64), primary_key=True)
+    key = db.Column(db.String(64), primary_key=True)
+    value = db.Column(db.String(64))
+    updated_at = db.Column(db.DateTime, default=db.func.now(),
+                           onupdate=db.func.now())
+
+    __table_args__ = (
+        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+    )
+
+    def __init__(self, zone_name, key, entity, value):
+        self.zone_name = zone_name
+        self.key = key
+        self.entity = entity
+        self.value = value
+
+    def __repr__(self):
+        return '<%s %s: %s - %s>' % (self.__class__.__name__, self.zone_name,
+                                     self.key, self.value)
+
+
 class CacheBase(object):  # pylint: disable=too-few-public-methods
+
+    metadata_class = BaseMetadata
     query_class = ExtraOut
     extra = db.Column(db.Text)
     updated_at = db.Column(db.DateTime, default=db.func.now(),
@@ -25,3 +54,20 @@ class CacheBase(object):  # pylint: disable=too-few-public-methods
         'polymorphic_on': backend,
         'polymorphic_identity': 'base'
     }
+
+    @classmethod
+    def last_poll_status(cls, zone_name):
+        last_run = cls.metadata_class.query.filter(
+            cls.metadata_class.key == 'update_status',
+            cls.metadata_class.entity == cls.__tablename__,
+            cls.metadata_class.zone_name == zone_name).first()
+        return (last_run.updated_at, last_run.value)
+
+    @classmethod
+    def update_last_poll_status(cls, zone_name, status):
+        cls.metadata_class.query.filter(
+            cls.metadata_class.key == 'update_status',
+            cls.metadata_class.entity == cls.__tablename__,
+            cls.metadata_class.zone_name == zone_name).delete()
+        return cls.metadata_class(zone_name, 'update_status',
+                                  cls.__tablename__, status)

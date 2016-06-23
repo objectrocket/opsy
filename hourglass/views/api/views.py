@@ -44,11 +44,17 @@ def zones():
     if dashboard:
         config = current_app.config
         dash_filters_list = Zone.get_dashboard_filters_list(config, dashboard)
-        zones = [x[0] for x in Zone.query.filter(
-            *dash_filters_list).with_entities(Zone.name).all()]
+        zones = Zone.query.filter(*dash_filters_list).all()
     else:
-        zones = [x[0] for x in Zone.query.with_entities(Zone.name).all()]
+        zones = Zone.query.filter().all()
+    zones = [x._dict_out() for x in zones]
     return jsonify({'zones': zones, 'timestamp': time()})
+
+
+@api.route('/zones/<zone_name>')
+def zone(zone_name):
+    zone = Zone.query.filter(Zone.name == zone_name).first()
+    return jsonify({'zone': zone._dict_out(), 'timestamp': time()})
 
 
 @api.route('/events')

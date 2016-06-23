@@ -9,8 +9,7 @@ BASEDIR = os.path.abspath(os.path.curdir)
 
 def make_shell_context():
     return dict(create_app=create_app, db=db, Check=Check, Client=Client,
-                Event=Event, Stash=Stash, Result=Result, Zone=Zone,
-                ZoneMetadata=ZoneMetadata)
+                Event=Event, Stash=Stash, Result=Result, Zone=Zone)
 
 
 class init_db(Command):

@@ -23,6 +23,7 @@ setup(
     extras_require={
         'DEV': [
             'ipython==4.2.0',
+            'sqltap==0.3.10',
         ],
         'test': [
             'pylint==1.5.5',

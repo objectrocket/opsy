@@ -14,15 +14,18 @@ class Client(CacheBase, db.Model):
 
     events = db.relationship('Event', backref='client', lazy='dynamic',
                              query_class=ExtraOut,
-                             primaryjoin="and_(Client.zone_name==foreign(Event.zone_name), "
+                             primaryjoin="and_("
+                             "Client.zone_name==foreign(Event.zone_name), "
                              "Client.name==foreign(Event.client_name))")
     results = db.relationship('Result', backref='client', lazy='dynamic',
                               query_class=ExtraOut,
-                              primaryjoin="and_(Client.zone_name==foreign(Result.zone_name), "
+                              primaryjoin="and_("
+                              "Client.zone_name==foreign(Result.zone_name), "
                               "Client.name==foreign(Result.client_name))")
     stash = db.relationship('Stash', backref='clients', lazy='dynamic',
                             query_class=ExtraOut,
-                            primaryjoin="and_(Client.zone_name==foreign(Stash.zone_name), "
+                            primaryjoin="and_("
+                            "Client.zone_name==foreign(Stash.zone_name), "
                             "Client.name==foreign(Stash.client_name))")
 
     __table_args__ = (
@@ -60,11 +63,13 @@ class Check(CacheBase, db.Model):
 
     results = db.relationship('Result', backref='check', lazy='dynamic',
                               query_class=ExtraOut,
-                              primaryjoin="and_(Check.zone_name==foreign(Result.zone_name), "
+                              primaryjoin="and_("
+                              "Check.zone_name==foreign(Result.zone_name), "
                               "Check.name==foreign(Result.check_name))")
     events = db.relationship('Event', backref='check', lazy='dynamic',
                              query_class=ExtraOut,
-                             primaryjoin="and_(Check.zone_name==foreign(Event.zone_name), "
+                             primaryjoin="and_("
+                             "Check.zone_name==foreign(Event.zone_name), "
                              "Check.name==foreign(Event.check_name))")
 
     __table_args__ = (
@@ -150,7 +155,8 @@ class Event(CacheBase, db.Model):
 
     stash = db.relationship('Stash', backref='events', lazy='dynamic',
                             query_class=ExtraOut,
-                            primaryjoin="and_(Event.zone_name==foreign(Stash.zone_name),"
+                            primaryjoin="and_("
+                            "Event.zone_name==foreign(Stash.zone_name),"
                             "Event.client_name==foreign(Stash.client_name), "
                             "Event.check_name==foreign(Stash.check_name))")
 
@@ -194,7 +200,8 @@ class Stash(CacheBase, db.Model):
 
     zone_name = db.Column(db.String(64), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
-    check_name = db.Column(db.String(256), nullable=True, primary_key=True, default="")
+    check_name = db.Column(db.String(256), nullable=True, primary_key=True,
+                           default="")
     flavor = db.Column(db.String(64))
 
     __table_args__ = (
@@ -231,41 +238,17 @@ class Stash(CacheBase, db.Model):
                                self.path)
 
 
-class ZoneMetadata(CacheBase, db.Model):
-
-    __bind_key__ = 'cache'
-    __tablename__ = 'zone_metadata'
-
-    zone_name = db.Column(db.String(64), primary_key=True)
-    key = db.Column(db.String(64))
-    value = db.Column(db.String(64))
-
-    __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
-    )
-
-    def __init__(self, zone_name, key, value):
-        self.zone_name = zone_name
-        self.key = key
-        self.value = value
-
-    def __repr__(self):
-        return '<%s %s: %s - %s>' % (self.__class__.__name__, self.zone_name,
-                                     self.key, self.value)
-
-
 class Zone(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
     __tablename__ = 'zones'
+    models = [Check, Client, Event, Stash, Result]
 
     name = db.Column(db.String(64), primary_key=True)
     host = db.Column(db.String(64))
     port = db.Column(db.Integer())
     timeout = db.Column(db.Integer())
 
-    meta_data = db.relationship('ZoneMetadata', backref='zone', lazy='dynamic',
-                                query_class=ExtraOut)
     clients = db.relationship('Client', backref='zone', lazy='dynamic',
                               query_class=ExtraOut)
     checks = db.relationship('Check', backref='zone', lazy='dynamic',
@@ -283,6 +266,19 @@ class Zone(CacheBase, db.Model):
         self.port = port
         self.timeout = timeout
 
+    def query_api(self, uri):
+        raise NotImplementedError
+
+    @asyncio.coroutine
+    def update_objects(self, model):
+        raise NotImplementedError
+
+    def get_update_tasks(self, app, loop):
+        tasks = []
+        for model in self.models:
+            tasks.append(asyncio.async(self.update_objects(app, loop, model)))
+        return tasks
+
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
         if config['dashboards'].get(dashboard) is None:
@@ -290,6 +286,18 @@ class Zone(CacheBase, db.Model):
         zones = config['dashboards'][dashboard].get('zone')
         filters = ((zones, cls.name),)
         return get_filters_list(filters)
+
+    def _dict_out(self):
+        pollers = []
+        for model in self.models:
+            updated_at, status = model.last_poll_status(self.name)
+            pollers.append({'name': model.__tablename__,
+                            'updated_at': updated_at.isoformat(),
+                            'status': status})
+        return {
+            'name': self.name,
+            'pollers': pollers
+        }
 
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.name)
