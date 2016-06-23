@@ -153,7 +153,7 @@ $(document).ready(function documentReadyCB() {
                     return_data.push({
                         'status': row['check']['status'],
                         'zone': row['zone_name'],
-                        'source': "<a href='"+uchiwaHref+"'><img src='/static/main/img/uchiwa.ico'></img></a> <a href='/clients/"+row['zone_name']+"/"+row['client']['name']+"'>"+row['client']['name']+"</a>",
+                        'source': "<a href='"+uchiwaHref+"'><img src='/static/main/img/backends/sensu.ico'></img></a> <a href='/clients/"+row['zone_name']+"/"+row['client']['name']+"'>"+row['client']['name']+"</a>",
                         'check_name': row['check']['name'],
                         'check_output': row['check']['output'],
                         'count': row['occurrences'],
