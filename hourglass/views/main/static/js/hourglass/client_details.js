@@ -5,6 +5,7 @@ $(document).ready(function() {
             $('#clientdetails').html('<h4>'+client['name']+'</h4><pre>'+JSON.stringify(client,null,2)+'</pre>');
         })
     })
+    $.fn.dataTable.enum( [ 'Critical', 'Warning', 'OK' ] );
     document.clientevents = $('#clientevents').DataTable({
         'lengthMenu': [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
         'order': [
@@ -31,6 +32,7 @@ $(document).ready(function() {
                         'timestamp': '<time class="timeago" datetime="'+d.toISOString()+'">'+d+'</time>',
                     })
                 }
+                console.log(return_data);
                 return return_data;
             }
         },
@@ -39,9 +41,6 @@ $(document).ready(function() {
             {data: 'check_name'},
             {data: 'check_output'},
             {data: 'timestamp'},
-        ],
-        'columnDefs': [
-            { type: 'enum', targets: [0]},
         ],
         'rowCallback': function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
             $('td:first', nRow).addClass(hourglass.statusclasses[aData['status']]);
