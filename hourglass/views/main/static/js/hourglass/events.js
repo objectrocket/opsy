@@ -181,11 +181,7 @@ $(document).ready(function documentReadyCB() {
             setInterval( function initCompleteIntervalCB() {
                 //filters.update();
                 document.eventstable.ajax.reload(null, false);
-                console.log('reloaded');
-            }, 2000);
-            $('tr').find('a').click(function trAClickCB(e) {
-                e.stopPropagation();
-            });
+            }, 30000);
         }
     }).on('draw.dt', function onDrawDTCB() {
         updateTitle();
