@@ -63,13 +63,13 @@ var eventsfilters = {
     updateZones: function(init) {
         var self = this;
         url = hourglass.get_dashboard_url('/api/list/zones');
-        $.getJSON(url, function(data) {
+        $.getJSON(url, function updateZonesJSONCB(data) {
             newzones = []
-            $.each(data.zones, function(idx, obj) {
+            $.each(data.zones, function updateZonesEachCB(idx, obj) {
                 newzones.push({label: obj, title: obj, value: obj});
             });
             self.zoneOptions = newzones;
-        }).success(function() {
+        }).success(function updateZonesSuccessCB() {
             if (init == true ) {
                 $('#zone-filter').multiselect(self.multiselectOptions);
                 $('#zone-filter').multiselect('dataprovider', self.zoneOptions);
@@ -82,13 +82,13 @@ var eventsfilters = {
     updateChecks: function(init) {
         var self = this;
         url = hourglass.get_dashboard_url('/api/list/checks');
-        $.getJSON(url, function(data) {
+        $.getJSON(url, function updateChecksJSONCB(data) {
             newchecks = []
-            $.each(data.checks.sort(), function(idx, obj) {
+            $.each(data.checks.sort(), function updateChecksEachCB(idx, obj) {
                 newchecks.push({label: obj, title: obj, value: obj});
             });
             self.checkOptions = newchecks;
-        }).success(function() {
+        }).success(function updateChecksSuccessCB() {
             if (init == true ) {
                 $('#check-filter').multiselect(self.multiselectOptions);
                 $('#check-filter').multiselect('dataprovider', self.checkOptions);
@@ -100,8 +100,8 @@ var eventsfilters = {
 
     setDataTablesUrl: function() {
         params = {}
-        $('select.ms').each(function(idx, obj) {
-            params[$(obj).data('filter')] = $(obj).children('option:selected').map(function() { return this.value }).get().join(',')
+        $('select.ms').each(function setDTUrlEachCB(idx, obj) {
+            params[$(obj).data('filter')] = $(obj).children('option:selected').map(function setDTUrlMapCB() { return this.value }).get().join(',')
         });
         if ( $.QueryString['dashboard'] ) {
             params['dashboard'] = $.QueryString['dashboard'];
@@ -115,7 +115,7 @@ var eventsfilters = {
 }
 
 var getStatusCount = function(state) {
-    return document.eventstable.column(0).data().filter( function(value, idx){
+    return document.eventstable.column(0).data().filter( function getStatusCountFilterCB(value, idx){
           return value == state ? true : false;
     }).length
 }
@@ -126,8 +126,8 @@ var updateTitle = function() {
     document.title = crits+' Critical, '+warns+' Warning | Events | Hourglass';
 }
 
-$(document).ready(function() {
-
+$(document).ready(function documentReadyCB() {
+    $.fn.dataTable.enum( [ 'Critical', 'Warning', 'OK' ] );
     document.eventstable = $('#events').DataTable({
         'lengthMenu': [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
         'autoWidth': false,
@@ -149,15 +149,15 @@ $(document).ready(function() {
                     }
                     var d = new Date(0);
                     d.setUTCSeconds(row['timestamp']);
+                    uchiwaHref = UCHIWA_URL+'/#/client/'+row['zone_name']+'/'+row['client']['name']+'?check='+row['check']['name'],
                     return_data.push({
                         'status': row['check']['status'],
                         'zone': row['zone_name'],
-                        'source': "<a href='/clients/"+row['zone_name']+"/"+row['client']['name']+"'>"+row['client']['name']+"</a>",
+                        'source': "<a href='"+uchiwaHref+"'><img src='/static/main/img/uchiwa.ico'></img></a> <a href='/clients/"+row['zone_name']+"/"+row['client']['name']+"'>"+row['client']['name']+"</a>",
                         'check_name': row['check']['name'],
                         'check_output': row['check']['output'],
                         'count': row['occurrences'],
                         'timestamp': '<time class="timeago" datetime="'+d.toISOString()+'">'+d+'</time>',
-                        'href': UCHIWA_URL+'/#/client/'+row['zone_name']+'/'+row['client']['name']+'?check='+row['check']['name'],
                     })
                 }
                 return return_data;
@@ -176,25 +176,18 @@ $(document).ready(function() {
         'rowCallback': function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
             $('td:first', nRow).addClass(hourglass.statusclasses[aData['status']]);
         },
-        'createdRow': function(nRow, aData, iDataIndex) {
-            $(nRow).data('href', aData['href']);
-            $(nRow).click(function(e) {
-                console.log(e.target);
-                window.open($(this).data("href"), '_blank');
-                e.stopPropagation();
-            });
-        },
         'initComplete': function (foo) {
             eventsfilters.create();
-            setInterval( function() {
+            setInterval( function initCompleteIntervalCB() {
                 //filters.update();
                 document.eventstable.ajax.reload(null, false);
-            }, 30000);
-            $('tr').find('a').click(function(e) {
+                console.log('reloaded');
+            }, 2000);
+            $('tr').find('a').click(function trAClickCB(e) {
                 e.stopPropagation();
             });
         }
-    }).on('draw.dt', function() {
+    }).on('draw.dt', function onDrawDTCB() {
         updateTitle();
         $('time.timeago').timeago();
     });
