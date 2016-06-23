@@ -46,7 +46,8 @@ class Client(CacheBase, db.Model):
         return get_filters_list(filters)
 
     def __repr__(self):
-        return '<Client %s/%s>' % (self.zone_name, self.name)
+        return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
+                               self.name)
 
 
 class Check(CacheBase, db.Model):
@@ -87,7 +88,8 @@ class Check(CacheBase, db.Model):
         return get_filters_list(filters)
 
     def __repr__(self):
-        return '<Check %s/%s>' % (self.zone_name, self.name)
+        return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
+                               self.name)
 
 
 class Result(CacheBase, db.Model):
@@ -130,8 +132,8 @@ class Result(CacheBase, db.Model):
         return get_filters_list(filters)
 
     def __repr__(self):
-        return '<Result %s/%s/%s>' % (self.zone_name, self.client_name,
-                                      self.check_name)
+        return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
+                                  self.client_name, self.check_name)
 
 
 class Event(CacheBase, db.Model):
@@ -181,8 +183,8 @@ class Event(CacheBase, db.Model):
         return get_filters_list(filters)
 
     def __repr__(self):
-        return '<Event %s/%s/%s>' % (self.zone_name, self.client_name,
-                                     self.check_name)
+        return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
+                                  self.client_name, self.check_name)
 
 
 class Stash(CacheBase, db.Model):
@@ -225,7 +227,8 @@ class Stash(CacheBase, db.Model):
         self.extra = json.dumps(extra)
 
     def __repr__(self):
-        return '<Stash %s/%s>' % (self.zone_name, self.path)
+        return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
+                               self.path)
 
 
 class ZoneMetadata(CacheBase, db.Model):
@@ -247,16 +250,14 @@ class ZoneMetadata(CacheBase, db.Model):
         self.value = value
 
     def __repr__(self):
-        return '<ZoneMetadata %s: %s - %s>' % (self.zone_name, self.key,
-                                               self.value)
+        return '<%s %s: %s - %s>' % (self.__class__.__name__, self.zone_name,
+                                     self.key, self.value)
 
 
 class Zone(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
     __tablename__ = 'zones'
-
-    models = [Check, Client, Event, Stash, Result]
 
     name = db.Column(db.String(64), primary_key=True)
     host = db.Column(db.String(64))
@@ -282,19 +283,6 @@ class Zone(CacheBase, db.Model):
         self.port = port
         self.timeout = timeout
 
-    def query_api(self, uri):
-        raise NotImplementedError
-
-    @asyncio.coroutine
-    def update_objects(self, model):
-        raise NotImplementedError
-
-    def get_update_tasks(self, app, loop):
-        tasks = []
-        for model in self.models:
-            tasks.append(asyncio.async(self.update_objects(app, loop, model)))
-        return tasks
-
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
         if config['dashboards'].get(dashboard) is None:
@@ -304,4 +292,4 @@ class Zone(CacheBase, db.Model):
         return get_filters_list(filters)
 
     def __repr__(self):
-        return '<Zone %s>' % self.name
+        return '<%s %s>' % (self.__class__.__name__, self.name)
