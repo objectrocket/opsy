@@ -47,7 +47,7 @@ def zones():
         zones = Zone.query.filter(*dash_filters_list).all()
     else:
         zones = Zone.query.filter().all()
-    zones = [x._dict_out() for x in zones]
+    zones = [x.dict_out for x in zones]
     return jsonify({'zones': zones, 'timestamp': time()})
 
 

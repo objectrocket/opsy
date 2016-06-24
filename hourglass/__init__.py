@@ -21,13 +21,6 @@ def create_app(config):
     return app
 
 
-def create_devapp(config):
-    from sqltap.wsgi import SQLTapMiddleware
-    app = create_app(config)
-    app.wsgi_app = SQLTapMiddleware(app.wsgi_app)
-    return app
-
-
 def setup_logging(app):
     if not app.debug:
         config = app.config

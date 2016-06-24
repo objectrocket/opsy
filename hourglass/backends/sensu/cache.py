@@ -109,11 +109,11 @@ class SensuZone(SensuBase, Zone):
             app.logger.error('Error updating %s cache for %s: %s' % (
                 model.__tablename__, self.name, e))
             init_objects.append(model.update_last_poll_status(
-                self.name, 'failure'))
+                self.name, 'critical'))
             return init_objects
         model.query.filter(model.zone_name == self.name).delete()
         init_objects.append(model.update_last_poll_status(
-            self.name, 'success'))
+            self.name, 'ok'))
         for result in results:
             init_objects.append(model(self.name, result))
         app.logger.info('Updated %s cache for %s' % (

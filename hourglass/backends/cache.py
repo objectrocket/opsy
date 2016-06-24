@@ -287,15 +287,31 @@ class Zone(CacheBase, db.Model):
         filters = ((zones, cls.name),)
         return get_filters_list(filters)
 
-    def _dict_out(self):
+    @property
+    def pollers_health(self):
         pollers = []
+        overall_health = []
         for model in self.models:
             updated_at, status = model.last_poll_status(self.name)
             pollers.append({'name': model.__tablename__,
                             'updated_at': updated_at.isoformat(),
                             'status': status})
+            overall_health.append(True) if status == 'ok' else \
+                overall_health.append(False)
+        if all(overall_health):
+            overall_health = 'ok'
+        elif any(overall_health):
+            overall_health = 'warning'
+        else:
+            overall_health = 'critical'
+        return overall_health, pollers
+
+    @property
+    def dict_out(self):
+        overall_health, pollers = self.pollers_health
         return {
             'name': self.name,
+            'status': overall_health,
             'pollers': pollers
         }
 
