@@ -1,4 +1,3 @@
-from time import time
 from . import api
 from hourglass.backends import db
 from hourglass.utils import get_filters_list
@@ -21,7 +20,7 @@ def list_zones():
             *dash_filters_list).with_entities(Zone.name).all()]
     else:
         zones = [x[0] for x in Zone.query.with_entities(Zone.name).all()]
-    return jsonify({'zones': zones, 'timestamp': time()})
+    return jsonify({'zones': zones})
 
 
 @api.route('/list/checks')
@@ -35,7 +34,7 @@ def list_checks():
         events_query = Event.query
     event_checks = [x[0] for x in events_query.with_entities(
         Event.check_name).distinct().all()]
-    return jsonify({'checks': event_checks, 'timestamp': time()})
+    return jsonify({'checks': event_checks})
 
 
 @api.route('/zones')
@@ -44,17 +43,16 @@ def zones():
     if dashboard:
         config = current_app.config
         dash_filters_list = Zone.get_dashboard_filters_list(config, dashboard)
-        zones = Zone.query.filter(*dash_filters_list).all()
+        zones = Zone.query.filter(*dash_filters_list).all_dict_out()
     else:
-        zones = Zone.query.filter().all()
-    zones = [x.dict_out for x in zones]
-    return jsonify({'zones': zones, 'timestamp': time()})
+        zones = Zone.query.filter().all_dict_out()
+    return jsonify({'zones': zones})
 
 
 @api.route('/zones/<zone_name>')
 def zone(zone_name):
-    zone = Zone.query.filter(Zone.name == zone_name).first()
-    return jsonify({'zone': zone._dict_out(), 'timestamp': time()})
+    zone = Zone.query.filter(Zone.name == zone_name).first_or_404()
+    return jsonify({'zone': zone.dict_out})
 
 
 @api.route('/events')
@@ -88,8 +86,21 @@ def events():
         events_query = Event.query.filter(*dash_filters_list)
     else:
         events_query = Event.query
-    events = events_query.filter(*filters_list).all_extra_as_dict()
-    return jsonify({'events': events, 'timestamp': time()})
+    events = events_query.filter(*filters_list).all_dict_out()
+    return jsonify({'events': events})
+
+
+@api.route('/events/<zone>/<client>/<check>')
+def event(zone, client, check):
+    extra = request.args.get('extra')
+    events = Event.query.filter(Event.zone_name == zone,
+                                Event.client_name == client,
+                                Event.check_name == check)
+    if extra == 'true':
+        events = events.all_dict_extra_out()
+    else:
+        events = events.all_dict_out()
+    return jsonify({'events': events})
 
 
 @api.route('/checks')
@@ -107,7 +118,7 @@ def checks():
     else:
         checks_query = Check.query
     checks = checks_query.filter(*filters_list).all_extra_as_dict()
-    return jsonify({'checks': checks, 'timestamp': time()})
+    return jsonify({'checks': checks})
 
 
 @api.route('/clients')
@@ -125,7 +136,7 @@ def clients():
     else:
         clients_query = Client.query
     clients = clients_query.filter(*filters_list).all_extra_as_dict()
-    return jsonify({'clients': clients, 'timestamp': time()})
+    return jsonify({'clients': clients})
 
 
 @api.route('/clients/<zone>/<client>')
@@ -134,7 +145,7 @@ def client(zone, client):
                (client, Client.name))
     filters_list = get_filters_list(filters)
     clients = Client.query.filter(*filters_list).all_extra_as_dict()
-    return jsonify({'clients': clients, 'timestamp': time()})
+    return jsonify({'clients': clients})
 
 
 @api.route('/clients/<zone>/<client>/events')
@@ -143,7 +154,7 @@ def client_events(zone, client):
                (client, Event.client_name))
     filters_list = get_filters_list(filters)
     events = Event.query.filter(*filters_list).all_extra_as_dict()
-    return jsonify({'events': events, 'timestamp': time()})
+    return jsonify({'events': events})
 
 
 @api.route('/clients/<zone>/<client>/events/<check>')
@@ -153,7 +164,7 @@ def client_events_check(zone, client, check):
                (check, Event.check_name))
     filters_list = get_filters_list(filters)
     events = Event.query.filter(*filters_list).all_extra_as_dict()
-    response = jsonify({'events': events, 'timestamp': time()})
+    response = jsonify({'events': events})
     if not events:
         response.status_code = 404
     return response
@@ -165,7 +176,7 @@ def client_results(zone, client):
                (client, Result.client_name))
     filters_list = get_filters_list(filters)
     results = Result.query.filter(*filters_list).all_extra_as_dict()
-    return jsonify({'results': results, 'timestamp': time()})
+    return jsonify({'results': results})
 
 
 @api.route('/clients/<zone>/<client>/results/<check>')
@@ -175,7 +186,7 @@ def client_results_check(zone, client, check):
                (check, Result.check_name))
     filters_list = get_filters_list(filters)
     results = Result.query.filter(*filters_list).all_extra_as_dict()
-    return jsonify({'results': results, 'timestamp': time()})
+    return jsonify({'results': results})
 
 
 @api.route('/clients/<zone>/<client>/stashes')
@@ -184,7 +195,7 @@ def client_stashes(zone, client):
                (client, Stash.client_name))
     filters_list = get_filters_list(filters)
     stashes = Stash.query.filter(*filters_list).all_extra_as_dict()
-    return jsonify({'stashes': stashes, 'timestamp': time()})
+    return jsonify({'stashes': stashes})
 
 
 @api.route('/results')
@@ -206,7 +217,7 @@ def results():
     else:
         results_query = Result.query
     results = results_query.filter(*filters_list).all_extra_as_dict()
-    return jsonify({'results': results, 'timestamp': time()})
+    return jsonify({'results': results})
 
 
 @api.route('/stashes')
@@ -220,5 +231,5 @@ def stashes():
                (checks, Stash.check_name),
                (flavor, Stash.flavor))
     filters_list = get_filters_list(filters)
-    stashes = Stash.query.filter(*filters_list).all_extra_as_dict()
-    return jsonify({'stashes': stashes, 'timestamp': time()})
+    stashes = Stash.query.filter(*filters_list).all_dict_out()
+    return jsonify({'stashes': stashes})

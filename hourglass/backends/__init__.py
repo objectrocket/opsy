@@ -1,5 +1,4 @@
 from flask.ext.sqlalchemy import SQLAlchemy, BaseQuery
-from flask import json
 
 
 db = SQLAlchemy()  # pylint: disable=invalid-name
@@ -7,11 +6,11 @@ db = SQLAlchemy()  # pylint: disable=invalid-name
 
 class ExtraOut(BaseQuery):
 
-    def all_extra_as_dict(self):
-        return [json.loads(x.extra) for x in self]
+    def all_dict_out(self):
+        return [x.dict_out for x in self]
 
-    def all_extra_as_json(self):
-        return json.dumps(self.all_extra_as_dict())
+    def all_dict_extra_out(self):
+        return [x.dict_extra_out for x in self]
 
 
 class BaseMetadata(db.Model):
@@ -54,6 +53,12 @@ class CacheBase(object):  # pylint: disable=too-few-public-methods
         'polymorphic_on': backend,
         'polymorphic_identity': 'base'
     }
+
+    @property
+    def dict_extra_out(self):
+        event_dict = self.dict_out
+        event_dict['extra'] = self.extra
+        return event_dict
 
     @classmethod
     def last_poll_status(cls, zone_name):

@@ -3,6 +3,8 @@ import asyncio
 from flask import json
 from ..cache import *
 from . import SensuBase
+from datetime import datetime
+from time import time
 
 
 class SensuClient(SensuBase, Client):
@@ -43,12 +45,13 @@ class SensuEvent(SensuBase, Event):
 
     def __init__(self, zone_name, extra):
         self.zone_name = zone_name
-        self.client_name = extra['client']['name']
-        self.check_name = extra['check']['name']
-        self.check_occurrences = extra['check'].get('occurrences')
-        self.event_occurrences = extra['occurrences']
-        self.status = extra['check']['status']
-        extra['zone_name'] = zone_name
+        self.client_name = extra['client'].get('name')
+        self.check_name = extra['check'].get('name')
+        self.occurrences_threshold = extra['check'].get('occurrences')
+        self.occurrences = extra['occurrences']
+        self.status = extra['check'].get('status')
+        self.command = extra['check'].get('command')
+        self.output = extra['check'].get('output')
         self.extra = json.dumps(extra)
 
 
@@ -57,27 +60,22 @@ class SensuStash(SensuBase, Stash):
 
     def __init__(self, zone_name, extra):
         self.zone_name = zone_name
-        self.path = extra['path']
+        path_list = extra['path'].split('/')
+        self.flavor = path_list[0]
+        self.client_name = path_list[1]
         try:
-            path_list = self.path.split('/')
-            self.flavor = path_list[0]
-            self.client_name = path_list[1]
-            try:
-                self.check_name = path_list[2]
-            except IndexError:
-                self.check_name = None
-            self.source = extra['content']['source']
-        except:
-            self.flavor = None
-            self.client_name = None
+            self.check_name = path_list[2]
+        except IndexError:
             self.check_name = None
-            self.source = None
-            self.created_at = None
+        self.comment = json.dumps(extra['content'])
+        if extra['content'].get('timestamp'):
+            self.created_at = datetime.fromtimestamp(
+                int(extra['content']['timestamp']))
+        if extra['expire'] == -1:
             self.expire_at = None
-        extra['zone_name'] = self.zone_name
-        extra['check_name'] = self.check_name
-        extra['client_name'] = self.client_name
-        extra['flavor'] = self.flavor
+        else:
+            self.expire_at = datetime.fromtimestamp(
+                int(time() + int(extra['expire'])))
         self.extra = json.dumps(extra)
 
 

@@ -1,5 +1,4 @@
 import asyncio
-from flask import json
 from hourglass.utils import get_filters_list
 from . import db, ExtraOut, CacheBase
 
@@ -33,10 +32,15 @@ class Client(CacheBase, db.Model):
     )
 
     def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
-        self.name = extra['name']
-        extra['zone_name'] = zone_name
-        self.extra = json.dumps(extra)
+        raise NotImplemented
+
+    @property
+    def status(self):
+        return self._status
+
+    @property
+    def silenced(self):
+        return self._status
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -77,10 +81,7 @@ class Check(CacheBase, db.Model):
     )
 
     def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
-        self.name = extra['name']
-        extra['zone_name'] = zone_name
-        self.extra = json.dumps(extra)
+        raise NotImplemented
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -114,13 +115,7 @@ class Result(CacheBase, db.Model):
     )
 
     def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
-        self.extra = extra
-        self.client_name = extra['client']
-        self.check_name = extra['check']['name']
-        self.status = extra['check']['status']
-        extra['zone_name'] = zone_name
-        self.extra = json.dumps(extra)
+        raise NotImplemented
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -149,9 +144,11 @@ class Event(CacheBase, db.Model):
     zone_name = db.Column(db.String(64), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
     check_name = db.Column(db.String(256), primary_key=True)
-    check_occurrences = db.Column(db.BigInteger)
-    event_occurrences = db.Column(db.BigInteger)
+    occurrences_threshold = db.Column(db.BigInteger)
+    occurrences = db.Column(db.BigInteger)
     status = db.Column(db.Integer)
+    command = db.Column(db.Text)
+    output = db.Column(db.Text)
 
     stash = db.relationship('Stash', backref='events', lazy='dynamic',
                             query_class=ExtraOut,
@@ -165,14 +162,7 @@ class Event(CacheBase, db.Model):
     )
 
     def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
-        self.client_name = extra['client']['name']
-        self.check_name = extra['check']['name']
-        self.check_occurrences = extra['check'].get('occurrences')
-        self.event_occurrences = extra['occurrences']
-        self.status = extra['check']['status']
-        extra['zone_name'] = zone_name
-        self.extra = json.dumps(extra)
+        raise NotImplemented
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -188,6 +178,20 @@ class Event(CacheBase, db.Model):
                    (statuses, cls.status))
         return get_filters_list(filters)
 
+    @property
+    def dict_out(self):
+        return {
+            'backend': self.backend,
+            'zone_name': self.zone_name,
+            'client_name': self.client_name,
+            'check_name': self.check_name,
+            'occurrences_threshold': self.occurrences_threshold,
+            'occurrences': self.occurrences,
+            'status': self.status,
+            'command': self.command,
+            'output': self.output,
+        }
+
     def __repr__(self):
         return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
                                   self.client_name, self.check_name)
@@ -202,6 +206,9 @@ class Stash(CacheBase, db.Model):
     client_name = db.Column(db.String(256), primary_key=True)
     check_name = db.Column(db.String(256), nullable=True, primary_key=True,
                            default="")
+    created_at = db.Column(db.DateTime)
+    expire_at = db.Column(db.DateTime)
+    comment = db.Column(db.Text)
     flavor = db.Column(db.String(64))
 
     __table_args__ = (
@@ -209,29 +216,20 @@ class Stash(CacheBase, db.Model):
     )
 
     def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
-        self.path = extra['path']
-        try:
-            path_list = self.path.split('/')
-            self.flavor = path_list[0]
-            self.client_name = path_list[1]
-            try:
-                self.check_name = path_list[2]
-            except IndexError:
-                self.check_name = None
-            self.source = extra['content']['source']
-        except:
-            self.flavor = None
-            self.client_name = None
-            self.check_name = None
-            self.source = None
-            self.created_at = None
-            self.expire_at = None
-        extra['zone_name'] = self.zone_name
-        extra['check_name'] = self.check_name
-        extra['client_name'] = self.client_name
-        extra['flavor'] = self.flavor
-        self.extra = json.dumps(extra)
+        raise NotImplemented
+
+    @property
+    def dict_out(self):
+        return {
+            'zone_name': self.zone_name,
+            'backend': self.backend,
+            'client_name': self.client_name,
+            'check_name': self.check_name,
+            'created_at': self.created_at,
+            'expire_at': self.expire_at,
+            'comment': self.comment,
+            'flavor': self.flavor,
+        }
 
     def __repr__(self):
         return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -242,12 +240,17 @@ class Zone(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
     __tablename__ = 'zones'
+
     models = [Check, Client, Event, Stash, Result]
 
     name = db.Column(db.String(64), primary_key=True)
     host = db.Column(db.String(64))
+    path = db.Column(db.String(64))
+    protocol = db.Column(db.String(64))
     port = db.Column(db.Integer())
     timeout = db.Column(db.Integer())
+    username = db.Column(db.String(64))
+    password = db.Column(db.String(64))
 
     clients = db.relationship('Client', backref='zone', lazy='dynamic',
                               query_class=ExtraOut)
@@ -260,11 +263,16 @@ class Zone(CacheBase, db.Model):
     stashes = db.relationship('Stash', backref='zone', lazy='dynamic',
                               query_class=ExtraOut)
 
-    def __init__(self, name, host, port, timeout):
+    def __init__(self, name, host=None, path=None, protocol=None, port=None,
+                 timeout=None, username=None, password=None):
         self.name = name
         self.host = host
+        self.path = path
+        self.protocol = protocol
         self.port = port
         self.timeout = timeout
+        self.username = username
+        self.password = password
 
     def query_api(self, uri):
         raise NotImplementedError
@@ -311,6 +319,7 @@ class Zone(CacheBase, db.Model):
         overall_health, pollers = self.pollers_health
         return {
             'name': self.name,
+            'backend': self.backend,
             'status': overall_health,
             'pollers': pollers
         }
