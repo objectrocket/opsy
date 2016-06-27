@@ -1,4 +1,0 @@
-recursive-include hourglass/views *.html
-recursive-include hourglass/views *.js
-recursive-include hourglass/views *.css
-recursive-include hourglass/views fonts/*
