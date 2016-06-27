@@ -43,21 +43,20 @@ def zones():
     if dashboard:
         config = current_app.config
         dash_filters_list = Zone.get_dashboard_filters_list(config, dashboard)
-        zones = Zone.query.filter(*dash_filters_list).all_dict_out()
+        zones = Zone.query.filter(*dash_filters_list).all_dict_out_or_404()
     else:
-        zones = Zone.query.filter().all_dict_out()
+        zones = Zone.query.filter().all_dict_out_or_404()
     return jsonify({'zones': zones})
 
 
 @api.route('/zones/<zone_name>')
 def zone(zone_name):
-    zone = Zone.query.filter(Zone.name == zone_name).first_or_404()
-    return jsonify({'zone': zone.dict_out})
+    zone = Zone.query.filter(Zone.name == zone_name).all_dict_out_or_404()
+    return jsonify({'zone': zone})
 
 
 @api.route('/events')
 def events():
-    # TOO DO - change args from checkname/clientname to check_name/client_name
     dashboard = request.args.get('dashboard')
     hide_silenced = request.args.get('hide_silenced') or ''
     zones = request.args.get('zone')
@@ -97,9 +96,9 @@ def event(zone, client, check):
                                 Event.client_name == client,
                                 Event.check_name == check)
     if extra == 'true':
-        events = events.all_dict_extra_out()
+        events = events.all_dict_extra_out_or_404()
     else:
-        events = events.all_dict_out()
+        events = events.all_dict_out_or_404()
     return jsonify({'events': events})
 
 
@@ -117,7 +116,7 @@ def checks():
         checks_query = Check.query.filter(*dash_filters_list)
     else:
         checks_query = Check.query
-    checks = checks_query.filter(*filters_list).all_extra_as_dict()
+    checks = checks_query.filter(*filters_list).all_dict_out()
     return jsonify({'checks': checks})
 
 
@@ -135,7 +134,7 @@ def clients():
         clients_query = Client.query.filter(*dash_filters_list)
     else:
         clients_query = Client.query
-    clients = clients_query.filter(*filters_list).all_extra_as_dict()
+    clients = clients_query.filter(*filters_list).all_dict_out()
     return jsonify({'clients': clients})
 
 
@@ -144,16 +143,16 @@ def client(zone, client):
     filters = ((zone, Client.zone_name),
                (client, Client.name))
     filters_list = get_filters_list(filters)
-    clients = Client.query.filter(*filters_list).all_extra_as_dict()
+    clients = Client.query.filter(*filters_list).all_dict_out_or_404()
     return jsonify({'clients': clients})
 
 
 @api.route('/clients/<zone>/<client>/events')
 def client_events(zone, client):
-    filters = ((zone, Event.zone_name),
-               (client, Event.client_name))
+    filters = ((zone, Client.zone_name),
+               (client, Client.client_name))
     filters_list = get_filters_list(filters)
-    events = Event.query.filter(*filters_list).all_extra_as_dict()
+    events = Event.query.filter(*filters_list).all_dict_out_or_404()
     return jsonify({'events': events})
 
 
@@ -163,11 +162,8 @@ def client_events_check(zone, client, check):
                (client, Event.client_name),
                (check, Event.check_name))
     filters_list = get_filters_list(filters)
-    events = Event.query.filter(*filters_list).all_extra_as_dict()
-    response = jsonify({'events': events})
-    if not events:
-        response.status_code = 404
-    return response
+    events = Event.query.filter(*filters_list).all_dict_out_or_404()
+    return jsonify({'events': events})
 
 
 @api.route('/clients/<zone>/<client>/results')
@@ -175,7 +171,7 @@ def client_results(zone, client):
     filters = ((zone, Result.zone_name),
                (client, Result.client_name))
     filters_list = get_filters_list(filters)
-    results = Result.query.filter(*filters_list).all_extra_as_dict()
+    results = Result.query.filter(*filters_list).all_dict_out_or_404()
     return jsonify({'results': results})
 
 
@@ -185,7 +181,7 @@ def client_results_check(zone, client, check):
                (client, Result.client_name),
                (check, Result.check_name))
     filters_list = get_filters_list(filters)
-    results = Result.query.filter(*filters_list).all_extra_as_dict()
+    results = Result.query.filter(*filters_list).all_dict_out_or_404()
     return jsonify({'results': results})
 
 
@@ -194,7 +190,7 @@ def client_stashes(zone, client):
     filters = ((zone, Stash.zone_name),
                (client, Stash.client_name))
     filters_list = get_filters_list(filters)
-    stashes = Stash.query.filter(*filters_list).all_extra_as_dict()
+    stashes = Stash.query.filter(*filters_list).all_dict_out_or_404()
     return jsonify({'stashes': stashes})
 
 
@@ -216,7 +212,7 @@ def results():
         results_query = Result.query.filter(*dash_filters_list)
     else:
         results_query = Result.query
-    results = results_query.filter(*filters_list).all_extra_as_dict()
+    results = results_query.filter(*filters_list).all_dict_out()
     return jsonify({'results': results})
 
 

@@ -1,4 +1,5 @@
 from flask.ext.sqlalchemy import SQLAlchemy, BaseQuery
+from flask import abort
 
 
 db = SQLAlchemy()  # pylint: disable=invalid-name
@@ -11,6 +12,24 @@ class ExtraOut(BaseQuery):
 
     def all_dict_extra_out(self):
         return [x.dict_extra_out for x in self]
+
+    def all_dict_out_or_404(self):
+        dict_list = self.all_dict_out()
+        if not dict_list:
+            abort(404)
+        return dict_list
+
+    def all_dict_extra_out_or_404(self):
+        dict_list = self.all_dict_extra_out()
+        if not dict_list:
+            abort(404)
+        return dict_list
+
+
+class Silence(ExtraOut):
+
+    def blah(self):
+        pass
 
 
 class BaseMetadata(db.Model):

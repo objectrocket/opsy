@@ -12,20 +12,20 @@ class Client(CacheBase, db.Model):
     name = db.Column(db.String(256), primary_key=True)
 
     events = db.relationship('Event', backref='client', lazy='dynamic',
-                             query_class=ExtraOut,
-                             primaryjoin="and_("
+                             query_class=ExtraOut, primaryjoin="and_("
                              "Client.zone_name==foreign(Event.zone_name), "
                              "Client.name==foreign(Event.client_name))")
+
     results = db.relationship('Result', backref='client', lazy='dynamic',
-                              query_class=ExtraOut,
-                              primaryjoin="and_("
+                              query_class=ExtraOut, primaryjoin="and_("
                               "Client.zone_name==foreign(Result.zone_name), "
                               "Client.name==foreign(Result.client_name))")
-    stash = db.relationship('Stash', backref='clients', lazy='dynamic',
-                            query_class=ExtraOut,
-                            primaryjoin="and_("
-                            "Client.zone_name==foreign(Stash.zone_name), "
-                            "Client.name==foreign(Stash.client_name))")
+
+    silences = db.relationship('Stash', backref='client', lazy='dynamic',
+                               query_class=ExtraOut, primaryjoin="and_("
+                               "Client.zone_name == foreign(Stash.zone_name), "
+                               "Client.name == foreign(Stash.client_name), "
+                               "foreign(Stash.flavor) == 'silence')")
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
@@ -36,11 +36,21 @@ class Client(CacheBase, db.Model):
 
     @property
     def status(self):
-        return self._status
+        results = self.results.all()
+        if all([True if (x.status == 'ok') else False for x in results]):
+            return 'ok'
+        elif any([True if (x.status == 'critical') else False
+                  for x in results]):
+            return 'critical'
+        else:
+            return 'warning'
 
     @property
     def silenced(self):
-        return self._status
+        if self.silences.filter(Stash.check_name == '').first():
+            return True
+        else:
+            return False
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -51,6 +61,17 @@ class Client(CacheBase, db.Model):
         filters = ((zones, cls.zone_name),
                    (clients, cls.name))
         return get_filters_list(filters)
+
+    @property
+    def dict_out(self):
+        return {
+            'zone_name': self.zone_name,
+            'backend': self.backend,
+            'name': self.name,
+            'status': self.status,
+            'silenced': self.silenced,
+        }
+    # JOWETT LOOK AT THIS ^
 
     def __repr__(self):
         return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -106,12 +127,12 @@ class Result(CacheBase, db.Model):
     zone_name = db.Column(db.String(64), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
     check_name = db.Column(db.String(256), primary_key=True)
-    status = db.Column(db.Integer)
+    status = db.Column(db.String(256))
 
     __table_args__ = (
-        db.ForeignKeyConstraint(
-            ['zone_name'], ['zones.name']
-        ),
+        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+        db.CheckConstraint(status.in_(
+            ['ok', 'warning', 'critical', 'unknown']))
     )
 
     def __init__(self, zone_name, extra):
@@ -146,7 +167,7 @@ class Event(CacheBase, db.Model):
     check_name = db.Column(db.String(256), primary_key=True)
     occurrences_threshold = db.Column(db.BigInteger)
     occurrences = db.Column(db.BigInteger)
-    status = db.Column(db.Integer)
+    status = db.Column(db.String(256))
     command = db.Column(db.Text)
     output = db.Column(db.Text)
 
@@ -159,6 +180,8 @@ class Event(CacheBase, db.Model):
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+        db.CheckConstraint(status.in_(
+            ['ok', 'warning', 'critical', 'unknown']))
     )
 
     def __init__(self, zone_name, extra):
@@ -232,8 +255,9 @@ class Stash(CacheBase, db.Model):
         }
 
     def __repr__(self):
-        return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
-                               self.path)
+        return '<%s %s/%s/%s/%s>' % (self.__class__.__name__, self.zone_name,
+                                     self.flavor, self.client_name,
+                                     self.check_name)
 
 
 class Zone(CacheBase, db.Model):

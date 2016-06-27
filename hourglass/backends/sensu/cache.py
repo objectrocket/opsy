@@ -35,7 +35,11 @@ class SensuResult(SensuBase, Result):
         self.extra = extra
         self.client_name = extra['client']
         self.check_name = extra['check']['name']
-        self.status = extra['check']['status']
+        status_map = ['ok', 'warning', 'critical']
+        try:
+            self.status = status_map[extra['check'].get('status')]
+        except IndexError:
+            self.status = 'unknown'
         extra['zone_name'] = zone_name
         self.extra = json.dumps(extra)
 
@@ -49,7 +53,11 @@ class SensuEvent(SensuBase, Event):
         self.check_name = extra['check'].get('name')
         self.occurrences_threshold = extra['check'].get('occurrences')
         self.occurrences = extra['occurrences']
-        self.status = extra['check'].get('status')
+        status_map = ['ok', 'warning', 'critical']
+        try:
+            self.status = status_map[extra['check'].get('status')]
+        except IndexError:
+            self.status = 'unknown'
         self.command = extra['check'].get('command')
         self.output = extra['check'].get('output')
         self.extra = json.dumps(extra)
