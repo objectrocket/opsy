@@ -1,11 +1,29 @@
 import asyncio
-from flask import json
 from hourglass.utils import get_filters_list
 from . import db, ExtraOut, CacheBase
 
 
 class Client(CacheBase, db.Model):
 
+    class ClientQuery(ExtraOut):
+
+        def all_dict_out(self):
+            clients_silences = self.outerjoin(Stash, db.and_(
+                Client.zone_name == Stash.zone_name,
+                Client.name == Stash.client_name,
+                Stash.flavor == 'silence',
+                Stash.check_name == '')).add_entity(Stash).all()
+            clients_json = []
+            for client, silence in clients_silences:
+                client_json = client.dict_out
+                if silence:
+                    client_json['silenced'] = True
+                else:
+                    client_json['silenced'] = False
+                clients_json.append(client_json)
+            return clients_json
+
+    query_class = ClientQuery
     __bind_key__ = 'cache'
     __tablename__ = 'clients'
 
@@ -13,27 +31,45 @@ class Client(CacheBase, db.Model):
     name = db.Column(db.String(256), primary_key=True)
 
     events = db.relationship('Event', backref='client', lazy='dynamic',
-                             query_class=ExtraOut,
-                             primaryjoin="and_(Client.zone_name==foreign(Event.zone_name), "
+                             query_class=ExtraOut, primaryjoin="and_("
+                             "Client.zone_name==foreign(Event.zone_name), "
                              "Client.name==foreign(Event.client_name))")
+
     results = db.relationship('Result', backref='client', lazy='dynamic',
-                              query_class=ExtraOut,
-                              primaryjoin="and_(Client.zone_name==foreign(Result.zone_name), "
+                              query_class=ExtraOut, primaryjoin="and_("
+                              "Client.zone_name==foreign(Result.zone_name), "
                               "Client.name==foreign(Result.client_name))")
-    stash = db.relationship('Stash', backref='clients', lazy='dynamic',
-                            query_class=ExtraOut,
-                            primaryjoin="and_(Client.zone_name==foreign(Stash.zone_name), "
-                            "Client.name==foreign(Stash.client_name))")
+
+    silences = db.relationship('Stash', backref='client', lazy='dynamic',
+                               query_class=ExtraOut, primaryjoin="and_("
+                               "Client.zone_name == foreign(Stash.zone_name), "
+                               "Client.name == foreign(Stash.client_name), "
+                               "foreign(Stash.flavor) == 'silence')")
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
     )
 
     def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
-        self.name = extra['name']
-        extra['zone_name'] = zone_name
-        self.extra = json.dumps(extra)
+        raise NotImplemented
+
+    @property
+    def status(self):
+        results = self.results.all()
+        if all([True if (x.status == 'ok') else False for x in results]):
+            return 'ok'
+        elif any([True if (x.status == 'critical') else False
+                  for x in results]):
+            return 'critical'
+        else:
+            return 'warning'
+
+    @property
+    def silenced(self):
+        if self.silences.filter(Stash.check_name == '').first():
+            return True
+        else:
+            return False
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -45,8 +81,17 @@ class Client(CacheBase, db.Model):
                    (clients, cls.name))
         return get_filters_list(filters)
 
+    @property
+    def dict_out(self):
+        return {
+            'zone_name': self.zone_name,
+            'backend': self.backend,
+            'name': self.name
+        }
+
     def __repr__(self):
-        return '<Client %s/%s>' % (self.zone_name, self.name)
+        return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
+                               self.name)
 
 
 class Check(CacheBase, db.Model):
@@ -56,14 +101,19 @@ class Check(CacheBase, db.Model):
 
     zone_name = db.Column(db.String(64), primary_key=True)
     name = db.Column(db.String(256), primary_key=True)
+    occurrences_threshold = db.Column(db.BigInteger)
+    interval = db.Column(db.BigInteger)
+    command = db.Column(db.Text)
 
     results = db.relationship('Result', backref='check', lazy='dynamic',
                               query_class=ExtraOut,
-                              primaryjoin="and_(Check.zone_name==foreign(Result.zone_name), "
+                              primaryjoin="and_("
+                              "Check.zone_name==foreign(Result.zone_name), "
                               "Check.name==foreign(Result.check_name))")
     events = db.relationship('Event', backref='check', lazy='dynamic',
                              query_class=ExtraOut,
-                             primaryjoin="and_(Check.zone_name==foreign(Event.zone_name), "
+                             primaryjoin="and_("
+                             "Check.zone_name==foreign(Event.zone_name), "
                              "Check.name==foreign(Event.check_name))")
 
     __table_args__ = (
@@ -71,10 +121,7 @@ class Check(CacheBase, db.Model):
     )
 
     def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
-        self.name = extra['name']
-        extra['zone_name'] = zone_name
-        self.extra = json.dumps(extra)
+        raise NotImplemented
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -86,34 +133,63 @@ class Check(CacheBase, db.Model):
                    (checks, cls.name))
         return get_filters_list(filters)
 
+    @property
+    def dict_out(self):
+        return {
+            'zone_name': self.zone_name,
+            'backend': self.backend,
+            'name': self.name,
+            'occurrences_threshold': self.occurrences_threshold,
+            'interval': self.interval,
+            'command': self.command
+        }
+
     def __repr__(self):
-        return '<Check %s/%s>' % (self.zone_name, self.name)
+        return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
+                               self.name)
 
 
 class Result(CacheBase, db.Model):
 
+    class ResultQuery(ExtraOut):
+
+        def all_dict_out(self):
+            clients_silences = self.outerjoin(Stash, db.and_(
+                Result.zone_name == Stash.zone_name,
+                Result.client_name == Stash.client_name,
+                Stash.flavor == 'silence',
+                Result.check_name == Stash.check_name)).add_entity(Stash).all()
+            events_json = []
+            for event, silence in clients_silences:
+                event_json = event.dict_out
+                if silence:
+                    event_json['silenced'] = True
+                else:
+                    event_json['silenced'] = False
+                events_json.append(event_json)
+            return events_json
+
+    query_class = ResultQuery
     __bind_key__ = 'cache'
     __tablename__ = 'results'
 
     zone_name = db.Column(db.String(64), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
     check_name = db.Column(db.String(256), primary_key=True)
-    status = db.Column(db.Integer)
+    occurrences_threshold = db.Column(db.BigInteger)
+    status = db.Column(db.String(256))
+    interval = db.Column(db.BigInteger)
+    command = db.Column(db.Text)
+    output = db.Column(db.Text)
 
     __table_args__ = (
-        db.ForeignKeyConstraint(
-            ['zone_name'], ['zones.name']
-        ),
+        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+        db.CheckConstraint(status.in_(
+            ['ok', 'warning', 'critical', 'unknown']))
     )
 
     def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
-        self.extra = extra
-        self.client_name = extra['client']
-        self.check_name = extra['check']['name']
-        self.status = extra['check']['status']
-        extra['zone_name'] = zone_name
-        self.extra = json.dumps(extra)
+        raise NotImplemented
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -129,42 +205,75 @@ class Result(CacheBase, db.Model):
                    (statuses, cls.status))
         return get_filters_list(filters)
 
+    @property
+    def dict_out(self):
+        return {
+            'zone_name': self.zone_name,
+            'backend': self.backend,
+            'client_name': self.client_name,
+            'check_name': self.check_name,
+            'occurrences_threshold': self.occurrences_threshold,
+            'status': self.status,
+            'interval': self.interval,
+            'command': self.command,
+            'output': self.output
+        }
+
     def __repr__(self):
-        return '<Result %s/%s/%s>' % (self.zone_name, self.client_name,
-                                      self.check_name)
+        return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
+                                  self.client_name, self.check_name)
 
 
 class Event(CacheBase, db.Model):
 
+    class EventQuery(ExtraOut):
+
+        def all_dict_out(self):
+            clients_silences = self.outerjoin(Stash, db.and_(
+                Event.zone_name == Stash.zone_name,
+                Event.client_name == Stash.client_name,
+                Stash.flavor == 'silence',
+                Event.check_name.in_(
+                    [Stash.check_name, '']))).add_entity(Stash).all()
+            events_json = []
+            for event, silence in clients_silences:
+                event_json = event.dict_out
+                if silence:
+                    event_json['silenced'] = True
+                else:
+                    event_json['silenced'] = False
+                events_json.append(event_json)
+            return events_json
+
+    query_class = EventQuery
     __bind_key__ = 'cache'
     __tablename__ = 'events'
 
     zone_name = db.Column(db.String(64), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
     check_name = db.Column(db.String(256), primary_key=True)
-    check_occurrences = db.Column(db.BigInteger)
-    event_occurrences = db.Column(db.BigInteger)
-    status = db.Column(db.Integer)
+    occurrences_threshold = db.Column(db.BigInteger)
+    occurrences = db.Column(db.BigInteger)
+    status = db.Column(db.String(256))
+    command = db.Column(db.Text)
+    interval = db.Column(db.BigInteger)
+    output = db.Column(db.Text)
 
     stash = db.relationship('Stash', backref='events', lazy='dynamic',
                             query_class=ExtraOut,
-                            primaryjoin="and_(Event.zone_name==foreign(Stash.zone_name),"
+                            primaryjoin="and_("
+                            "Event.zone_name==foreign(Stash.zone_name),"
                             "Event.client_name==foreign(Stash.client_name), "
                             "Event.check_name==foreign(Stash.check_name))")
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+        db.CheckConstraint(status.in_(
+            ['ok', 'warning', 'critical', 'unknown']))
     )
 
     def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
-        self.client_name = extra['client']['name']
-        self.check_name = extra['check']['name']
-        self.check_occurrences = extra['check'].get('occurrences')
-        self.event_occurrences = extra['occurrences']
-        self.status = extra['check']['status']
-        extra['zone_name'] = zone_name
-        self.extra = json.dumps(extra)
+        raise NotImplemented
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -180,9 +289,24 @@ class Event(CacheBase, db.Model):
                    (statuses, cls.status))
         return get_filters_list(filters)
 
+    @property
+    def dict_out(self):
+        return {
+            'backend': self.backend,
+            'zone_name': self.zone_name,
+            'client_name': self.client_name,
+            'check_name': self.check_name,
+            'occurrences_threshold': self.occurrences_threshold,
+            'occurrences': self.occurrences,
+            'status': self.status,
+            'interval': self.interval,
+            'command': self.command,
+            'output': self.output,
+        }
+
     def __repr__(self):
-        return '<Event %s/%s/%s>' % (self.zone_name, self.client_name,
-                                     self.check_name)
+        return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
+                                  self.client_name, self.check_name)
 
 
 class Stash(CacheBase, db.Model):
@@ -192,7 +316,11 @@ class Stash(CacheBase, db.Model):
 
     zone_name = db.Column(db.String(64), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
-    check_name = db.Column(db.String(256), nullable=True, primary_key=True, default="")
+    check_name = db.Column(db.String(256), nullable=True, primary_key=True,
+                           default="")
+    created_at = db.Column(db.DateTime)
+    expire_at = db.Column(db.DateTime)
+    comment = db.Column(db.Text)
     flavor = db.Column(db.String(64))
 
     __table_args__ = (
@@ -200,55 +328,25 @@ class Stash(CacheBase, db.Model):
     )
 
     def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
-        self.path = extra['path']
-        try:
-            path_list = self.path.split('/')
-            self.flavor = path_list[0]
-            self.client_name = path_list[1]
-            try:
-                self.check_name = path_list[2]
-            except IndexError:
-                self.check_name = None
-            self.source = extra['content']['source']
-        except:
-            self.flavor = None
-            self.client_name = None
-            self.check_name = None
-            self.source = None
-            self.created_at = None
-            self.expire_at = None
-        extra['zone_name'] = self.zone_name
-        extra['check_name'] = self.check_name
-        extra['client_name'] = self.client_name
-        extra['flavor'] = self.flavor
-        self.extra = json.dumps(extra)
+        raise NotImplemented
+
+    @property
+    def dict_out(self):
+        return {
+            'zone_name': self.zone_name,
+            'backend': self.backend,
+            'client_name': self.client_name,
+            'check_name': self.check_name,
+            'created_at': self.created_at,
+            'expire_at': self.expire_at,
+            'comment': self.comment,
+            'flavor': self.flavor,
+        }
 
     def __repr__(self):
-        return '<Stash %s/%s>' % (self.zone_name, self.path)
-
-
-class ZoneMetadata(CacheBase, db.Model):
-
-    __bind_key__ = 'cache'
-    __tablename__ = 'zone_metadata'
-
-    zone_name = db.Column(db.String(64), primary_key=True)
-    key = db.Column(db.String(64))
-    value = db.Column(db.String(64))
-
-    __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
-    )
-
-    def __init__(self, zone_name, key, value):
-        self.zone_name = zone_name
-        self.key = key
-        self.value = value
-
-    def __repr__(self):
-        return '<ZoneMetadata %s: %s - %s>' % (self.zone_name, self.key,
-                                               self.value)
+        return '<%s %s/%s/%s/%s>' % (self.__class__.__name__, self.zone_name,
+                                     self.flavor, self.client_name,
+                                     self.check_name)
 
 
 class Zone(CacheBase, db.Model):
@@ -260,11 +358,13 @@ class Zone(CacheBase, db.Model):
 
     name = db.Column(db.String(64), primary_key=True)
     host = db.Column(db.String(64))
+    path = db.Column(db.String(64))
+    protocol = db.Column(db.String(64))
     port = db.Column(db.Integer())
     timeout = db.Column(db.Integer())
+    username = db.Column(db.String(64))
+    password = db.Column(db.String(64))
 
-    meta_data = db.relationship('ZoneMetadata', backref='zone', lazy='dynamic',
-                                query_class=ExtraOut)
     clients = db.relationship('Client', backref='zone', lazy='dynamic',
                               query_class=ExtraOut)
     checks = db.relationship('Check', backref='zone', lazy='dynamic',
@@ -276,11 +376,16 @@ class Zone(CacheBase, db.Model):
     stashes = db.relationship('Stash', backref='zone', lazy='dynamic',
                               query_class=ExtraOut)
 
-    def __init__(self, name, host, port, timeout):
+    def __init__(self, name, host=None, path=None, protocol=None, port=None,
+                 timeout=None, username=None, password=None):
         self.name = name
         self.host = host
+        self.path = path
+        self.protocol = protocol
         self.port = port
         self.timeout = timeout
+        self.username = username
+        self.password = password
 
     def query_api(self, uri):
         raise NotImplementedError
@@ -303,5 +408,34 @@ class Zone(CacheBase, db.Model):
         filters = ((zones, cls.name),)
         return get_filters_list(filters)
 
+    @property
+    def pollers_health(self):
+        pollers = []
+        overall_health = []
+        for model in self.models:
+            updated_at, status = model.last_poll_status(self.name)
+            pollers.append({'name': model.__tablename__,
+                            'updated_at': updated_at.isoformat(),
+                            'status': status})
+            overall_health.append(True) if status == 'ok' else \
+                overall_health.append(False)
+        if all(overall_health):
+            overall_health = 'ok'
+        elif any(overall_health):
+            overall_health = 'warning'
+        else:
+            overall_health = 'critical'
+        return overall_health, pollers
+
+    @property
+    def dict_out(self):
+        overall_health, pollers = self.pollers_health
+        return {
+            'name': self.name,
+            'backend': self.backend,
+            'status': overall_health,
+            'pollers': pollers
+        }
+
     def __repr__(self):
-        return '<Zone %s>' % self.name
+        return '<%s %s>' % (self.__class__.__name__, self.name)
