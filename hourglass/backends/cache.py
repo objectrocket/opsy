@@ -5,6 +5,25 @@ from . import db, ExtraOut, CacheBase
 
 class Client(CacheBase, db.Model):
 
+    class ClientQuery(ExtraOut):
+
+        def all_dict_out(self):
+            clients_silences = self.outerjoin(Stash, db.and_(
+                Client.zone_name == Stash.zone_name,
+                Client.name == Stash.client_name,
+                Stash.flavor == 'silence',
+                Stash.check_name == '')).add_entity(Stash).all()
+            clients_json = []
+            for client, silence in clients_silences:
+                client_json = client.dict_out
+                if silence:
+                    client_json['silenced'] = True
+                else:
+                    client_json['silenced'] = False
+                clients_json.append(client_json)
+            return clients_json
+
+    query_class = ClientQuery
     __bind_key__ = 'cache'
     __tablename__ = 'clients'
 
@@ -67,11 +86,8 @@ class Client(CacheBase, db.Model):
         return {
             'zone_name': self.zone_name,
             'backend': self.backend,
-            'name': self.name,
-            'status': self.status,
-            'silenced': self.silenced,
+            'name': self.name
         }
-    # JOWETT LOOK AT THIS ^
 
     def __repr__(self):
         return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -85,6 +101,9 @@ class Check(CacheBase, db.Model):
 
     zone_name = db.Column(db.String(64), primary_key=True)
     name = db.Column(db.String(256), primary_key=True)
+    occurrences_threshold = db.Column(db.BigInteger)
+    interval = db.Column(db.BigInteger)
+    command = db.Column(db.Text)
 
     results = db.relationship('Result', backref='check', lazy='dynamic',
                               query_class=ExtraOut,
@@ -114,6 +133,17 @@ class Check(CacheBase, db.Model):
                    (checks, cls.name))
         return get_filters_list(filters)
 
+    @property
+    def dict_out(self):
+        return {
+            'zone_name': self.zone_name,
+            'backend': self.backend,
+            'name': self.name,
+            'occurrences_threshold': self.occurrences_threshold,
+            'interval': self.interval,
+            'command': self.command
+        }
+
     def __repr__(self):
         return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
                                self.name)
@@ -121,13 +151,36 @@ class Check(CacheBase, db.Model):
 
 class Result(CacheBase, db.Model):
 
+    class ResultQuery(ExtraOut):
+
+        def all_dict_out(self):
+            clients_silences = self.outerjoin(Stash, db.and_(
+                Result.zone_name == Stash.zone_name,
+                Result.client_name == Stash.client_name,
+                Stash.flavor == 'silence',
+                Result.check_name == Stash.check_name)).add_entity(Stash).all()
+            events_json = []
+            for event, silence in clients_silences:
+                event_json = event.dict_out
+                if silence:
+                    event_json['silenced'] = True
+                else:
+                    event_json['silenced'] = False
+                events_json.append(event_json)
+            return events_json
+
+    query_class = ResultQuery
     __bind_key__ = 'cache'
     __tablename__ = 'results'
 
     zone_name = db.Column(db.String(64), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
     check_name = db.Column(db.String(256), primary_key=True)
+    occurrences_threshold = db.Column(db.BigInteger)
     status = db.Column(db.String(256))
+    interval = db.Column(db.BigInteger)
+    command = db.Column(db.Text)
+    output = db.Column(db.Text)
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
@@ -152,6 +205,20 @@ class Result(CacheBase, db.Model):
                    (statuses, cls.status))
         return get_filters_list(filters)
 
+    @property
+    def dict_out(self):
+        return {
+            'zone_name': self.zone_name,
+            'backend': self.backend,
+            'client_name': self.client_name,
+            'check_name': self.check_name,
+            'occurrences_threshold': self.occurrences_threshold,
+            'status': self.status,
+            'interval': self.interval,
+            'command': self.command,
+            'output': self.output
+        }
+
     def __repr__(self):
         return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
                                   self.client_name, self.check_name)
@@ -159,6 +226,26 @@ class Result(CacheBase, db.Model):
 
 class Event(CacheBase, db.Model):
 
+    class EventQuery(ExtraOut):
+
+        def all_dict_out(self):
+            clients_silences = self.outerjoin(Stash, db.and_(
+                Event.zone_name == Stash.zone_name,
+                Event.client_name == Stash.client_name,
+                Stash.flavor == 'silence',
+                Event.check_name.in_(
+                    [Stash.check_name, '']))).add_entity(Stash).all()
+            events_json = []
+            for event, silence in clients_silences:
+                event_json = event.dict_out
+                if silence:
+                    event_json['silenced'] = True
+                else:
+                    event_json['silenced'] = False
+                events_json.append(event_json)
+            return events_json
+
+    query_class = EventQuery
     __bind_key__ = 'cache'
     __tablename__ = 'events'
 
@@ -169,6 +256,7 @@ class Event(CacheBase, db.Model):
     occurrences = db.Column(db.BigInteger)
     status = db.Column(db.String(256))
     command = db.Column(db.Text)
+    interval = db.Column(db.BigInteger)
     output = db.Column(db.Text)
 
     stash = db.relationship('Stash', backref='events', lazy='dynamic',
@@ -211,6 +299,7 @@ class Event(CacheBase, db.Model):
             'occurrences_threshold': self.occurrences_threshold,
             'occurrences': self.occurrences,
             'status': self.status,
+            'interval': self.interval,
             'command': self.command,
             'output': self.output,
         }

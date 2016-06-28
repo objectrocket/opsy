@@ -92,9 +92,11 @@ def events():
 @api.route('/events/<zone>/<client>/<check>')
 def event(zone, client, check):
     extra = request.args.get('extra')
-    events = Event.query.filter(Event.zone_name == zone,
-                                Event.client_name == client,
-                                Event.check_name == check)
+    filters = ((zone, Event.zone_name),
+               (client, Event.client_name),
+               (check, Event.check_name))
+    filters_list = get_filters_list(filters)
+    events = Event.query.filter(*filters_list)
     if extra == 'true':
         events = events.all_dict_extra_out_or_404()
     else:
@@ -117,6 +119,20 @@ def checks():
     else:
         checks_query = Check.query
     checks = checks_query.filter(*filters_list).all_dict_out()
+    return jsonify({'checks': checks})
+
+
+@api.route('/checks/<zone>/<check>')
+def check(zone, check):
+    extra = request.args.get('extra')
+    filters = ((zone, Check.zone_name),
+               (check, Check.name))
+    filters_list = get_filters_list(filters)
+    checks = Check.query.filter(*filters_list)
+    if extra == 'true':
+        checks = checks.all_dict_extra_out_or_404()
+    else:
+        checks = checks.all_dict_out_or_404()
     return jsonify({'checks': checks})
 
 
@@ -149,8 +165,8 @@ def client(zone, client):
 
 @api.route('/clients/<zone>/<client>/events')
 def client_events(zone, client):
-    filters = ((zone, Client.zone_name),
-               (client, Client.client_name))
+    filters = ((zone, Event.zone_name),
+               (client, Event.client_name))
     filters_list = get_filters_list(filters)
     events = Event.query.filter(*filters_list).all_dict_out_or_404()
     return jsonify({'events': events})
@@ -192,28 +208,6 @@ def client_stashes(zone, client):
     filters_list = get_filters_list(filters)
     stashes = Stash.query.filter(*filters_list).all_dict_out_or_404()
     return jsonify({'stashes': stashes})
-
-
-@api.route('/results')
-def results():
-    dashboard = request.args.get('dashboard')
-    zones = request.args.get('zone')
-    checks = request.args.get('check')
-    clients = request.args.get('client')
-    statuses = request.args.get('status')
-    filters = ((zones, Result.zone_name),
-               (checks, Result.check_name),
-               (clients, Result.client_name),
-               (statuses, Result.status))
-    filters_list = get_filters_list(filters)
-    if dashboard:
-        config = current_app.config
-        dash_filters_list = Result.get_dashboard_filters_list(config, dashboard)
-        results_query = Result.query.filter(*dash_filters_list)
-    else:
-        results_query = Result.query
-    results = results_query.filter(*filters_list).all_dict_out()
-    return jsonify({'results': results})
 
 
 @api.route('/stashes')

@@ -13,7 +13,6 @@ class SensuClient(SensuBase, Client):
     def __init__(self, zone_name, extra):
         self.zone_name = zone_name
         self.name = extra['name']
-        extra['zone_name'] = zone_name
         self.extra = json.dumps(extra)
 
 
@@ -23,7 +22,9 @@ class SensuCheck(SensuBase, Check):
     def __init__(self, zone_name, extra):
         self.zone_name = zone_name
         self.name = extra['name']
-        extra['zone_name'] = zone_name
+        self.occurrences_threshold = extra.get('occurrences')
+        self.interval = extra.get('interval')
+        self.command = extra.get('command')
         self.extra = json.dumps(extra)
 
 
@@ -32,7 +33,6 @@ class SensuResult(SensuBase, Result):
 
     def __init__(self, zone_name, extra):
         self.zone_name = zone_name
-        self.extra = extra
         self.client_name = extra['client']
         self.check_name = extra['check']['name']
         status_map = ['ok', 'warning', 'critical']
@@ -40,7 +40,10 @@ class SensuResult(SensuBase, Result):
             self.status = status_map[extra['check'].get('status')]
         except IndexError:
             self.status = 'unknown'
-        extra['zone_name'] = zone_name
+        self.occurrences_threshold = extra['check'].get('occurrences')
+        self.command = extra['check'].get('command')
+        self.output = extra['check'].get('output')
+        self.interval = extra['check'].get('interval')
         self.extra = json.dumps(extra)
 
 
@@ -60,6 +63,7 @@ class SensuEvent(SensuBase, Event):
             self.status = 'unknown'
         self.command = extra['check'].get('command')
         self.output = extra['check'].get('output')
+        self.interval = extra['check'].get('interval')
         self.extra = json.dumps(extra)
 
 
