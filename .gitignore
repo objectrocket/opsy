@@ -9,6 +9,8 @@ debian/hourglass.postinst.debhelper
 debian/hourglass.substvars
 debian/hourglass
 
+#PBR
+ChangeLog
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
