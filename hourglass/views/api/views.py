@@ -43,11 +43,11 @@ def events():
     filters_list = get_filters_list(filters)
     hide_silenced = hide_silenced.split(',')
     if 'checks' in hide_silenced:
-        filters_list.append(db.not_(Event.stash.any(
+        filters_list.append(db.not_(Event.silences.any(
             client_name=Event.client_name, check_name=Event.check_name,
             flavor='silence')))
     if 'clients' in hide_silenced:
-        filters_list.append(db.not_(Client.stash.any(
+        filters_list.append(db.not_(Client.silences.any(
             client_name=Event.client_name, check_name='', flavor='silence')))
     if 'occurrences' in hide_silenced:
         filters_list.append(db.not_(
