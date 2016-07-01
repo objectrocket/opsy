@@ -5,38 +5,6 @@ from hourglass.backends.cache import *
 from flask import current_app, jsonify, request
 
 
-@api.route('/ping')
-def ping():
-    return jsonify({'pong': time()})
-
-
-@api.route('/list/zones')
-def list_zones():
-    dashboard = request.args.get('dashboard')
-    if dashboard:
-        config = current_app.config
-        dash_filters_list = Zone.get_dashboard_filters_list(config, dashboard)
-        zones = [x[0] for x in Zone.query.filter(
-            *dash_filters_list).with_entities(Zone.name).all()]
-    else:
-        zones = [x[0] for x in Zone.query.with_entities(Zone.name).all()]
-    return jsonify({'zones': zones})
-
-
-@api.route('/list/checks')
-def list_checks():
-    dashboard = request.args.get('dashboard')
-    if dashboard:
-        config = current_app.config
-        dash_filters_list = Event.get_dashboard_filters_list(config, dashboard)
-        events_query = Event.query.filter(*dash_filters_list)
-    else:
-        events_query = Event.query
-    event_checks = [x[0] for x in events_query.with_entities(
-        Event.check_name).distinct().all()]
-    return jsonify({'checks': event_checks})
-
-
 @api.route('/zones')
 def zones():
     dashboard = request.args.get('dashboard')
@@ -58,7 +26,12 @@ def zone(zone_name):
 @api.route('/events')
 def events():
     dashboard = request.args.get('dashboard')
-    hide_silenced = request.args.get('hide_silenced') or ''
+    try:
+        count_checks = request.args['count_checks']
+        count_checks = True
+    except:
+        count_checks = False
+    hide_silenced = request.args.get('hide_silenced', '')
     zones = request.args.get('zone')
     checks = request.args.get('check')
     clients = request.args.get('client')
@@ -85,7 +58,16 @@ def events():
         events_query = Event.query.filter(*dash_filters_list)
     else:
         events_query = Event.query
-    events = events_query.filter(*filters_list).all_dict_out()
+    if count_checks:
+        events = {x: y for x, y in events_query.with_entities(
+            Event.check_name, db.func.count(Event.check_name)).filter(
+            *filters_list).group_by(
+            Event.check_name).order_by(db.desc(db.func.count(
+                Event.check_name))).all()}
+        events = sorted([{'name': x, 'count': y} for x, y in events.items()],
+                        key=lambda x: (-x['count'], x['name']))
+    else:
+        events = events_query.filter(*filters_list).all_dict_out()
     return jsonify({'events': events})
 
 
