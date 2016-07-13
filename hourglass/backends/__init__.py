@@ -80,6 +80,10 @@ class CacheBase(object):  # pylint: disable=too-few-public-methods
         return event_dict
 
     @classmethod
+    def filter_api_response(cls, response):
+        raise NotImplementedError
+
+    @classmethod
     def last_poll_status(cls, zone_name):
         last_run = cls.metadata_class.query.filter(
             cls.metadata_class.key == 'update_status',
