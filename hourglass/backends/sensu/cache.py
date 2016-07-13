@@ -67,13 +67,12 @@ class SensuEvent(SensuBase, Event):
         self.extra = json.dumps(extra)
 
 
-class SensuStash(SensuBase, Stash):
+class SensuSilence(SensuBase, Silence):
     uri = 'stashes'
 
     def __init__(self, zone_name, extra):
         self.zone_name = zone_name
         path_list = extra['path'].split('/')
-        self.flavor = path_list[0]
         self.client_name = path_list[1]
         try:
             self.check_name = path_list[2]
@@ -90,10 +89,14 @@ class SensuStash(SensuBase, Stash):
                 int(time() + int(extra['expire'])))
         self.extra = json.dumps(extra)
 
+    @classmethod
+    def filter_api_response(cls, response):
+        return [x for x in response if x['path'].startswith('silence/')]
+
 
 class SensuZone(SensuBase, Zone):
 
-    models = [SensuCheck, SensuClient, SensuEvent, SensuStash, SensuResult]
+    models = [SensuCheck, SensuClient, SensuEvent, SensuSilence, SensuResult]
 
     def __init__(self, name, host, port, timeout):
         self.name = name
@@ -115,6 +118,10 @@ class SensuZone(SensuBase, Zone):
                 url = "http://%s:%s/%s" % (self.host, self.port, model.uri)
                 app.logger.debug('Making request to %s' % url)
                 results = yield from self.get(session, url)
+            try:
+                results = model.filter_api_response(results)
+            except NotImplementedError:
+                pass
         except aiohttp.errors.ClientError as e:
             app.logger.error('Error updating %s cache for %s: %s' % (
                 model.__tablename__, self.name, e))
