@@ -8,11 +8,10 @@ class Client(CacheBase, db.Model):
     class ClientQuery(ExtraOut):
 
         def all_dict_out(self):
-            clients_silences = self.outerjoin(Stash, db.and_(
-                Client.zone_name == Stash.zone_name,
-                Client.name == Stash.client_name,
-                Stash.flavor == 'silence',
-                Stash.check_name == '')).add_entity(Stash).all()
+            clients_silences = self.outerjoin(Silence, db.and_(
+                Client.zone_name == Silence.zone_name,
+                Client.name == Silence.client_name,
+                Silence.check_name == '')).add_entity(Silence).all()
             clients_json = []
             for client, silence in clients_silences:
                 client_json = client.dict_out
@@ -40,11 +39,11 @@ class Client(CacheBase, db.Model):
                               "Client.zone_name==foreign(Result.zone_name), "
                               "Client.name==foreign(Result.client_name))")
 
-    silences = db.relationship('Stash', backref='client', lazy='dynamic',
+    silences = db.relationship('Silence', backref='client', lazy='dynamic',
                                query_class=ExtraOut, primaryjoin="and_("
-                               "Client.zone_name == foreign(Stash.zone_name), "
-                               "Client.name == foreign(Stash.client_name), "
-                               "foreign(Stash.flavor) == 'silence')")
+                               "Client.zone_name == foreign("
+                               "Silence.zone_name), "
+                               "Client.name == foreign(Silence.client_name))")
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
@@ -66,7 +65,7 @@ class Client(CacheBase, db.Model):
 
     @property
     def silenced(self):
-        if self.silences.filter(Stash.check_name == '').first():
+        if self.silences.filter(Silence.check_name == '').first():
             return True
         else:
             return False
@@ -154,11 +153,11 @@ class Result(CacheBase, db.Model):
     class ResultQuery(ExtraOut):
 
         def all_dict_out(self):
-            clients_silences = self.outerjoin(Stash, db.and_(
-                Result.zone_name == Stash.zone_name,
-                Result.client_name == Stash.client_name,
-                Stash.flavor == 'silence',
-                Result.check_name == Stash.check_name)).add_entity(Stash).all()
+            clients_silences = self.outerjoin(Silence, db.and_(
+                Result.zone_name == Silence.zone_name,
+                Result.client_name == Silence.client_name,
+                Result.check_name == Silence.check_name)).add_entity(
+                Silence).all()
             events_json = []
             for event, silence in clients_silences:
                 event_json = event.dict_out
@@ -229,12 +228,11 @@ class Event(CacheBase, db.Model):
     class EventQuery(ExtraOut):
 
         def all_dict_out(self):
-            clients_silences = self.outerjoin(Stash, db.and_(
-                Event.zone_name == Stash.zone_name,
-                Event.client_name == Stash.client_name,
-                Stash.flavor == 'silence',
+            clients_silences = self.outerjoin(Silence, db.and_(
+                Event.zone_name == Silence.zone_name,
+                Event.client_name == Silence.client_name,
                 Event.check_name.in_(
-                    [Stash.check_name, '']))).add_entity(Stash).all()
+                    [Silence.check_name, '']))).add_entity(Silence).all()
             events_json = []
             for event, silence in clients_silences:
                 event_json = event.dict_out
@@ -259,12 +257,14 @@ class Event(CacheBase, db.Model):
     interval = db.Column(db.BigInteger)
     output = db.Column(db.Text)
 
-    stash = db.relationship('Stash', backref='events', lazy='dynamic',
-                            query_class=ExtraOut,
-                            primaryjoin="and_("
-                            "Event.zone_name==foreign(Stash.zone_name),"
-                            "Event.client_name==foreign(Stash.client_name), "
-                            "Event.check_name==foreign(Stash.check_name))")
+    silences = db.relationship('Silence', backref='events', lazy='dynamic',
+                               query_class=ExtraOut,
+                               primaryjoin="and_("
+                               "Event.zone_name==foreign(Silence.zone_name),"
+                               "Event.client_name==foreign("
+                               "Silence.client_name), "
+                               "Event.check_name==foreign("
+                               "Silence.check_name))")
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
@@ -309,10 +309,10 @@ class Event(CacheBase, db.Model):
                                   self.client_name, self.check_name)
 
 
-class Stash(CacheBase, db.Model):
+class Silence(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
-    __tablename__ = 'stashes'
+    __tablename__ = 'silences'
 
     zone_name = db.Column(db.String(64), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
@@ -321,7 +321,6 @@ class Stash(CacheBase, db.Model):
     created_at = db.Column(db.DateTime)
     expire_at = db.Column(db.DateTime)
     comment = db.Column(db.Text)
-    flavor = db.Column(db.String(64))
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
@@ -339,14 +338,12 @@ class Stash(CacheBase, db.Model):
             'check_name': self.check_name,
             'created_at': self.created_at,
             'expire_at': self.expire_at,
-            'comment': self.comment,
-            'flavor': self.flavor,
+            'comment': self.comment
         }
 
     def __repr__(self):
-        return '<%s %s/%s/%s/%s>' % (self.__class__.__name__, self.zone_name,
-                                     self.flavor, self.client_name,
-                                     self.check_name)
+        return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
+                                  self.client_name, self.check_name)
 
 
 class Zone(CacheBase, db.Model):
@@ -354,7 +351,7 @@ class Zone(CacheBase, db.Model):
     __bind_key__ = 'cache'
     __tablename__ = 'zones'
 
-    models = [Check, Client, Event, Stash, Result]
+    models = [Check, Client, Event, Silence, Result]
 
     name = db.Column(db.String(64), primary_key=True)
     host = db.Column(db.String(64))
@@ -373,8 +370,8 @@ class Zone(CacheBase, db.Model):
                              query_class=ExtraOut)
     results = db.relationship('Result', backref='zone', lazy='dynamic',
                               query_class=ExtraOut)
-    stashes = db.relationship('Stash', backref='zone', lazy='dynamic',
-                              query_class=ExtraOut)
+    silences = db.relationship('Silence', backref='zone', lazy='dynamic',
+                               query_class=ExtraOut)
 
     def __init__(self, name, host=None, path=None, protocol=None, port=None,
                  timeout=None, username=None, password=None):

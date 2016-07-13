@@ -44,11 +44,10 @@ def events():
     hide_silenced = hide_silenced.split(',')
     if 'checks' in hide_silenced:
         filters_list.append(db.not_(Event.silences.any(
-            client_name=Event.client_name, check_name=Event.check_name,
-            flavor='silence')))
+            client_name=Event.client_name, check_name=Event.check_name)))
     if 'clients' in hide_silenced:
         filters_list.append(db.not_(Client.silences.any(
-            client_name=Event.client_name, check_name='', flavor='silence')))
+            client_name=Event.client_name, check_name='')))
     if 'occurrences' in hide_silenced:
         filters_list.append(db.not_(
             Event.event_occurrences < Event.check_occurrences))
@@ -128,7 +127,8 @@ def clients():
     filters_list = get_filters_list(filters)
     if dashboard:
         config = current_app.config
-        dash_filters_list = Client.get_dashboard_filters_list(config, dashboard)
+        dash_filters_list = Client.get_dashboard_filters_list(
+            config, dashboard)
         clients_query = Client.query.filter(*dash_filters_list)
     else:
         clients_query = Client.query
@@ -183,25 +183,23 @@ def client_results_check(zone, client, check):
     return jsonify({'results': results})
 
 
-@api.route('/clients/<zone>/<client>/stashes')
-def client_stashes(zone, client):
-    filters = ((zone, Stash.zone_name),
-               (client, Stash.client_name))
+@api.route('/clients/<zone>/<client>/silences')
+def client_silences(zone, client):
+    filters = ((zone, Silence.zone_name),
+               (client, Silence.client_name))
     filters_list = get_filters_list(filters)
-    stashes = Stash.query.filter(*filters_list).all_dict_out_or_404()
-    return jsonify({'stashes': stashes})
+    silences = Silence.query.filter(*filters_list).all_dict_out_or_404()
+    return jsonify({'silences': silences})
 
 
-@api.route('/stashes')
-def stashes():
+@api.route('/silences')
+def silences():
     zones = request.args.get('zone')
     clients = request.args.get('client')
     checks = request.args.get('check')
-    flavor = request.args.get('flavor')
-    filters = ((zones, Stash.zone_name),
-               (clients, Stash.client_name),
-               (checks, Stash.check_name),
-               (flavor, Stash.flavor))
+    filters = ((zones, Silence.zone_name),
+               (clients, Silence.client_name),
+               (checks, Silence.check_name))
     filters_list = get_filters_list(filters)
-    stashes = Stash.query.filter(*filters_list).all_dict_out()
-    return jsonify({'stashes': stashes})
+    silences = Silence.query.filter(*filters_list).all_dict_out()
+    return jsonify({'silences': silences})
