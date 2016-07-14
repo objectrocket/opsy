@@ -22,10 +22,7 @@ class UwsgiScheduler(object):
             class_name = backend.split(':')[1]
             zone_module = importlib.import_module(package)
             zone_class = getattr(zone_module, class_name)
-            host = config.get('host')
-            port = config.get('port')
-            timeout = int(config.get('timeout', 10))
-            zones.append(zone_class(name, host, port, timeout))
+            zones.append(zone_class(name, **config))
         return zones
 
     def _load_zones_modules(self):
@@ -47,7 +44,7 @@ class UwsgiScheduler(object):
         with self.app.app_context():
             tasks = []
             for zone in Zone.query.all():
-                tasks.extend(zone.get_update_tasks(self.app, self.loop))
+                tasks.extend(zone.get_update_tasks(self.app))
             results = self.loop.run_until_complete(asyncio.gather(*tasks))
             for result in results:
                 db.session.bulk_save_objects(result)
