@@ -94,45 +94,13 @@ class SensuSilence(SensuBase, Silence):
         return [x for x in response if x['path'].startswith('silence/')]
 
 
-class SensuZone(SensuBase, Zone):
+class SensuZone(SensuBase, HttpZoneMixin, Zone):
 
     models = [SensuCheck, SensuClient, SensuEvent, SensuSilence, SensuResult]
 
-    def __init__(self, name, host, port, timeout):
-        self.name = name
-        self.host = host
-        self.port = port
-        self.timeout = timeout
-
-    @asyncio.coroutine
-    def get(self, session, url):
-        with aiohttp.Timeout(self.timeout):
-            response = yield from session.get(url)
-            return (yield from response.json())
-
-    @asyncio.coroutine
-    def update_objects(self, app, loop, model):
-        init_objects = []
-        try:
-            with aiohttp.ClientSession(loop=loop) as session:
-                url = "http://%s:%s/%s" % (self.host, self.port, model.uri)
-                app.logger.debug('Making request to %s' % url)
-                results = yield from self.get(session, url)
-            try:
-                results = model.filter_api_response(results)
-            except NotImplementedError:
-                pass
-        except aiohttp.errors.ClientError as e:
-            app.logger.error('Error updating %s cache for %s: %s' % (
-                model.__tablename__, self.name, e))
-            init_objects.append(model.update_last_poll_status(
-                self.name, 'critical'))
-            return init_objects
-        model.query.filter(model.zone_name == self.name).delete()
-        init_objects.append(model.update_last_poll_status(
-            self.name, 'ok'))
-        for result in results:
-            init_objects.append(model(self.name, result))
-        app.logger.info('Updated %s cache for %s' % (
-            model.__tablename__, self.name))
-        return init_objects
+    def __init__(self, name, host=None, path=None, protocol='http', port=4567,
+                 timeout=30, username=None, password=None, verify_ssl=True,
+                 **kwargs):
+        super().__init__(name, host=host, path=path, protocol=protocol,
+                         port=port, timeout=timeout, username=username,
+                         password=password, verify_ssl=verify_ssl, **kwargs)
