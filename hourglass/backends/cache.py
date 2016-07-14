@@ -1,3 +1,4 @@
+import aiohttp
 import asyncio
 from hourglass.utils import get_filters_list
 from . import db, ExtraOut, CacheBase
@@ -361,6 +362,7 @@ class Zone(CacheBase, db.Model):
     timeout = db.Column(db.Integer())
     username = db.Column(db.String(64))
     password = db.Column(db.String(64))
+    verify_ssl = db.Column(db.Boolean())
 
     clients = db.relationship('Client', backref='zone', lazy='dynamic',
                               query_class=ExtraOut)
@@ -373,8 +375,9 @@ class Zone(CacheBase, db.Model):
     silences = db.relationship('Silence', backref='zone', lazy='dynamic',
                                query_class=ExtraOut)
 
-    def __init__(self, name, host=None, path=None, protocol=None, port=None,
-                 timeout=None, username=None, password=None):
+    def __init__(self, name, host=None, path='/', protocol='http', port=80,
+                 timeout=30, username=None, password=None, verify_ssl=True,
+                 **kwargs):
         self.name = name
         self.host = host
         self.path = path
@@ -383,6 +386,7 @@ class Zone(CacheBase, db.Model):
         self.timeout = timeout
         self.username = username
         self.password = password
+        self.verify_ssl = verify_ssl
 
     def query_api(self, uri):
         raise NotImplementedError
@@ -391,10 +395,10 @@ class Zone(CacheBase, db.Model):
     def update_objects(self, model):
         raise NotImplementedError
 
-    def get_update_tasks(self, app, loop):
+    def get_update_tasks(self, app):
         tasks = []
         for model in self.models:
-            tasks.append(asyncio.async(self.update_objects(app, loop, model)))
+            tasks.append(asyncio.async(self.update_objects(app, model)))
         return tasks
 
     @classmethod
@@ -410,10 +414,11 @@ class Zone(CacheBase, db.Model):
         pollers = []
         overall_health = []
         for model in self.models:
-            updated_at, status = model.last_poll_status(self.name)
+            updated_at, status, message = model.last_poll_status(self.name)
             pollers.append({'name': model.__tablename__,
                             'updated_at': updated_at.isoformat(),
-                            'status': status})
+                            'status': status,
+                            'message': message})
             overall_health.append(True) if status == 'ok' else \
                 overall_health.append(False)
         if all(overall_health):
@@ -436,3 +441,65 @@ class Zone(CacheBase, db.Model):
 
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.name)
+
+
+class HttpZoneMixin(object):
+
+    @property
+    def base_url(self):
+        if self.path:
+            url = '%s://%s:%s/%s' % (self.protocol, self.host, self.port,
+                                     self.path.strip('/'))
+        else:
+            url = '%s://%s:%s' % (self.protocol, self.host, self.port)
+        return url
+
+    def _create_session(self):
+        auth = aiohttp.BasicAuth(self.username, self.password) \
+            if (self.username and self.password) else None
+        conn = aiohttp.TCPConnector(verify_ssl=False) \
+            if not self.verify_ssl else None
+        return aiohttp.ClientSession(auth=auth, connector=conn)
+
+    @asyncio.coroutine
+    def get(self, session, url, expected_status=[200]):
+        try:
+            with aiohttp.Timeout(self.timeout):
+                response = yield from session.get(url)
+        except asyncio.TimeoutError:
+            raise aiohttp.errors.ClientError('Timeout exceeded')
+        if response.status not in expected_status:
+            response.close()
+            raise aiohttp.errors.ClientError('Unexpected response from %s, got'
+                                             ' %s' % (url, response.status))
+        return (yield from response.json())
+
+    @asyncio.coroutine
+    def update_objects(self, app, model):
+        init_objects = []
+        results = []
+        url = '%s/%s' % (self.base_url, model.uri)
+        try:
+            with self._create_session() as session:
+                app.logger.debug('Making request to %s' % url)
+                response = yield from self.get(session, url)
+                results = model.filter_api_response(response)
+        except aiohttp.errors.ClientError as e:
+            message = 'Error updating %s cache for %s: %s' % (
+                model.__tablename__, self.name, e)
+            app.logger.error(message)
+            init_objects.append(model.update_last_poll_status(
+                self.name, 'critical'))
+            init_objects.append(model.update_last_poll_message(
+                self.name, message))
+            return init_objects
+        model.query.filter(model.zone_name == self.name).delete()
+        init_objects.append(model.update_last_poll_status(
+            self.name, 'ok'))
+        init_objects.append(model.update_last_poll_message(
+            self.name, 'Success'))
+        for result in results:
+            init_objects.append(model(self.name, result))
+        app.logger.info('Updated %s cache for %s' % (
+            model.__tablename__, self.name))
+        return init_objects

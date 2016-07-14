@@ -45,16 +45,7 @@ def parse_config(app):
     if hourglass_config.get('enabled_zones'):
         enabled_zones = hourglass_config.get('enabled_zones').split(',')
         for zone in enabled_zones:
-            required_keys = ['backend', 'host', 'port']
-            if any(app.config[zone].get(key) is None for key in required_keys):
-                continue  # TODO: raise an exception here
-            app.config['zones'][zone] = {}
-            app.config['zones'][zone]['backend'] = app.config[zone].get(
-                'backend')
-            app.config['zones'][zone]['host'] = app.config[zone].get('host')
-            app.config['zones'][zone]['port'] = app.config[zone].get('port')
-            app.config['zones'][zone]['timeout'] = int(app.config[zone].get(
-                'timeout', 10))
+            app.config['zones'][zone] = app.config[zone]
     if hourglass_config.get('enabled_dashboards'):
         enabled_dashboards = hourglass_config.get(
             'enabled_dashboards').split(',')
