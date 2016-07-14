@@ -59,7 +59,7 @@ class BaseMetadata(db.Model):
                                      self.key, self.value)
 
 
-class CacheBase(object):  # pylint: disable=too-few-public-methods
+class CacheBase(object):
 
     metadata_class = BaseMetadata
     query_class = ExtraOut
@@ -81,7 +81,7 @@ class CacheBase(object):  # pylint: disable=too-few-public-methods
 
     @classmethod
     def filter_api_response(cls, response):
-        raise NotImplementedError
+        return response
 
     @classmethod
     def last_poll_status(cls, zone_name):
@@ -89,7 +89,11 @@ class CacheBase(object):  # pylint: disable=too-few-public-methods
             cls.metadata_class.key == 'update_status',
             cls.metadata_class.entity == cls.__tablename__,
             cls.metadata_class.zone_name == zone_name).first()
-        return (last_run.updated_at, last_run.value)
+        last_run_message = cls.metadata_class.query.filter(
+            cls.metadata_class.key == 'update_message',
+            cls.metadata_class.entity == cls.__tablename__,
+            cls.metadata_class.zone_name == zone_name).first()
+        return (last_run.updated_at, last_run.value, last_run_message.value)
 
     @classmethod
     def update_last_poll_status(cls, zone_name, status):
@@ -99,3 +103,12 @@ class CacheBase(object):  # pylint: disable=too-few-public-methods
             cls.metadata_class.zone_name == zone_name).delete()
         return cls.metadata_class(zone_name, 'update_status',
                                   cls.__tablename__, status)
+
+    @classmethod
+    def update_last_poll_message(cls, zone_name, message):
+        cls.metadata_class.query.filter(
+            cls.metadata_class.key == 'update_message',
+            cls.metadata_class.entity == cls.__tablename__,
+            cls.metadata_class.zone_name == zone_name).delete()
+        return cls.metadata_class(zone_name, 'update_message',
+                                  cls.__tablename__, message)
