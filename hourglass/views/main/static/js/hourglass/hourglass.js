@@ -1,7 +1,7 @@
 var hourglass = {
 
     statusclasses: {
-        'OK': 'success',
+        'Ok': 'success',
         'Warning': 'warning',
         'Critical': 'danger'
     },
