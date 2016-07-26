@@ -44,10 +44,10 @@ var checksfilters = {
 
     updateZones: function(init) {
         var self = this;
-        $.getJSON('/api/list/zones', function(data) {
+        $.getJSON('/api/zones', function(data) {
             newzones = []
             $.each(data.zones, function(idx, obj) {
-                newzones.push({label: obj, title: obj, value: obj});
+                newzones.push({label: obj.name, title: obj.name, value: obj.name});
             });
             self.zoneOptions = newzones;
         }).success(function() {
@@ -62,10 +62,10 @@ var checksfilters = {
 
     updateChecks: function(init) {
         var self = this;
-        $.getJSON('/api/list/checks', function(data) {
+        $.getJSON('/api/checks', function(data) {
             newchecks = []
             $.each(data.checks.sort(), function(idx, obj) {
-                newchecks.push({label: obj, title: obj, value: obj});
+                newchecks.push({label: obj.name, title: obj.name, value: obj.name});
             });
             self.checkOptions = newchecks;
         }).success(function() {

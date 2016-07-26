@@ -19,20 +19,13 @@ $(document).ready(function() {
                 return_data = new Array();
                 for (var i=0; i<json.length; i++) {
                     var row = json[i];
-                    row['check']['status'] = hourglass.statusnames[row['check']['status']];
-                    if ( row['check']['status'] === undefined ) {
-                        row['check']['status'] = 'Unknown';
-                    }
-                    var d = new Date(0);
-                    d.setUTCSeconds(row['check']['issued']);
                     return_data.push({
-                        'status': row['check']['status'],
-                        'check_name': row['check']['name'],
-                        'check_output': '<a href="/clients/'+row['zone_name']+'/'+row['client']+'/events/'+row['check']['name']+'">'+row['check']['output']+'</a>',
-                        'timestamp': '<time class="timeago" datetime="'+d.toISOString()+'">'+d+'</time>',
+                        'status': row['status'].capitalize(),
+                        'check_name': row['check_name'],
+                        'check_output': '<a href="/clients/'+row['zone_name']+'/'+row['client_name']+'/events/'+row['check_name']+'">'+row['output']+'</a>',
+                        //'timestamp': '<time class="timeago" datetime="'+row['timestamp']+'">'+d+'</time>',
                     })
                 }
-                console.log(return_data);
                 return return_data;
             }
         },
@@ -40,7 +33,7 @@ $(document).ready(function() {
             {data: 'status'},
             {data: 'check_name'},
             {data: 'check_output'},
-            {data: 'timestamp'},
+            //{data: 'timestamp'},
         ],
         'rowCallback': function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
             $('td:first', nRow).addClass(hourglass.statusclasses[aData['status']]);

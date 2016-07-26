@@ -62,11 +62,11 @@ var eventsfilters = {
 
     updateZones: function(init) {
         var self = this;
-        url = hourglass.get_dashboard_url('/api/list/zones');
+        url = hourglass.get_dashboard_url('/api/zones');
         $.getJSON(url, function updateZonesJSONCB(data) {
             newzones = []
             $.each(data.zones, function updateZonesEachCB(idx, obj) {
-                newzones.push({label: obj, title: obj, value: obj});
+                newzones.push({label: obj.name, title: obj.name, value: obj.name});
             });
             self.zoneOptions = newzones;
         }).success(function updateZonesSuccessCB() {
@@ -81,11 +81,11 @@ var eventsfilters = {
 
     updateChecks: function(init) {
         var self = this;
-        url = hourglass.get_dashboard_url('/api/list/checks');
+        url = hourglass.get_dashboard_url('/api/checks');
         $.getJSON(url, function updateChecksJSONCB(data) {
             newchecks = []
             $.each(data.checks.sort(), function updateChecksEachCB(idx, obj) {
-                newchecks.push({label: obj, title: obj, value: obj});
+                newchecks.push({label: obj.name, title: obj.name, value: obj.name});
             });
             self.checkOptions = newchecks;
         }).success(function updateChecksSuccessCB() {
@@ -143,21 +143,15 @@ $(document).ready(function documentReadyCB() {
                 return_data = new Array();
                 for (var i=0; i<json.length; i++) {
                     var row = json[i];
-                    row['check']['status'] = hourglass.statusnames[row['check']['status']];
-                    if ( row['check']['status'] === undefined ) {
-                        row['check']['status'] = 'Unknown';
-                    }
-                    var d = new Date(0);
-                    d.setUTCSeconds(row['timestamp']);
-                    uchiwaHref = UCHIWA_URL+'/#/client/'+row['zone_name']+'/'+row['client']['name']+'?check='+row['check']['name'],
+                    uchiwaHref = UCHIWA_URL+'/#/client/'+row['zone_name']+'/'+row['client_name']+'?check='+row['check_name'],
                     return_data.push({
-                        'status': row['check']['status'],
+                        'status': row['status'].capitalize(),
                         'zone': row['zone_name'],
-                        'source': "<a href='"+uchiwaHref+"'><img src='/static/main/img/backends/sensu.ico'></img></a> <a href='/clients/"+row['zone_name']+"/"+row['client']['name']+"'>"+row['client']['name']+"</a>",
-                        'check_name': row['check']['name'],
-                        'check_output': row['check']['output'],
+                        'source': "<a href='"+uchiwaHref+"'><img src='/static/main/img/backends/sensu.ico'></img></a> <a href='/clients/"+row['zone_name']+"/"+row['client_name']+"'>"+row['client_name']+"</a>",
+                        'check_name': row['check_name'],
+                        'check_output': row['output'],
                         'count': row['occurrences'],
-                        'timestamp': '<time class="timeago" datetime="'+d.toISOString()+'">'+d+'</time>',
+                        //'timestamp': '<time class="timeago" datetime="'+row['timestamp']+'">'+d+'</time>',
                     })
                 }
                 return return_data;
@@ -171,7 +165,7 @@ $(document).ready(function documentReadyCB() {
             {data: 'check_name'},
             {data: 'check_output'},
             {data: 'count'},
-            {data: 'timestamp'},
+            //{data: 'timestamp'},
         ],
         'rowCallback': function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
             $('td:first', nRow).addClass(hourglass.statusclasses[aData['status']]);
