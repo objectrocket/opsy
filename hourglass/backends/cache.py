@@ -1,7 +1,113 @@
 import aiohttp
 import asyncio
+from flask.ext.sqlalchemy import BaseQuery
+from flask import abort
+import hourglass
+from hourglass.db import db
 from hourglass.utils import get_filters_list
-from . import db, ExtraOut, CacheBase
+
+
+class ExtraOut(BaseQuery):
+
+    def all_dict_out(self):
+        return [x.dict_out for x in self]
+
+    def all_dict_extra_out(self):
+        return [x.dict_extra_out for x in self]
+
+    def all_dict_out_or_404(self):
+        dict_list = self.all_dict_out()
+        if not dict_list:
+            abort(404)
+        return dict_list
+
+    def all_dict_extra_out_or_404(self):
+        dict_list = self.all_dict_extra_out()
+        if not dict_list:
+            abort(404)
+        return dict_list
+
+
+class BaseMetadata(db.Model):
+
+    __bind_key__ = 'cache'
+    __tablename__ = 'metadata'
+
+    zone_name = db.Column(db.String(64), primary_key=True)
+    entity = db.Column(db.String(64), primary_key=True)
+    key = db.Column(db.String(128), primary_key=True)
+    value = db.Column(db.String(512))
+    updated_at = db.Column(db.DateTime, default=db.func.now(),
+                           onupdate=db.func.now())
+
+    __table_args__ = (
+        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+    )
+
+    def __init__(self, zone_name, key, entity, value):
+        self.zone_name = zone_name
+        self.key = key
+        self.entity = entity
+        self.value = value
+
+    def __repr__(self):
+        return '<%s %s: %s - %s>' % (self.__class__.__name__, self.zone_name,
+                                     self.key, self.value)
+
+
+class CacheBase(object):
+
+    metadata_class = BaseMetadata
+    query_class = ExtraOut
+    extra = db.Column(db.Text)
+    backend = db.Column(db.String(20))
+    last_poll_time = db.Column(db.DateTime, default=db.func.now(),
+                               onupdate=db.func.now())
+
+    __mapper_args__ = {
+        'polymorphic_on': backend,
+        'polymorphic_identity': 'base'
+    }
+
+    @property
+    def dict_extra_out(self):
+        event_dict = self.dict_out
+        event_dict['extra'] = self.extra
+        return event_dict
+
+    @classmethod
+    def filter_api_response(cls, response):
+        return response
+
+    @classmethod
+    def last_poll_status(cls, zone_name):
+        last_run = cls.metadata_class.query.filter(
+            cls.metadata_class.key == 'update_status',
+            cls.metadata_class.entity == cls.__tablename__,
+            cls.metadata_class.zone_name == zone_name).first()
+        last_run_message = cls.metadata_class.query.filter(
+            cls.metadata_class.key == 'update_message',
+            cls.metadata_class.entity == cls.__tablename__,
+            cls.metadata_class.zone_name == zone_name).first()
+        return (last_run.updated_at, last_run.value, last_run_message.value)
+
+    @classmethod
+    def update_last_poll_status(cls, zone_name, status):
+        cls.metadata_class.query.filter(
+            cls.metadata_class.key == 'update_status',
+            cls.metadata_class.entity == cls.__tablename__,
+            cls.metadata_class.zone_name == zone_name).delete()
+        return cls.metadata_class(zone_name, 'update_status',
+                                  cls.__tablename__, status)
+
+    @classmethod
+    def update_last_poll_message(cls, zone_name, message):
+        cls.metadata_class.query.filter(
+            cls.metadata_class.key == 'update_message',
+            cls.metadata_class.entity == cls.__tablename__,
+            cls.metadata_class.zone_name == zone_name).delete()
+        return cls.metadata_class(zone_name, 'update_message',
+                                  cls.__tablename__, message)
 
 
 class Client(CacheBase, db.Model):
@@ -29,6 +135,9 @@ class Client(CacheBase, db.Model):
 
     zone_name = db.Column(db.String(64), primary_key=True)
     name = db.Column(db.String(256), primary_key=True)
+    updated_at = db.Column(db.DateTime)
+    version = db.Column(db.String(256), primary_key=True)
+    address = db.Column(db.String(256), primary_key=True)
 
     events = db.relationship('Event', backref='client', lazy='dynamic',
                              query_class=ExtraOut, primaryjoin="and_("
@@ -86,6 +195,10 @@ class Client(CacheBase, db.Model):
         return {
             'zone_name': self.zone_name,
             'backend': self.backend,
+            'updated_at': self.updated_at,
+            'version': self.version,
+            'address': self.address,
+            'last_poll_time': self.last_poll_time,
             'name': self.name
         }
 
@@ -138,6 +251,7 @@ class Check(CacheBase, db.Model):
         return {
             'zone_name': self.zone_name,
             'backend': self.backend,
+            'last_poll_time': self.last_poll_time,
             'name': self.name,
             'occurrences_threshold': self.occurrences_threshold,
             'interval': self.interval,
@@ -210,6 +324,7 @@ class Result(CacheBase, db.Model):
         return {
             'zone_name': self.zone_name,
             'backend': self.backend,
+            'last_poll_time': self.last_poll_time,
             'client_name': self.client_name,
             'check_name': self.check_name,
             'occurrences_threshold': self.occurrences_threshold,
@@ -251,6 +366,7 @@ class Event(CacheBase, db.Model):
     zone_name = db.Column(db.String(64), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
     check_name = db.Column(db.String(256), primary_key=True)
+    updated_at = db.Column(db.DateTime)
     occurrences_threshold = db.Column(db.BigInteger)
     occurrences = db.Column(db.BigInteger)
     status = db.Column(db.String(256))
@@ -295,8 +411,10 @@ class Event(CacheBase, db.Model):
         return {
             'backend': self.backend,
             'zone_name': self.zone_name,
+            'last_poll_time': self.last_poll_time,
             'client_name': self.client_name,
             'check_name': self.check_name,
+            'updated_at': self.updated_at,
             'occurrences_threshold': self.occurrences_threshold,
             'occurrences': self.occurrences,
             'status': self.status,
@@ -335,6 +453,7 @@ class Silence(CacheBase, db.Model):
         return {
             'zone_name': self.zone_name,
             'backend': self.backend,
+            'last_poll_time': self.last_poll_time,
             'client_name': self.client_name,
             'check_name': self.check_name,
             'created_at': self.created_at,
@@ -416,7 +535,7 @@ class Zone(CacheBase, db.Model):
         for model in self.models:
             updated_at, status, message = model.last_poll_status(self.name)
             pollers.append({'name': model.__tablename__,
-                            'updated_at': updated_at.isoformat(),
+                            'updated_at': updated_at,
                             'status': status,
                             'message': message})
             overall_health.append(True) if status == 'ok' else \
@@ -459,7 +578,9 @@ class HttpZoneMixin(object):
             if (self.username and self.password) else None
         conn = aiohttp.TCPConnector(verify_ssl=False) \
             if not self.verify_ssl else None
-        return aiohttp.ClientSession(auth=auth, connector=conn)
+        headers = {'User-Agent': 'Hourglass/%s' % hourglass.__version__}
+        return aiohttp.ClientSession(auth=auth, connector=conn,
+                                     headers=headers)
 
     @asyncio.coroutine
     def get(self, session, url, expected_status=[200]):
