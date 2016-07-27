@@ -26,6 +26,24 @@ var hourglass = {
         } else {
             return url;
         }
+    },
+
+    check_zones: function() {
+        $.getJSON('/api/zones', function(json) {
+            zones = json['zones'];
+            for (var i=0; i<zones.length; i++) {
+                zone = zones[i];
+                if (zone.status != 'ok') {
+                    if ($('#alert-container').children('#alert-'+zone.name).length == 0) {
+                        $('#alert-container').append('<div id="alert-'+zone.name+'" class="alert alert-danger" ><strong>Failure!</strong> datacenter '+zone.name+' is not responding!</div>')
+                    }
+                } else {
+                    if ($('#alert-container').children('#alert-'+zone.name).length > 0) {
+                        $('#alert-'+zone.name).remove();
+                    } 
+                }
+            }
+        })
     }
 
 }
@@ -54,4 +72,7 @@ $(document).ready(function() {
             return b;
         })(window.location.search.substr(1).split('&'))
     })(jQuery);
+    zone_check = setInterval( function zone_check_intervalCB() {
+        hourglass.check_zones();
+    }, 30000)
 });
