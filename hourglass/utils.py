@@ -1,3 +1,20 @@
+from datetime import date
+from flask.json import JSONEncoder
+from flask._compat import text_type
+from itsdangerous import json as _json
+import uuid
+
+
+class HourglassJSONEncoder(JSONEncoder):
+
+    def default(self, o):
+        if isinstance(o, date):
+            return o.isoformat()
+        if isinstance(o, uuid.UUID):
+            return str(o)
+        if hasattr(o, '__html__'):
+            return text_type(o.__html__())
+        return _json.JSONEncoder.default(self, o)
 
 
 def get_filters_list(filters):

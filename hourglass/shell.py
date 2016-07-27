@@ -1,30 +1,39 @@
 import os
-from flask.ext.script import Command, Manager, Shell
-from hourglass.backends.cache import *
-from hourglass.backends import db
-from . import create_app
+from flask_script import Manager
+import hourglass
+from hourglass.backends.cache import (Check, Client, Event, Silence, Result,
+                                      Zone)
+from hourglass.scheduler import Scheduler
+from hourglass.db import db
+from hourglass.app import create_app
 
-BASEDIR = os.path.abspath(os.path.curdir)
+DEFAULT_CONFIG = '%s/hourglass.ini' % os.path.abspath(os.path.curdir)
+manager = Manager(create_app)
+manager.add_option('-V', '--version', action='version',
+                   version=hourglass.__version__)
+manager.add_option('-c', '--config', dest='config', default=DEFAULT_CONFIG)
 
 
+@manager.shell
 def make_shell_context():
     return dict(create_app=create_app, db=db, Check=Check, Client=Client,
-                Event=Event, Stash=Stash, Result=Result, Zone=Zone)
+                Event=Event, Silence=Silence, Result=Result, Zone=Zone,
+                Scheduler=Scheduler, manager=manager)
 
 
-class init_db(Command):
-    "Initializes the database with default values (DATA DESTRUCTIVE!)"
-
-    def run(self):
-        db.drop_all()
-        db.create_all()
-        print("Done!")
+@manager.command
+def initcache():
+    'Drops everything in cache database and rebuilds schema'
+    Scheduler(manager.app.config_file).create_cache_db()
+    print("Done!")
 
 
-def run_hourglass(cwd=BASEDIR):
-    manager = Manager(create_app)
-    manager.add_option('-c', '--config', dest='config', required=False,
-                       default='%s/hourglass.ini' % cwd)
-    manager.add_command('shell', Shell(make_context=make_shell_context))
-    manager.add_command("initdb", init_db())
+@manager.command
+def updatecache():
+    'Updates the cache database'
+    Scheduler(manager.app.config_file).run_tasks()
+    print("Done!")
+
+
+def main():
     manager.run()
