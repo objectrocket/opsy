@@ -1,10 +1,14 @@
-import aiohttp
-import asyncio
 from flask import json
-from ..cache import *
-from . import SensuBase
+from hourglass.backends.cache import (Client, Check, Result, Event, Silence,
+                                      Zone, HttpZoneMixin)
 from datetime import datetime
 from time import time
+
+
+class SensuBase(object):
+    __mapper_args__ = {
+        'polymorphic_identity': 'sensu'
+    }
 
 
 class SensuClient(SensuBase, Client):
@@ -13,6 +17,13 @@ class SensuClient(SensuBase, Client):
     def __init__(self, zone_name, extra):
         self.zone_name = zone_name
         self.name = extra['name']
+        try:
+            self.updated_at = datetime.fromtimestamp(
+                int(extra.get('timestamp')))
+        except TypeError:
+            self.updated_at = None
+        self.version = extra.get('version')
+        self.address = extra.get('address')
         self.extra = json.dumps(extra)
 
 
@@ -54,6 +65,11 @@ class SensuEvent(SensuBase, Event):
         self.zone_name = zone_name
         self.client_name = extra['client'].get('name')
         self.check_name = extra['check'].get('name')
+        try:
+            self.updated_at = datetime.fromtimestamp(
+                int(extra.get('timestamp')))
+        except TypeError:
+            self.updated_at = None
         self.occurrences_threshold = extra['check'].get('occurrences')
         self.occurrences = extra['occurrences']
         status_map = ['ok', 'warning', 'critical']

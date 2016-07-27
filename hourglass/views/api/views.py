@@ -1,7 +1,8 @@
 from . import api
-from hourglass.backends import db
+from hourglass import db
 from hourglass.utils import get_filters_list
-from hourglass.backends.cache import *
+from hourglass.backends.cache import Client, Check, Result, Event, Silence, \
+    Zone
 from flask import current_app, jsonify, request
 
 
