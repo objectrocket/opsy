@@ -24,7 +24,7 @@ var clientsfilters = {
         },
         onDropdownHidden: function() {
             clientsfilters.setDataTablesUrl();
-            document.eventstable.ajax.reload(null, false);
+            document.clientstable.ajax.reload(null, false);
         },
     },
 
@@ -40,10 +40,10 @@ var clientsfilters = {
 
     updateZones: function(init) {
         var self = this;
-        $.getJSON('/api/list/zones', function(data) {
+        $.getJSON('/api/zones', function(data) {
             newzones = []
             $.each(data.zones, function(idx, obj) {
-                newzones.push({label: obj, title: obj, value: obj});
+                newzones.push({label: obj.name, title: obj.name, value: obj.name});
             });
             self.zoneOptions = newzones;
         }).success(function() {
@@ -65,7 +65,7 @@ var clientsfilters = {
             params['dashboard'] = $.QueryString['dashboard'];
         }
         try {
-            document.eventstable.ajax.url('/api/clients?'+$.param(params));
+            document.clientstable.ajax.url('/api/clients?'+$.param(params));
         } catch(err) {
         }
         return '/api/clients?'+$.param(params);
@@ -74,7 +74,7 @@ var clientsfilters = {
 
 $(document).ready(function() {
 
-    document.eventstable = $('#clients').DataTable({
+    document.clientstable = $('#clients').DataTable({
         'lengthMenu': [ [25, 50, 100, -1], [25, 50, 100, "All"] ],
         'autoWidth': false,
         //'stateSave' : true,
@@ -84,20 +84,32 @@ $(document).ready(function() {
         ],
         'ajax': {
             url: clientsfilters.setDataTablesUrl(),
-            dataSrc: 'clients',
+            //dataSrc: 'clients',
+            dataSrc: function(json) {
+                json = json['clients'];
+                return_data = new Array();
+                for (var i=0; i<json.length; i++) {
+                    var row = json[i];
+                    uchiwaHref = UCHIWA_URL+'/#/client/'+row['zone_name']+'/'+row['client_name'],
+                    return_data.push({
+                        'zone': row['zone_name'],
+                        'name': "<a href='"+uchiwaHref+"'><img src='/static/main/img/backends/sensu.ico'></img></a> <a href='/clients/"+row['zone_name']+"/"+row['name']+"'>"+row['name']+"</a>",
+                        'address': row['address'],
+                        'version': row['version'],
+                        'timestamp': '<time class="timeago" datetime="'+row['last_poll_time']+'Z">'+row['last_poll_time']+'Z</time>',
+                    })
+                }
+                return return_data;
+
+            }
         },
         'dom': "<'row'<'col-sm-2'l><'col-sm-2'<'#zone-filter-div'>><'col-sm-6'><'col-sm-2'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>",
         'columns': [
-            {data: 'zone_name',
-             name: 'zone'},
-            {data: 'name',
-             name: 'name'},
-            {data: 'address',
-             name: 'ip'},
-            {data: 'version',
-             name: 'version'},
+            {data: 'zone'},
+            {data: 'name'},
+            {data: 'address'},
+            {data: 'version'},
             {data: 'timestamp',
-             name: 'timestamp',
              defaultContent: ''},
         ],
         'rowCallback': function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
@@ -110,10 +122,10 @@ $(document).ready(function() {
         },
         'initComplete': function (foo) {
             clientsfilters.create();
-            setInterval( function() {
+            hourglass.registerTask('update-clients', 6, function() {
                 //filters.update();
-                document.eventstable.ajax.reload(null, false);
-            }, 30000);
+                document.clientstable.ajax.reload(null, false);
+            });
         }
     }).on('draw.dt', function() {
         $('time.timeago').timeago();

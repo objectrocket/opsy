@@ -117,10 +117,10 @@ $(document).ready(function() {
         ],
         'initComplete': function (foo) {
             checksfilters.create();
-            setInterval( function() {
+            hourglass.registerTask('update-checks', 6, function() {
                 //filters.update();
                 document.checkstable.ajax.reload(null, false);
-            }, 30000);
+            });
         }
     })
 });

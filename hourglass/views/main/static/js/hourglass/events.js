@@ -151,7 +151,7 @@ $(document).ready(function documentReadyCB() {
                         'check_name': row['check_name'],
                         'check_output': row['output'],
                         'count': row['occurrences'],
-                        //'timestamp': '<time class="timeago" datetime="'+row['timestamp']+'">'+d+'</time>',
+                        'timestamp': '<time class="timeago" datetime="'+row['updated_at']+'Z">'+row['updated_at']+'Z</time>',
                     })
                 }
                 return return_data;
@@ -165,17 +165,17 @@ $(document).ready(function documentReadyCB() {
             {data: 'check_name'},
             {data: 'check_output'},
             {data: 'count'},
-            //{data: 'timestamp'},
+            {data: 'timestamp'},
         ],
         'rowCallback': function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
             $('td:first', nRow).addClass(hourglass.statusclasses[aData['status']]);
         },
         'initComplete': function (foo) {
             eventsfilters.create();
-            setInterval( function initCompleteIntervalCB() {
+            hourglass.registerTask('update-events', 6, function() {
                 //filters.update();
                 document.eventstable.ajax.reload(null, false);
-            }, 30000);
+            });
         }
     }).on('draw.dt', function onDrawDTCB() {
         updateTitle();
