@@ -47,14 +47,6 @@ table.dataTable thead .sorting_desc:before {
     content: "\e156 "
 }
 
-/* CHECKS TABLE */
-th#checkname {
-    width: 15%;
-}
-th#interval {
-    width: 10%;
-}
-
 /* CLIENTS TABLE */
 th#ip {
     width: 10%;

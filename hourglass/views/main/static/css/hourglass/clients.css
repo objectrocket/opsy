@@ -1,0 +1,10 @@
+/* CLIENTS TABLE */
+th#ip {
+    width: 10%;
+}
+th#version {
+    width: 10%;
+}
+th#lastcheck {
+    width: 10%;
+}
