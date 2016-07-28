@@ -23,7 +23,7 @@ $(document).ready(function() {
                         'status': row['status'].capitalize(),
                         'check_name': row['check_name'],
                         'check_output': '<a href="/clients/'+row['zone_name']+'/'+row['client_name']+'/events/'+row['check_name']+'">'+row['output']+'</a>',
-                        //'timestamp': '<time class="timeago" datetime="'+row['timestamp']+'">'+d+'</time>',
+                        'timestamp': '<time class="timeago" datetime="'+row['last_poll_time']+'Z">'+row['last_poll_time']+'Z</time>',
                     })
                 }
                 return return_data;
@@ -33,7 +33,7 @@ $(document).ready(function() {
             {data: 'status'},
             {data: 'check_name'},
             {data: 'check_output'},
-            //{data: 'timestamp'},
+            {data: 'timestamp'},
         ],
         'rowCallback': function( nRow, aData, iDisplayIndex, iDisplayIndexFull ) {
             $('td:first', nRow).addClass(hourglass.statusclasses[aData['status']]);
