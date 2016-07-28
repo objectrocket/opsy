@@ -1,5 +1,7 @@
 var hourglass = {
 
+    tasks: [],
+
     statusclasses: {
         'Ok': 'success',
         'Warning': 'warning',
@@ -44,6 +46,11 @@ var hourglass = {
                 }
             }
         })
+    },
+
+    registerTask: function(slug, interval, func) {
+        console.log('registering task: '+slug+' to run every '+interval+' ticks.');
+        hourglass.tasks.push({'slug': slug, 'interval': interval, 'callback': func});
     }
 
 }
@@ -59,6 +66,7 @@ String.prototype.capitalize = function(all) {
 }
 
 $(document).ready(function() {
+    hourglass.registerTask('zone-check', 5, hourglass.check_zones);
     (function($) {
         $.QueryString = (function(a) {
             if (a == "") return {};
@@ -72,7 +80,19 @@ $(document).ready(function() {
             return b;
         })(window.location.search.substr(1).split('&'))
     })(jQuery);
-    zone_check = setInterval( function zone_check_intervalCB() {
-        hourglass.check_zones();
-    }, 30000)
+    var tick = new Event('tick');
+    var tickcount=0;
+    ticker = setInterval( function() {
+        dispatchEvent(tick);
+    }, 5000);
+    addEventListener('tick', function tickHandler(e) {
+        tickcount++;
+        $.each(hourglass.tasks, function(idx, obj) {
+            if (tickcount % obj.interval == 0) {
+                console.log('running task: '+obj.slug);
+                obj.callback();
+            }
+        })
+    });
+    
 });
