@@ -44,15 +44,17 @@ var eventsfilters = {
 
     create: function() {
         hourglass.addFormGroup('status');
+        hourglass.addFormGroup('zone');
+        hourglass.addFormGroup('check');
+        hourglass.addFormGroup('hide-events', 'hide_silenced');
+        $('#zone-filter').multiselect(this.multiselectOptions);
+        $('#check-filter').multiselect(this.multiselectOptions);
         $('#status-filter').multiselect(this.multiselectOptions);
         $('#status-filter').multiselect('dataprovider', this.statusOptions);
-        hourglass.addFormGroup('zone');
-        this.updateZones(true);
-        hourglass.addFormGroup('check');
-        this.updateChecks(true);
-        hourglass.addFormGroup('hide-events', 'hide_silenced');
         $('#hide-events-filter').multiselect(this.multiselectOptions);
         $('#hide-events-filter').multiselect('dataprovider', this.hideOptions);
+        this.updateZones();
+        this.updateChecks();
     },
 
     update: function() {
@@ -60,7 +62,7 @@ var eventsfilters = {
         this.updateChecks();
     },
 
-    updateZones: function(init) {
+    updateZones: function() {
         var self = this;
         url = hourglass.get_dashboard_url('/api/zones');
         $.getJSON(url, function updateZonesJSONCB(data) {
@@ -70,16 +72,12 @@ var eventsfilters = {
             });
             self.zoneOptions = newzones;
         }).success(function updateZonesSuccessCB() {
-            if (init == true ) {
-                $('#zone-filter').multiselect(self.multiselectOptions);
-                $('#zone-filter').multiselect('dataprovider', self.zoneOptions);
-            } else {
-                $('#zone-filter').multiselect('rebuild');
-            }
+            $('#zone-filter').multiselect('dataprovider', self.zoneOptions);
+            $('#zone-filter').multiselect('rebuild');
         });
     },
 
-    updateChecks: function(init) {
+    updateChecks: function() {
         var self = this;
         url = hourglass.get_dashboard_url('/api/checks');
         $.getJSON(url, function updateChecksJSONCB(data) {
@@ -89,12 +87,8 @@ var eventsfilters = {
             });
             self.checkOptions = newchecks;
         }).success(function updateChecksSuccessCB() {
-            if (init == true ) {
-                $('#check-filter').multiselect(self.multiselectOptions);
-                $('#check-filter').multiselect('dataprovider', self.checkOptions);
-            } else {
-                $('#check-filter').multiselect('rebuild');
-            }
+            $('#check-filter').multiselect('dataprovider', self.checkOptions);
+            $('#check-filter').multiselect('rebuild');
         });
     },
 
