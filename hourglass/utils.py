@@ -2,6 +2,7 @@ from datetime import date
 from flask.json import JSONEncoder
 from flask._compat import text_type
 from itsdangerous import json as _json
+from dateutil.tz import tzutc
 import uuid
 
 
@@ -9,6 +10,8 @@ class HourglassJSONEncoder(JSONEncoder):
 
     def default(self, o):
         if isinstance(o, date):
+            # TODO (testeddoughnut): proper timezone support
+            o = o.replace(tzinfo=tzutc())
             return o.isoformat()
         if isinstance(o, uuid.UUID):
             return str(o)
