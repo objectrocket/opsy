@@ -14,3 +14,6 @@ th#occurrences {
 th#lastcheck {
     width: 10%;
 }
+#status-filter-div>select, #zone-filter-div>select, #check-filter-div>select, #hide-events-filter-div>select {
+    visibility: hidden;
+}
