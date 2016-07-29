@@ -15,6 +15,7 @@ class Scheduler(object):
             self.config = current_app.config
             self.interval = int(current_app.config['hourglass'].get(
                 'scheduler_interval', 30))
+        self._load_zones()
 
     def _load_zones(self):
         zones = []

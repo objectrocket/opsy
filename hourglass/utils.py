@@ -3,6 +3,7 @@ from flask.json import JSONEncoder
 from flask._compat import text_type
 from itsdangerous import json as _json
 from dateutil.tz import tzutc
+import importlib
 import uuid
 
 
@@ -18,6 +19,18 @@ class HourglassJSONEncoder(JSONEncoder):
         if hasattr(o, '__html__'):
             return text_type(o.__html__())
         return _json.JSONEncoder.default(self, o)
+
+
+def load_zones(config):
+    zones = []
+    for name, zone_config in config['zones'].items():
+        backend = zone_config.get('backend')
+        package = backend.split(':')[0]
+        class_name = backend.split(':')[1]
+        zone_module = importlib.import_module(package)
+        zone_class = getattr(zone_module, class_name)
+        zones.append(zone_class(name, **zone_config))
+    return zones
 
 
 def get_filters_list(filters):
