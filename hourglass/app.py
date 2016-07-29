@@ -3,7 +3,7 @@ from flask.ext.iniconfig import INIConfig
 from hourglass.db import db
 from hourglass.backends.sensu.cache import *
 from hourglass.exceptions import NoConfigFile
-from hourglass.utils import HourglassJSONEncoder
+from hourglass.utils import HourglassJSONEncoder, load_zones
 import logging
 from logging.handlers import WatchedFileHandler
 from logging import StreamHandler
@@ -20,6 +20,7 @@ def create_app(config):
     app.config.from_inifile(config)
     setup_logging(app)
     parse_config(app)
+    load_zones(app.config)  # make sqlalchemy aware of any plugins
     db.init_app(app)
     register_blueprints(app)
     app.json_encoder = HourglassJSONEncoder

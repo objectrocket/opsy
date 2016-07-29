@@ -136,8 +136,8 @@ class Client(CacheBase, db.Model):
     zone_name = db.Column(db.String(64), primary_key=True)
     name = db.Column(db.String(256), primary_key=True)
     updated_at = db.Column(db.DateTime)
-    version = db.Column(db.String(256), primary_key=True)
-    address = db.Column(db.String(256), primary_key=True)
+    version = db.Column(db.String(256))
+    address = db.Column(db.String(256))
 
     events = db.relationship('Event', backref='client', lazy='dynamic',
                              query_class=ExtraOut, primaryjoin="and_("
