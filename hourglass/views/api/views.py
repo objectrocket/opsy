@@ -1,5 +1,5 @@
 from . import api
-from hourglass import db
+from hourglass.db import db
 from hourglass.utils import get_filters_list
 from hourglass.backends.cache import Client, Check, Result, Event, Silence, \
     Zone
@@ -51,7 +51,7 @@ def events():
             client_name=Event.client_name, check_name='')))
     if 'occurrences' in hide_silenced:
         filters_list.append(db.not_(
-            Event.event_occurrences < Event.check_occurrences))
+            Event.occurrences < Event.occurrences_threshold))
     if dashboard:
         config = current_app.config
         dash_filters_list = Event.get_dashboard_filters_list(config, dashboard)
