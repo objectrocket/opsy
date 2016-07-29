@@ -36,7 +36,7 @@ var hourglass = {
             for (var i=0; i<zones.length; i++) {
                 zone = zones[i];
                 if (zone.status != 'ok') {
-                    hourglass.notification.add(zone.name+' Poller Failure', '<strong>Failure!</strong> datacenter '+zone.name+' is not responding!', 'danger', true, zone.name+'-offline');
+                    hourglass.notification.add(zone.name+' Poller Failure', 'Datacenter '+zone.name+' is not responding!', 'danger', zone.name+'-offline');
                 } else {
                     hourglass.notification.remove(zone.name+'-offline');
                 }
@@ -54,21 +54,29 @@ var hourglass = {
 
     notification: {
 
-        add: function(title, content, level='danger', dismissable=true, slug=null) {
+        add: function(title, content, level='danger', slug=null, desktop=true) {
             if (slug == null) {
                 slug = title.toLowerCase().replace(/ /g,'-');
             }
             if ($('#notification-container').children('#notification-'+slug).length == 0) {
                 console.log('adding notification: '+slug);
                 $('#notification-container').append("<div id='notification-"+slug+"' class='notification-item alert alert-"+level+"'><h4 class='item-title'>"+title+"</h4><p class='item-info'>"+content+"</p></div>");
-                if (dismissable) {
-                    $('#notification-'+slug).click(function(e) {
-                        e.stopPropagation();
-                        hourglass.notification.remove(slug)
-                    });
-                }
+                $('#notification-'+slug).click(function(e) {
+                    e.stopPropagation();
+                    hourglass.notification.remove(slug)
+                });
                 hourglass.notification.update();
                 hourglass.notification.jingle();
+                // Don't give desktop notifications within the first 1 second of page load
+                if (desktop && ((Date.now() - window.performance.timing.loadEventEnd) / 1000 > 1)) { 
+                    if (Notification.permission !== "granted") {
+                        Notification.requestPermission();
+                    } else {
+                        var desktopNotification = new Notification(title, {
+                            body: content,
+                        });
+                    }
+                }
             }
             return;
         },
@@ -145,5 +153,7 @@ $(document).ready(function() {
             }
         })
     });
-    
+    if (Notification.permission !== "granted") {
+        Notification.requestPermission();
+    }
 });
