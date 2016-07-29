@@ -18,7 +18,7 @@ class SensuClient(SensuBase, Client):
         self.zone_name = zone_name
         self.name = extra['name']
         try:
-            self.updated_at = datetime.fromtimestamp(
+            self.updated_at = datetime.utcfromtimestamp(
                 int(extra.get('timestamp')))
         except TypeError:
             self.updated_at = None
@@ -66,7 +66,7 @@ class SensuEvent(SensuBase, Event):
         self.client_name = extra['client'].get('name')
         self.check_name = extra['check'].get('name')
         try:
-            self.updated_at = datetime.fromtimestamp(
+            self.updated_at = datetime.utcfromtimestamp(
                 int(extra.get('timestamp')))
         except TypeError:
             self.updated_at = None
@@ -96,12 +96,12 @@ class SensuSilence(SensuBase, Silence):
             self.check_name = None
         self.comment = json.dumps(extra['content'])
         if extra['content'].get('timestamp'):
-            self.created_at = datetime.fromtimestamp(
+            self.created_at = datetime.utcfromtimestamp(
                 int(extra['content']['timestamp']))
         if extra['expire'] == -1:
             self.expire_at = None
         else:
-            self.expire_at = datetime.fromtimestamp(
+            self.expire_at = datetime.utcfromtimestamp(
                 int(time() + int(extra['expire'])))
         self.extra = json.dumps(extra)
 
