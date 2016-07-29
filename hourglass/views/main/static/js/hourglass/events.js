@@ -1,4 +1,4 @@
-var eventsfilters = {
+var eventsFilters = {
 
     statusOptions: [
         {label: 'Critical', title: 'Critical', value: 2},
@@ -37,7 +37,7 @@ var eventsfilters = {
             return $(select).data('name').replace('-', ' ').capitalize(true);
         },
         onDropdownHidden: function() {
-            eventsfilters.setDataTablesUrl();
+            eventsFilters.setDataTablesUrl();
             document.eventstable.ajax.reload(null, false);
         },
     },
@@ -53,11 +53,10 @@ var eventsfilters = {
         $('#status-filter').multiselect('dataprovider', this.statusOptions);
         $('#hide-events-filter').multiselect(this.multiselectOptions);
         $('#hide-events-filter').multiselect('dataprovider', this.hideOptions);
-        this.updateZones();
-        this.updateChecks();
+        this.updateFilters();
     },
 
-    update: function() {
+    updateFilters: function() {
         this.updateZones();
         this.updateChecks();
     },
@@ -79,11 +78,11 @@ var eventsfilters = {
 
     updateChecks: function() {
         var self = this;
-        url = hourglass.get_dashboard_url('/api/checks');
+        url = hourglass.get_dashboard_url('/api/events?count_checks');
         $.getJSON(url, function updateChecksJSONCB(data) {
             newchecks = []
-            $.each(data.checks.sort(), function updateChecksEachCB(idx, obj) {
-                newchecks.push({label: obj.name, title: obj.name, value: obj.name});
+            $.each(data.events.sort(), function updateChecksEachCB(idx, obj) {
+                newchecks.push({label: obj.name+' ('+obj.count+')', title: obj.name, value: obj.name});
             });
             self.checkOptions = newchecks;
         }).success(function updateChecksSuccessCB() {
@@ -131,7 +130,7 @@ $(document).ready(function documentReadyCB() {
             [ 5, 'desc' ],
         ],
         'ajax': {
-            url: eventsfilters.setDataTablesUrl(),
+            url: eventsFilters.setDataTablesUrl(),
             dataSrc: function(json) {
                 json = json['events'];
                 return_data = new Array();
@@ -165,9 +164,9 @@ $(document).ready(function documentReadyCB() {
             $('td:first', nRow).addClass(hourglass.statusclasses[aData['status']]);
         },
         'initComplete': function (foo) {
-            eventsfilters.create();
+            eventsFilters.create();
             hourglass.registerTask('update-events', 6, function() {
-                //filters.update();
+                eventsFilters.updateFilters();
                 document.eventstable.ajax.reload(null, false);
             });
         }
