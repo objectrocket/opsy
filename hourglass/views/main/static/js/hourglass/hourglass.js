@@ -24,7 +24,8 @@ var hourglass = {
     get_dashboard_url: function(url) {
         dash = $.QueryString['dashboard'];
         if (dash) {
-            return url+'?dashboard='+dash;
+            var separator = url.indexOf('?') !== -1 ? "&" : "?";
+            return url+separator+'dashboard='+dash;
         } else {
             return url;
         }
