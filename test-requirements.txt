@@ -1,0 +1,4 @@
+pylint
+pylint-flask
+pep8
+pep257

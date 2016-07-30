@@ -1,0 +1,16 @@
+language: python
+python:
+  - "3.4"
+  - "3.5"
+# command to install dependencies
+install:
+  # Standard requirements
+  - pip install -r requirements.txt
+  # Test requirements
+  - pip install -r test-requirements.txt
+# command to run tests
+script:
+  # Python validations
+  - find . -name \*.py -exec pep8 {} +
+  - find . -name \*.py -exec pep257 {} +
+  - pylint hourglass
