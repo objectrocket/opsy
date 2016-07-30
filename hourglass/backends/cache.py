@@ -5,6 +5,7 @@ from flask import abort
 import hourglass
 from hourglass.db import db
 from hourglass.utils import get_filters_list
+from . import async_task
 
 
 class ExtraOut(BaseQuery):
@@ -505,7 +506,7 @@ class Zone(CacheBase, db.Model):
     def get_update_tasks(self, app):
         tasks = []
         for model in self.models:
-            tasks.append(asyncio.async(self.update_objects(app, model)))
+            tasks.append(async_task(self.update_objects(app, model)))
         return tasks
 
     @classmethod
