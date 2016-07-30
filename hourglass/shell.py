@@ -8,32 +8,32 @@ from hourglass.db import db
 from hourglass.app import create_app
 
 DEFAULT_CONFIG = '%s/hourglass.ini' % os.path.abspath(os.path.curdir)
-manager = Manager(create_app)
-manager.add_option('-V', '--version', action='version',
+MANAGER = Manager(create_app)
+MANAGER.add_option('-V', '--version', action='version',
                    version=hourglass.__version__)
-manager.add_option('-c', '--config', dest='config', default=DEFAULT_CONFIG)
+MANAGER.add_option('-c', '--config', dest='config', default=DEFAULT_CONFIG)
 
 
-@manager.shell
+@MANAGER.shell
 def make_shell_context():
     return dict(create_app=create_app, db=db, Check=Check, Client=Client,
                 Event=Event, Silence=Silence, Result=Result, Zone=Zone,
-                Scheduler=Scheduler, manager=manager)
+                Scheduler=Scheduler, MANAGER=MANAGER)
 
 
-@manager.command
+@MANAGER.command
 def initcache():
-    'Drops everything in cache database and rebuilds schema'
-    Scheduler(manager.app.config_file).create_cache_db()
+    """Drop everything in cache database and rebuilds schema."""
+    Scheduler(MANAGER.app.config_file).create_cache_db()
     print("Done!")
 
 
-@manager.command
+@MANAGER.command
 def updatecache():
-    'Updates the cache database'
-    Scheduler(manager.app.config_file).run_tasks()
+    """Update the cache database."""
+    Scheduler(MANAGER.app.config_file).run_tasks()
     print("Done!")
 
 
 def main():
-    manager.run()
+    MANAGER.run()

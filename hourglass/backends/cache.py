@@ -1,5 +1,5 @@
-import aiohttp
 import asyncio
+import aiohttp
 from flask.ext.sqlalchemy import BaseQuery
 from flask import abort
 import hourglass
@@ -122,10 +122,7 @@ class Client(CacheBase, db.Model):
             clients_json = []
             for client, silence in clients_silences:
                 client_json = client.dict_out
-                if silence:
-                    client_json['silenced'] = True
-                else:
-                    client_json['silenced'] = False
+                client_json['silenced'] = bool(silence)
                 clients_json.append(client_json)
             return clients_json
 
@@ -160,7 +157,7 @@ class Client(CacheBase, db.Model):
     )
 
     def __init__(self, zone_name, extra):
-        raise NotImplemented
+        raise NotImplementedError
 
     @property
     def status(self):
@@ -175,10 +172,7 @@ class Client(CacheBase, db.Model):
 
     @property
     def silenced(self):
-        if self.silences.filter(Silence.check_name == '').first():
-            return True
-        else:
-            return False
+        return bool(self.silences.filter(Silence.check_name == '').first())
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -234,7 +228,7 @@ class Check(CacheBase, db.Model):
     )
 
     def __init__(self, zone_name, extra):
-        raise NotImplemented
+        raise NotImplementedError
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -272,14 +266,11 @@ class Result(CacheBase, db.Model):
                 Result.zone_name == Silence.zone_name,
                 Result.client_name == Silence.client_name,
                 Result.check_name == Silence.check_name)).add_entity(
-                Silence).all()
+                    Silence).all()
             events_json = []
             for event, silence in clients_silences:
                 event_json = event.dict_out
-                if silence:
-                    event_json['silenced'] = True
-                else:
-                    event_json['silenced'] = False
+                event_json['silenced'] = bool(silence)
                 events_json.append(event_json)
             return events_json
 
@@ -303,7 +294,7 @@ class Result(CacheBase, db.Model):
     )
 
     def __init__(self, zone_name, extra):
-        raise NotImplemented
+        raise NotImplementedError
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -352,10 +343,7 @@ class Event(CacheBase, db.Model):
             events_json = []
             for event, silence in clients_silences:
                 event_json = event.dict_out
-                if silence:
-                    event_json['silenced'] = True
-                else:
-                    event_json['silenced'] = False
+                event_json['silenced'] = bool(silence)
                 events_json.append(event_json)
             return events_json
 
@@ -390,7 +378,7 @@ class Event(CacheBase, db.Model):
     )
 
     def __init__(self, zone_name, extra):
-        raise NotImplemented
+        raise NotImplementedError
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -446,7 +434,7 @@ class Silence(CacheBase, db.Model):
     )
 
     def __init__(self, zone_name, extra):
-        raise NotImplemented
+        raise NotImplementedError
 
     @property
     def dict_out(self):
@@ -511,7 +499,7 @@ class Zone(CacheBase, db.Model):
         raise NotImplementedError
 
     @asyncio.coroutine
-    def update_objects(self, model):
+    def update_objects(self, app, model):
         raise NotImplementedError
 
     def get_update_tasks(self, app):
@@ -531,18 +519,17 @@ class Zone(CacheBase, db.Model):
     @property
     def pollers_health(self):
         pollers = []
-        overall_health = []
+        zone_healths = []
         for model in self.models:
             updated_at, status, message = model.last_poll_status(self.name)
             pollers.append({'name': model.__tablename__,
                             'updated_at': updated_at,
                             'status': status,
                             'message': message})
-            overall_health.append(True) if status == 'ok' else \
-                overall_health.append(False)
-        if all(overall_health):
+            zone_healths.append(status == 'ok')
+        if all(zone_healths):
             overall_health = 'ok'
-        elif any(overall_health):
+        elif any(zone_healths):
             overall_health = 'warning'
         else:
             overall_health = 'critical'
@@ -583,7 +570,8 @@ class HttpZoneMixin(object):
                                      headers=headers)
 
     @asyncio.coroutine
-    def get(self, session, url, expected_status=[200]):
+    def get(self, session, url, expected_status=None):
+        expected_status = expected_status or [200]
         try:
             with aiohttp.Timeout(self.timeout):
                 response = yield from session.get(url)
@@ -605,9 +593,9 @@ class HttpZoneMixin(object):
                 app.logger.debug('Making request to %s' % url)
                 response = yield from self.get(session, url)
                 results = model.filter_api_response(response)
-        except aiohttp.errors.ClientError as e:
+        except aiohttp.errors.ClientError as exc:
             message = 'Error updating %s cache for %s: %s' % (
-                model.__tablename__, self.name, e)
+                model.__tablename__, self.name, exc)
             app.logger.error(message)
             init_objects.append(model.update_last_poll_status(
                 self.name, 'critical'))
