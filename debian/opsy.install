@@ -1,0 +1,3 @@
+contrib/wsgi.py opt/opsy
+contrib/uwsgi.ini etc/uwsgi/apps-available/
+contrib/opsy.ini etc/

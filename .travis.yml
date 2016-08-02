@@ -14,4 +14,4 @@ script:
   - find . -name \*.py -exec pep8 {} +
   # Ignoring missing docstrings for now
   - find . -name \*.py -exec pep257 {} +
-  - pylint hourglass
+  - pylint opsy
