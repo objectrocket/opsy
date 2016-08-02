@@ -2,16 +2,22 @@ language: python
 python:
   - "3.4"
   - "3.5"
+branches:
+  only:
+    - master
 # command to install dependencies
 install:
   # Standard requirements
   - pip install -r requirements.txt
   # Test requirements
   - pip install -r test-requirements.txt
-# command to run tests
+  # Install some things from npm to test the javascript
+  - npm install -g jscs
 script:
   # Python validations
   - find . -name \*.py -exec pep8 {} +
   # Ignoring missing docstrings for now
   - find . -name \*.py -exec pep257 {} +
   - pylint opsy
+  # Style check the javascript
+  - jscs --reporter inline opsy/views/main/static/js/opsy/
