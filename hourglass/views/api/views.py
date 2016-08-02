@@ -1,9 +1,9 @@
-from . import api
 from hourglass.db import db
 from hourglass.utils import get_filters_list
 from hourglass.backends.cache import Client, Check, Result, Event, Silence, \
     Zone
 from flask import current_app, jsonify, request
+from . import api
 
 
 @api.route('/zones')
@@ -12,35 +12,31 @@ def zones():
     if dashboard:
         config = current_app.config
         dash_filters_list = Zone.get_dashboard_filters_list(config, dashboard)
-        zones = Zone.query.filter(*dash_filters_list).all_dict_out_or_404()
+        zone_list = Zone.query.filter(*dash_filters_list).all_dict_out_or_404()
     else:
-        zones = Zone.query.filter().all_dict_out_or_404()
-    return jsonify({'zones': zones})
+        zone_list = Zone.query.filter().all_dict_out_or_404()
+    return jsonify({'zones': zone_list})
 
 
 @api.route('/zones/<zone_name>')
 def zone(zone_name):
-    zone = Zone.query.filter(Zone.name == zone_name).all_dict_out_or_404()
-    return jsonify({'zone': zone})
+    zoneobj = Zone.query.filter(Zone.name == zone_name).all_dict_out_or_404()
+    return jsonify({'zone': zoneobj})
 
 
 @api.route('/events')
 def events():
     dashboard = request.args.get('dashboard')
-    try:
-        count_checks = request.args['count_checks']
-        count_checks = True
-    except:
-        count_checks = False
+    count_checks = request.args.get('count_checks')
     hide_silenced = request.args.get('hide_silenced', '')
-    zones = request.args.get('zone')
-    checks = request.args.get('check')
-    clients = request.args.get('client')
-    statuses = request.args.get('status')
-    filters = ((zones, Event.zone_name),
-               (checks, Event.check_name),
-               (clients, Event.client_name),
-               (statuses, Event.status))
+    reqzones = request.args.get('zone')
+    reqchecks = request.args.get('check')
+    reqclients = request.args.get('client')
+    reqstatuses = request.args.get('status')
+    filters = ((reqzones, Event.zone_name),
+               (reqchecks, Event.check_name),
+               (reqclients, Event.client_name),
+               (reqstatuses, Event.status))
     filters_list = get_filters_list(filters)
     hide_silenced = hide_silenced.split(',')
     if 'checks' in hide_silenced:
@@ -59,40 +55,40 @@ def events():
     else:
         events_query = Event.query
     if count_checks:
-        events = {x: y for x, y in events_query.with_entities(
+        event_list = {x: y for x, y in events_query.with_entities(
             Event.check_name, db.func.count(Event.check_name)).filter(
-            *filters_list).group_by(
-            Event.check_name).order_by(db.desc(db.func.count(
-                Event.check_name))).all()}
-        events = sorted([{'name': x, 'count': y} for x, y in events.items()],
-                        key=lambda x: (-x['count'], x['name']))
+                *filters_list).group_by(
+                    Event.check_name).order_by(db.desc(db.func.count(
+                        Event.check_name))).all()}
+        event_list = sorted([{'name': x, 'count': y} for x, y in event_list.items()],
+                            key=lambda x: (-x['count'], x['name']))
     else:
-        events = events_query.filter(*filters_list).all_dict_out()
-    return jsonify({'events': events})
+        event_list = events_query.filter(*filters_list).all_dict_out()
+    return jsonify({'events': event_list})
 
 
-@api.route('/events/<zone>/<client>/<check>')
-def event(zone, client, check):
+@api.route('/events/<zone_name>/<client_name>/<check_name>')
+def event(zone_name, client_name, check_name):
     extra = request.args.get('extra')
-    filters = ((zone, Event.zone_name),
-               (client, Event.client_name),
-               (check, Event.check_name))
+    filters = ((zone_name, Event.zone_name),
+               (client_name, Event.client_name),
+               (check_name, Event.check_name))
     filters_list = get_filters_list(filters)
-    events = Event.query.filter(*filters_list)
-    if extra == 'true':
-        events = events.all_dict_extra_out_or_404()
+    event_list = Event.query.filter(*filters_list)
+    if extra:
+        event_list = event_list.all_dict_extra_out_or_404()
     else:
-        events = events.all_dict_out_or_404()
-    return jsonify({'events': events})
+        event_list = event_list.all_dict_out_or_404()
+    return jsonify({'events': event_list})
 
 
 @api.route('/checks')
 def checks():
     dashboard = request.args.get('dashboard')
-    zones = request.args.get('zone')
-    checks = request.args.get('check')
-    filters = ((zones, Check.zone_name),
-               (checks, Check.name))
+    zone_list = request.args.get('zone')
+    check_list = request.args.get('check')
+    filters = ((zone_list, Check.zone_name),
+               (check_list, Check.name))
     filters_list = get_filters_list(filters)
     if dashboard:
         config = current_app.config
@@ -100,31 +96,31 @@ def checks():
         checks_query = Check.query.filter(*dash_filters_list)
     else:
         checks_query = Check.query
-    checks = checks_query.filter(*filters_list).all_dict_out()
-    return jsonify({'checks': checks})
+    check_list = checks_query.filter(*filters_list).all_dict_out()
+    return jsonify({'checks': check_list})
 
 
-@api.route('/checks/<zone>/<check>')
-def check(zone, check):
+@api.route('/checks/<zone_name>/<check_name>')
+def check(zone_name, check_name):
     extra = request.args.get('extra')
-    filters = ((zone, Check.zone_name),
-               (check, Check.name))
+    filters = ((zone_name, Check.zone_name),
+               (check_name, Check.name))
     filters_list = get_filters_list(filters)
-    checks = Check.query.filter(*filters_list)
+    check_list = Check.query.filter(*filters_list)
     if extra == 'true':
-        checks = checks.all_dict_extra_out_or_404()
+        check_list = check_list.all_dict_extra_out_or_404()
     else:
-        checks = checks.all_dict_out_or_404()
-    return jsonify({'checks': checks})
+        check_list = check_list.all_dict_out_or_404()
+    return jsonify({'checks': check_list})
 
 
 @api.route('/clients')
 def clients():
     dashboard = request.args.get('dashboard')
-    zones = request.args.get('zone')
-    clients = request.args.get('client')
-    filters = ((zones, Client.zone_name),
-               (clients, Client.name))
+    zone_list = request.args.get('zone')
+    client_list = request.args.get('client')
+    filters = ((zone_list, Client.zone_name),
+               (client_list, Client.name))
     filters_list = get_filters_list(filters)
     if dashboard:
         config = current_app.config
@@ -133,74 +129,74 @@ def clients():
         clients_query = Client.query.filter(*dash_filters_list)
     else:
         clients_query = Client.query
-    clients = clients_query.filter(*filters_list).all_dict_out()
-    return jsonify({'clients': clients})
+    client_list = clients_query.filter(*filters_list).all_dict_out()
+    return jsonify({'clients': client_list})
 
 
-@api.route('/clients/<zone>/<client>')
-def client(zone, client):
-    filters = ((zone, Client.zone_name),
-               (client, Client.name))
+@api.route('/clients/<zone_name>/<client_name>')
+def client(zone_name, client_name):
+    filters = ((zone_name, Client.zone_name),
+               (client_name, Client.name))
     filters_list = get_filters_list(filters)
-    clients = Client.query.filter(*filters_list).all_dict_out_or_404()
-    return jsonify({'clients': clients})
+    client_list = Client.query.filter(*filters_list).all_dict_out_or_404()
+    return jsonify({'clients': client_list})
 
 
-@api.route('/clients/<zone>/<client>/events')
-def client_events(zone, client):
-    filters = ((zone, Event.zone_name),
-               (client, Event.client_name))
+@api.route('/clients/<zone_name>/<client_name>/events')
+def client_events(zone_name, client_name):
+    filters = ((zone_name, Event.zone_name),
+               (client_name, Event.client_name))
     filters_list = get_filters_list(filters)
-    events = Event.query.filter(*filters_list).all_dict_out_or_404()
-    return jsonify({'events': events})
+    event_list = Event.query.filter(*filters_list).all_dict_out_or_404()
+    return jsonify({'events': event_list})
 
 
-@api.route('/clients/<zone>/<client>/events/<check>')
-def client_events_check(zone, client, check):
-    filters = ((zone, Event.zone_name),
-               (client, Event.client_name),
-               (check, Event.check_name))
+@api.route('/clients/<zone_name>/<client_name>/events/<check_name>')
+def client_events_check(zone_name, client_name, check_name):
+    filters = ((zone_name, Event.zone_name),
+               (client_name, Event.client_name),
+               (check_name, Event.check_name))
     filters_list = get_filters_list(filters)
-    events = Event.query.filter(*filters_list).all_dict_out_or_404()
-    return jsonify({'events': events})
+    event_list = Event.query.filter(*filters_list).all_dict_out_or_404()
+    return jsonify({'events': event_list})
 
 
-@api.route('/clients/<zone>/<client>/results')
-def client_results(zone, client):
-    filters = ((zone, Result.zone_name),
-               (client, Result.client_name))
+@api.route('/clients/<zone_name>/<client_name>/results')
+def client_results(zone_name, client_name):
+    filters = ((zone_name, Result.zone_name),
+               (client_name, Result.client_name))
     filters_list = get_filters_list(filters)
-    results = Result.query.filter(*filters_list).all_dict_out_or_404()
-    return jsonify({'results': results})
+    result_list = Result.query.filter(*filters_list).all_dict_out_or_404()
+    return jsonify({'results': result_list})
 
 
-@api.route('/clients/<zone>/<client>/results/<check>')
-def client_results_check(zone, client, check):
-    filters = ((zone, Result.zone_name),
-               (client, Result.client_name),
-               (check, Result.check_name))
+@api.route('/clients/<zone_name>/<client_name>/results/<check_name>')
+def client_results_check(zone_name, client_name, check_name):
+    filters = ((zone_name, Result.zone_name),
+               (client_name, Result.client_name),
+               (check_name, Result.check_name))
     filters_list = get_filters_list(filters)
-    results = Result.query.filter(*filters_list).all_dict_out_or_404()
-    return jsonify({'results': results})
+    result_list = Result.query.filter(*filters_list).all_dict_out_or_404()
+    return jsonify({'results': result_list})
 
 
-@api.route('/clients/<zone>/<client>/silences')
-def client_silences(zone, client):
-    filters = ((zone, Silence.zone_name),
-               (client, Silence.client_name))
+@api.route('/clients/<zone_name>/<client_name>/silences')
+def client_silences(zone_name, client_name):
+    filters = ((zone_name, Silence.zone_name),
+               (client_name, Silence.client_name))
     filters_list = get_filters_list(filters)
-    silences = Silence.query.filter(*filters_list).all_dict_out_or_404()
-    return jsonify({'silences': silences})
+    silence_list = Silence.query.filter(*filters_list).all_dict_out_or_404()
+    return jsonify({'silences': silence_list})
 
 
 @api.route('/silences')
 def silences():
-    zones = request.args.get('zone')
-    clients = request.args.get('client')
-    checks = request.args.get('check')
-    filters = ((zones, Silence.zone_name),
-               (clients, Silence.client_name),
-               (checks, Silence.check_name))
+    zone_list = request.args.get('zone')
+    client_list = request.args.get('client')
+    check_list = request.args.get('check')
+    filters = ((zone_list, Silence.zone_name),
+               (client_list, Silence.client_name),
+               (check_list, Silence.check_name))
     filters_list = get_filters_list(filters)
-    silences = Silence.query.filter(*filters_list).all_dict_out()
-    return jsonify({'silences': silences})
+    silence_list = Silence.query.filter(*filters_list).all_dict_out()
+    return jsonify({'silences': silence_list})

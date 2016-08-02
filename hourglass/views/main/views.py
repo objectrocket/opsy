@@ -1,5 +1,5 @@
-from . import main
 from flask import render_template, redirect, url_for, current_app
+from . import main
 
 
 @main.context_processor
@@ -31,16 +31,16 @@ def clients():
     return render_template('clients.html', title='Clients')
 
 
-@main.route('/clients/<zone>/<client>')
-def client(zone, client):
+@main.route('/clients/<zone>/<client_name>')
+def client(zone, client_name):
     return render_template('client_details.html', zone=zone,
-                           client=client, title='Client Details')
+                           client=client_name, title='Client Details')
 
 
-@main.route('/clients/<zone>/<client>/events/<check>')
-def client_event(zone, client, check):
+@main.route('/clients/<zone>/<client_name>/events/<check>')
+def client_event(zone, client_name, check):
     return render_template('client_event_details.html', zone=zone,
-                           client=client, check=check, title='Event Details')
+                           client=client_name, check=check, title='Event Details')
 
 
 @main.route('/about')

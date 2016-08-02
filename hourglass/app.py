@@ -1,14 +1,14 @@
+import logging
+from logging.handlers import WatchedFileHandler
+from logging import StreamHandler
+import os.path
+import sys
 from flask import Flask
 from flask.ext.iniconfig import INIConfig
 from hourglass.db import db
 from hourglass.backends.sensu.cache import *
 from hourglass.exceptions import NoConfigFile
 from hourglass.utils import HourglassJSONEncoder, load_zones
-import logging
-from logging.handlers import WatchedFileHandler
-from logging import StreamHandler
-import os.path
-import sys
 
 
 def create_app(config):
@@ -36,9 +36,8 @@ def setup_logging(app):
             "%(asctime)s %(process)d %(levelname)s %(module)s - %(message)s")
         if log_file:
             log_handler = WatchedFileHandler(log_file)
-            log_handler.setFormatter(formatter)
-            app.logger.addHandler(log_handler)
-        log_handler = StreamHandler(sys.stdout)
+        else:
+            log_handler = StreamHandler(sys.stdout)  # pylint: disable=redefined-variable-type
         log_handler.setFormatter(formatter)
         app.logger.addHandler(log_handler)
         app.logger.setLevel(logging.INFO)
