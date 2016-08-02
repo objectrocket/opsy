@@ -1,17 +1,17 @@
-Source: hourglass
+Source: opsy
 Section: python
 Priority: extra
-Maintainer: Chris Jowett <chris.jowett@rackspace.com>
+Maintainer: Chris Jowett <cryptk@gmail.com>
 Build-Depends: debhelper (>= 9), python3.4-dev, dh-virtualenv (>= 0.7)
 Standards-Version: 3.9.5
 
-Package: hourglass
+Package: opsy
 Architecture: any
 Pre-Depends: dpkg (>= 1.16.1), python3.4, ${misc:Pre-Depends}
 Depends: ${python:Depends}, ${misc:Depends}
 Recommends: uwsgi, nginx
 Description: An alternative web panel for Sensu.
- Hourglass aims to be a dashboard for the Sensu monitoring framework that has some features that the base dashboard (Uchiwa) is lacking
+ Opsy aims to be a dashboard for the Sensu monitoring framework that has some features that the base dashboard (Uchiwa) is lacking
  .
- The Hourglass back-end is written in Python and uses the Flask framework. The front-end uses Bootstrap, jQuery, DataTables and many others
+ The Opsy back-end is written in Python and uses the Flask framework. The front-end uses Bootstrap, jQuery, DataTables and many others
 
