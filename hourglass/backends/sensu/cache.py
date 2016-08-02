@@ -1,8 +1,8 @@
+from datetime import datetime
+from time import time
 from flask import json
 from hourglass.backends.cache import (Client, Check, Result, Event, Silence,
                                       Zone, HttpZoneMixin)
-from datetime import datetime
-from time import time
 
 
 class SensuBase(object):
@@ -110,7 +110,7 @@ class SensuSilence(SensuBase, Silence):
         return [x for x in response if x['path'].startswith('silence/')]
 
 
-class SensuZone(SensuBase, HttpZoneMixin, Zone):
+class SensuZone(SensuBase, HttpZoneMixin, Zone):  # pylint: disable=abstract-method
 
     models = [SensuCheck, SensuClient, SensuEvent, SensuSilence, SensuResult]
 

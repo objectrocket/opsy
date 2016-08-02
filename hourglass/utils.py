@@ -1,15 +1,15 @@
 from datetime import date
+import importlib
+import uuid
 from flask.json import JSONEncoder
 from flask._compat import text_type
 from itsdangerous import json as _json
 from dateutil.tz import tzutc
-import importlib
-import uuid
 
 
 class HourglassJSONEncoder(JSONEncoder):
 
-    def default(self, o):
+    def default(self, o):  # pylint: disable=method-hidden
         if isinstance(o, date):
             # TODO (testeddoughnut): proper timezone support
             o = o.replace(tzinfo=tzutc())
