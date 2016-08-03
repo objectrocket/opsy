@@ -1,4 +1,4 @@
-var eventsFilters = {
+var events = {
 
   statusOptions: [
     {label: 'Critical', title: 'Critical', value: 2},
@@ -38,7 +38,7 @@ var eventsFilters = {
       return $(select).data('name').replace('-', ' ').capitalize(true);
     },
     onDropdownHidden: function() {
-      eventsFilters.setDataTablesUrl();
+      events.setDataTablesUrl();
       document.eventstable.ajax.reload(null, false);
     },
   },
@@ -108,19 +108,20 @@ var eventsFilters = {
     } catch (err) {
     }
     return '/api/events?' + $.param(params);
+  },
+
+  getStatusCount: function(state) {
+    return document.eventstable.column(0).data().filter(function(value, idx) {
+      return value == state ? true : false;
+    }).length;
+  },
+
+  updateTitle: function() {
+    crits = this.getStatusCount('Critical');
+    warns = this.getStatusCount('Warning');
+    document.title = crits + ' Critical, ' + warns + ' Warning | Events | Opsy';
   }
-};
 
-var getStatusCount = function(state) {
-  return document.eventstable.column(0).data().filter(function(value, idx) {
-    return value == state ? true : false;
-  }).length;
-};
-
-var updateTitle = function() {
-  crits = getStatusCount('Critical');
-  warns = getStatusCount('Warning');
-  document.title = crits + ' Critical, ' + warns + ' Warning | Events | Opsy';
 };
 
 $(document).ready(function() {
@@ -134,7 +135,7 @@ $(document).ready(function() {
       [5, 'desc'],
     ],
     'ajax': {
-      url: eventsFilters.setDataTablesUrl(),
+      url: events.setDataTablesUrl(),
       dataSrc: function(json) {
         json = json.events;
         returnData = new Array();
@@ -178,14 +179,14 @@ $(document).ready(function() {
       $('td:first', nRow).addClass(opsy.statusclasses[aData.status]);
     },
     'initComplete': function(foo) {
-      eventsFilters.create();
+      events.create();
       opsy.registerTask('update-events', 6, function() {
-        eventsFilters.updateFilters();
+        events.updateFilters();
         document.eventstable.ajax.reload(null, false);
       });
     }
   }).on('draw.dt', function() {
-    updateTitle();
+    events.updateTitle();
     $('time.timeago').timeago();
   });
 });
