@@ -5,9 +5,9 @@
 #Debian packaging
 debian/debhelper-build-stamp
 debian/files
-debian/hourglass.postinst.debhelper
-debian/hourglass.substvars
-debian/hourglass
+debian/opsy.postinst.debhelper
+debian/opst.substvars
+debian/opsy
 
 #PBR
 ChangeLog
@@ -49,6 +49,7 @@ pip-log.txt
 pip-delete-this-directory.txt
 
 # Unit test / coverage reports
+node_modules/
 htmlcov/
 .tox/
 .coverage
