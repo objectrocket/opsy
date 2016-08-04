@@ -12,7 +12,8 @@ install:
   # Test requirements
   - pip install -r test-requirements.txt
   # Install some things from npm to test the javascript
-  - npm install -g jscs
+  - npm install -g grunt-cli
+  - npm install
 script:
   # Python validations
   - find . -name \*.py -exec pep8 {} +
@@ -20,4 +21,4 @@ script:
   - find . -name \*.py -exec pep257 {} +
   - pylint opsy
   # Style check the javascript
-  - jscs --reporter inline opsy/views/main/static/js/opsy/
+  - grunt
