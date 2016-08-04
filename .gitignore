@@ -1,5 +1,5 @@
-#Hourglass files
-/hourglass.ini
+#Opsy files
+/opsy.ini
 *fakeapi*
 
 #Debian packaging
