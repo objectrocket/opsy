@@ -2,6 +2,10 @@ language: python
 python:
   - "3.4"
   - "3.5"
+cache:
+  pip: true
+  directories:
+    - node_modules  # NPM modules
 branches:
   only:
     - master
@@ -16,6 +20,8 @@ matrix:
         - grunt
 # command to install dependencies
 install:
+  # Runtime requirements
+  - pip install -r requirements.txt
   # Test requirements
   - pip install -r test-requirements.txt
 script:
