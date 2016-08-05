@@ -180,7 +180,7 @@ $(document).ready(function() {
     'initComplete': function(foo) {
       eventsFilters.create();
       opsy.registerTask('update-events', 6, function() {
-        eventsFilters.updateFilters();
+        //eventsFilters.updateFilters();
         document.eventstable.ajax.reload(null, false);
       });
     }
