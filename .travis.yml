@@ -2,17 +2,15 @@ language: python
 python:
   - "3.4"
   - "3.5"
-cache:
-  pip: true
-  directories:
-    - node_modules  # NPM modules
 branches:
   only:
     - master
+    - dev
 matrix:
   include:
     # Test javascript as part of python3.4 tests
-    - python: 3.4
+    - language: node_js
+      node_js: node
       install:
         - npm install -g grunt-cli
         - npm install
