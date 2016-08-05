@@ -1,7 +1,5 @@
 var opsy = {
 
-  tasks: [],
-
   statusclasses: {
     'Ok': 'success',
     'Warning': 'warning',
@@ -49,13 +47,45 @@ var opsy = {
     });
   },
 
-  registerTask: function(slug, interval, func, runNow=false) {
-    console.log('registering task: ' + slug + ' to run every ' + interval +
-      ' ticks.');
-    opsy.tasks.push({'slug': slug, 'interval': interval, 'callback': func});
-    if (runNow) {
-      func();
+  task: {
+
+    list: [],
+
+    register: function(slug, interval, func, runNow=false) {
+      console.log('registering task: ' + slug + ' to run every ' + interval +
+        ' ticks.');
+      opsy.task.list.push(
+        {'slug': slug, 'interval': interval, 'callback': func}
+      );
+      if (runNow) {
+        func();
+      }
+      if (opsy.ticker === undefined) {
+        opsy.task.start();
+      }
+    },
+
+    start: function() {
+      if (opsy.ticker !== undefined) {
+        return;
+      }
+      console.log('Starting event loop');
+      var tick = new Event('tick');
+      var tickcount = 0;
+      opsy.ticker = setInterval(function() {
+        dispatchEvent(tick);
+      }, 5000);
+      addEventListener('tick', function(e) {
+        tickcount++;
+        $.each(opsy.task.list, function(idx, obj) {
+          if (tickcount % obj.interval == 0) {
+            console.log('running task: ' + obj.slug);
+            obj.callback();
+          }
+        });
+      });
     }
+
   },
 
   notification: {
@@ -135,35 +165,15 @@ String.prototype.capitalize = function(all) {
   }
 };
 
-$(document).ready(function() {
-  opsy.registerTask('zone-check', 5, opsy.checkZones, true);
-  (function($) {
-    $.QueryString = (function(a) {
-      if (a == '') { return {}; };
-      var b = {};
-      for (var i = 0; i < a.length; ++i) {
-        var p = a[i].split('=');
-        if (p.length != 2) { continue; };
-        b[p[0]] = decodeURIComponent(p[1].replace(/\+/g, ' '));
-      }
-      return b;
-    })(window.location.search.substr(1).split('&'));
-  })(jQuery);
-  var tick = new Event('tick');
-  var tickcount = 0;
-  ticker = setInterval(function() {
-    dispatchEvent(tick);
-  }, 5000);
-  addEventListener('tick', function(e) {
-    tickcount++;
-    $.each(opsy.tasks, function(idx, obj) {
-      if (tickcount % obj.interval == 0) {
-        console.log('running task: ' + obj.slug);
-        obj.callback();
-      }
-    });
-  });
-  if (Notification.permission !== 'granted') {
-    Notification.requestPermission();
-  }
-});
+(function($) {
+  $.QueryString = (function(a) {
+    if (a == '') { return {}; };
+    var b = {};
+    for (var i = 0; i < a.length; ++i) {
+      var p = a[i].split('=');
+      if (p.length != 2) { continue; };
+      b[p[0]] = decodeURIComponent(p[1].replace(/\+/g, ' '));
+    }
+    return b;
+  })(window.location.search.substr(1).split('&'));
+})(jQuery);

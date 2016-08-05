@@ -37,4 +37,9 @@
     <script src="{{url_for('main.static', filename='js/datatables-plugins-sorting-enum/enum.js')}}"></script>
     <script src="{{url_for('main.static', filename='js/timeago/jquery.timeago.js')}}"></script>
     <script src="{{url_for('main.static', filename='js/opsy/events.js')}}"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        events.datatables.init();
+      });
+    </script>
 {% endblock %}

@@ -107,6 +107,12 @@
     <script src="{{url_for('main.static', filename='js/opsy/opsy.js')}}"></script>
     <script type="text/javascript">
       var UCHIWA_URL = "{{ uchiwa_url }}";
+      $(document).ready(function() {
+        opsy.task.register('zone-check', 5, opsy.checkZones, true);
+        if (Notification.permission !== 'granted') {
+          Notification.requestPermission();
+        }
+      });
     </script>
     {%- block footer -%}
     {%- endblock %}
