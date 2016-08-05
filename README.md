@@ -1,4 +1,4 @@
-# Opsy [![Build Status](https://travis-ci.org/cryptk/opsy.svg?branch=dev)](https://travis-ci.org/cryptk/opsy)
+# Opsy
 A multi user/group web dashboard for Sensu
 
 # Developing
