@@ -69,41 +69,80 @@ var events = {
       $('#status-filter').multiselect('dataprovider', events.statusOptions);
       $('#hide-events-filter').multiselect(events.multiselectOptions);
       $('#hide-events-filter').multiselect('dataprovider', events.hideOptions);
-      events.filters.updateAll();
+      events.filters.updateAll(true);
     },
 
-    updateAll: function() {
-      events.filters.updateZones();
-      events.filters.updateChecks();
+    updateAll: function(init) {
+      events.filters.updateZones(init);
+      events.filters.updateChecks(init);
     },
 
-    updateZones: function() {
+    updateZones: function(init) {
       url = opsy.getDashboardUrl('/api/zones');
       $.getJSON(url, function(data) {
         newzones = [];
         $.each(data.zones, function(idx, obj) {
           newzones.push({label: obj.name, title: obj.name, value: obj.name});
         });
-        self.zoneOptions = newzones;
+        newzones.sort(function(a, b) { return a.value > b.value; });
+        events.zoneOptions = newzones;
       }).success(function() {
-        $('#zone-filter').multiselect('dataprovider', self.zoneOptions);
+        if (init) {
+          $('#zone-filter').multiselect('dataprovider', events.zoneOptions);
+        } else {
+          selectedOptions = $('#zone-filter option:selected').map(
+            function(idx, obj) {
+              return obj.value;
+            }
+          );
+          $('#zone-filter option').remove();
+          $.each(events.zoneOptions, function(idx, obj) {
+            $('#zone-filter')
+              .append('<option value="' + obj.value + '" label="' + obj.label +
+                '" title="' + obj.title + '"></option>'
+            );
+            if ($.inArray(obj.value, selectedOptions) !== -1) {
+              $('#zone-filter option[value="' + obj.value + '"')
+                .prop('selected', true);
+            }
+          });
+        }
         $('#zone-filter').multiselect('rebuild');
       });
     },
 
-    updateChecks: function() {
+    updateChecks: function(init) {
       url = opsy.getDashboardUrl('/api/events?count_checks');
       $.getJSON(url, function(data) {
         newchecks = [];
-        $.each(data.events.sort(), function(idx, obj) {
+        $.each(data.events, function(idx, obj) {
           newchecks.push({label: obj.name + ' (' + obj.count + ')',
             title: obj.name, value: obj.name});
         });
-        self.checkOptions = newchecks;
+        newchecks.sort(function(a, b) { return a.value > b.value; });
+        events.checkOptions = newchecks;
       }).success(function() {
-        $('#check-filter').multiselect('dataprovider', self.checkOptions);
+        if (init) {
+          $('#check-filter').multiselect('dataprovider', events.checkOptions);
+        } else {
+          selectedOptions = $('#check-filter option:selected')
+            .map(function(idx, obj) {
+              return obj.value;
+            });
+          $('#check-filter option').remove();
+          $.each(events.checkOptions, function(idx, obj) {
+            $('#check-filter')
+              .append('<option value="' + obj.value + '" label="' + obj.label +
+              '" title="' + obj.title + '"></option>');
+            if ($.inArray(obj.value, selectedOptions) !== -1) {
+              $('#check-filter option[value="' + obj.value + '"')
+                .prop('selected', true);
+            }
+          });
+        }
         $('#check-filter').multiselect('rebuild');
       });
+      return;
     },
   },
 
@@ -183,7 +222,7 @@ var events = {
         'initComplete': function(foo) {
           events.filters.create();
           opsy.task.register('update-events', 6, function() {
-            //events.updateFilters();
+            events.filters.updateAll();
             document.eventstable.ajax.reload(null, false);
           });
         }
