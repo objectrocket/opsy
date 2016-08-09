@@ -62,22 +62,21 @@ var events = {
       opsy.addFormGroup('zone');
       opsy.addFormGroup('check');
       opsy.addFormGroup('hide-events', 'hide_silenced');
-      $('#zone-filter').multiselect(this.multiselectOptions);
-      $('#check-filter').multiselect(this.multiselectOptions);
-      $('#status-filter').multiselect(this.multiselectOptions);
-      $('#status-filter').multiselect('dataprovider', this.statusOptions);
-      $('#hide-events-filter').multiselect(this.multiselectOptions);
-      $('#hide-events-filter').multiselect('dataprovider', this.hideOptions);
-      this.updateAll();
+      $('#zone-filter').multiselect(events.multiselectOptions);
+      $('#check-filter').multiselect(events.multiselectOptions);
+      $('#status-filter').multiselect(events.multiselectOptions);
+      $('#status-filter').multiselect('dataprovider', events.statusOptions);
+      $('#hide-events-filter').multiselect(events.multiselectOptions);
+      $('#hide-events-filter').multiselect('dataprovider', events.hideOptions);
+      events.filters.updateAll();
     },
 
     updateAll: function() {
-      this.updateZones();
-      this.updateChecks();
+      events.filters.updateZones();
+      events.filters.updateChecks();
     },
 
     updateZones: function() {
-      var self = this;
       url = opsy.getDashboardUrl('/api/zones');
       $.getJSON(url, function(data) {
         newzones = [];
@@ -92,7 +91,6 @@ var events = {
     },
 
     updateChecks: function() {
-      var self = this;
       url = opsy.getDashboardUrl('/api/events?count_checks');
       $.getJSON(url, function(data) {
         newchecks = [];

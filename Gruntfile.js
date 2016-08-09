@@ -18,7 +18,13 @@ module.exports = function(grunt) {
       }
     },
     qunit: {
-      files: ['test/**/*.html']
+      opsy: {
+        options: {
+          urls: [
+            'http://localhost:8000/tests/javascript/opsy/opsy.html'
+          ]
+        },
+      },
     },
     watch: {
       gruntfile: {
@@ -29,15 +35,25 @@ module.exports = function(grunt) {
         files: '<%= jshint.lib_test.src %>',
         tasks: ['jshint:lib_test', 'qunit']
       }
+    },
+    connect: {
+      server: {
+        options: {
+          port: 8000,
+          base: '.',
+        }
+      }
     }
+
   });
 
   // These plugins provide necessary tasks.
   grunt.loadNpmTasks("grunt-jscs");
   grunt.loadNpmTasks('grunt-contrib-qunit');
   grunt.loadNpmTasks('grunt-contrib-watch');
+  grunt.loadNpmTasks('grunt-contrib-connect');
 
   // Default task.
-  grunt.registerTask('default', ['jscs']);
+  grunt.registerTask('default', ['connect', 'jscs', 'qunit']);
 
 };

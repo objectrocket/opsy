@@ -1,5 +1,11 @@
 var opsy = {
 
+  debug: $.inArray('debug', window.location.search.substr(1).split('&')),
+
+  log: function(msg) {
+    opsy.debug > -1 ? console.log('DEBUG: ' + msg) : null;
+  },
+
   statusclasses: {
     'Ok': 'success',
     'Warning': 'warning',
@@ -12,8 +18,8 @@ var opsy = {
     2: 'Critical'
   },
 
-  addFormGroup: function(name, filter=null) {
-    if (filter === null) {
+  addFormGroup: function(name, filter) {
+    if (filter === undefined) {
       filter = name;
     }
     formitem = $('<select multiple class="ms" data-name="' + name +
@@ -51,8 +57,10 @@ var opsy = {
 
     list: [],
 
-    register: function(slug, interval, func, runNow=false) {
-      console.log('registering task: ' + slug + ' to run every ' + interval +
+    tickRate: 5000,
+
+    register: function(slug, interval, func, runNow) {
+      opsy.log('registering task: ' + slug + ' to run every ' + interval +
         ' ticks.');
       opsy.task.list.push(
         {'slug': slug, 'interval': interval, 'callback': func}
@@ -63,40 +71,54 @@ var opsy = {
       if (opsy.ticker === undefined) {
         opsy.task.start();
       }
+      return true;
+    },
+
+    remove: function(slug) {
+      index = -1;
+      $.each(opsy.task.list, function(idx, obj) {
+        if (obj.slug == slug) {
+          index = idx;
+        }
+      });
+      opsy.log(index);
+      if (index > -1) {
+        opsy.task.list.splice(index, 1);
+        return true;
+      }
+      return false;
     },
 
     start: function() {
       if (opsy.ticker !== undefined) {
-        return;
+        return false;
       }
-      console.log('Starting event loop');
-      var tick = new Event('tick');
+      opsy.log('Starting event loop');
       var tickcount = 0;
       opsy.ticker = setInterval(function() {
-        dispatchEvent(tick);
-      }, 5000);
-      addEventListener('tick', function(e) {
         tickcount++;
         $.each(opsy.task.list, function(idx, obj) {
           if (tickcount % obj.interval == 0) {
-            console.log('running task: ' + obj.slug);
+            opsy.log('running task: ' + obj.slug);
             obj.callback();
           }
         });
-      });
+      }, opsy.task.tickRate);
+      return true;
     }
 
   },
 
   notification: {
 
-    add: function(title, content, level='danger', slug=null, desktop=true) {
-      if (slug == null) {
-        slug = title.toLowerCase().replace(/ /g, '-');
-      }
+    add: function(title, content, level, slug, desktop) {
+      level = typeof level !== 'undefined' ? level : 'danger';
+      slug = typeof slug !== 'undefined' ? slug : title.toLowerCase().replace(/ /g, '-');
+      desktop = typeof desktop !== 'undefined' ? desktop : true;
+
       if ($('#notification-container').children('#notification-' + slug)
           .length == 0) {
-        console.log('adding notification: ' + slug);
+        opsy.log('adding notification: ' + slug);
         $('#notification-container').append('<div id="notification-' + slug +
           '" class="notification-item alert alert-' + level +
           '"><h4 class="item-title">' + title + '</h4><p class="item-info">' +
@@ -119,16 +141,18 @@ var opsy = {
           }
         }
       }
-      return;
+      return true;
     },
 
     remove: function(slug) {
       if ($('#notification-container').children('#notification-' + slug)
           .length > 0) {
-        console.log('removing notification: ' + slug);
+        opsy.log('removing notification: ' + slug);
         $('#notification-container').children('#notification-' + slug).remove();
         opsy.notification.update();
+        return true;
       }
+      return false;
     },
 
     update: function() {
@@ -171,7 +195,10 @@ String.prototype.capitalize = function(all) {
     var b = {};
     for (var i = 0; i < a.length; ++i) {
       var p = a[i].split('=');
-      if (p.length != 2) { continue; };
+      if (p.length != 2) {
+        b[p[0]] = true;
+        continue;
+      };
       b[p[0]] = decodeURIComponent(p[1].replace(/\+/g, ' '));
     }
     return b;
