@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>opsy.js unit tests - QUnit</title>
+ 
+  <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.0.1.css">
+  <script src="https://code.jquery.com/qunit/qunit-2.0.1.js"></script>
+  <script src="/opsy/views/main/static/js/jquery/jquery.js"></script>
+  <script src="/opsy/views/main/static/js/opsy/opsy.js"></script>
+ 
+  <script>
+  QUnit.test("events tasks", function( assert ) {
+		var taskRan = assert.async(2);
+		var count = 0;
+		opsy.task.tickRate = 500;
+    assert.equal(typeof(opsy.task.list), typeof([]), "task list is an array");
+    assert.equal(opsy.task.list.length, 0, "task list is empty");
+    assert.equal(opsy.ticker, undefined, "task ticker is not running");
+		assert.ok(opsy.task.register('test-task', 1, function() {
+			if (count < 2) {
+				assert.ok(true, "test task ran");
+				taskRan();
+				count++;
+			} else {
+				clearInterval(opsy.ticker);
+			}
+		}), "add a task");
+		assert.ok(opsy.ticker, "task ticker is running");
+    assert.notOk(opsy.task.start(), "task ticker will not start twice");
+    assert.equal(opsy.task.list.length, 1, "task list has 1 task");
+    assert.ok(opsy.task.register('test-task-2', 1, function() {
+      console.log('test-task-2 ran');
+    }), "add a second task");
+    assert.equal(opsy.task.list.length, 2, "task list has 2 tasks");
+    assert.ok(opsy.task.remove('test-task-2'), "add a second task");
+    assert.equal(opsy.task.list.length, 1, "task list has 1 task again");
+    assert.notOk(opsy.task.remove('test-task-2'), "remove a non-existant task");
+    
+  });
+	QUnit.test("opsy notifications", function( assert ) {
+		assert.equal($('#notification-container').children().length, 0, "no notifications in list");
+    assert.notOk(opsy.notification.remove('test-notification'), "fail to remove a non-existant notification");
+    assert.ok(opsy.notification.add('Test Notification', 'This is a test notification', 'danger', 'test-notification', false));
+		assert.equal($('#notification-container').children().length, 1, "one notifications in list");
+    assert.ok(opsy.notification.remove('test-notification'), "Successfully remove an existing notification");
+		assert.equal($('#notification-container').children().length, 0, "no notifications in list");
+	});
+  </script>
+</head>
+<body>
+
+<div id="qunit"></div>
+<div id="qunit-fixture"></div>
+
+
+</body>
+</html>

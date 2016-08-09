@@ -12,6 +12,9 @@ matrix:
     - language: node_js
       node_js: node
       install:
+        # Dependencies for PhantomJS used for qunit unit testing, these might already be there on travis-ci
+        #- apt-get install libfontconfig1 fontconfig libfontconfig1-dev libfreetype6-dev
+        # Setup grunt and the tests
         - npm install -g grunt-cli
         - npm install
       script:
