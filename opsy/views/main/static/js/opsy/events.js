@@ -50,7 +50,7 @@ var events = {
       return $(select).data('name').replace('-', ' ').capitalize(true);
     },
     onDropdownHidden: function() {
-      events.setDataTablesUrl();
+      events.datatables.updateUrl();
       document.eventstable.ajax.reload(null, false);
     },
   },
