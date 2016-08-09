@@ -1,9 +1,10 @@
 var events = {
 
   statusOptions: [
-    {label: 'Critical', title: 'Critical', value: 2},
-    {label: 'Warning', title: 'Warning', value: 1},
-    {label: 'OK', title: 'OK', value: 0},
+    {label: 'Critical', title: 'Critical', value: 'Critical'},
+    {label: 'Warning', title: 'Warning', value: 'Warning'},
+    {label: 'OK', title: 'OK', value: 'OK'},
+    {label: 'Unknown', title: 'Unknown', value: 'Unknown'},
   ],
 
   hideOptions: [
@@ -126,7 +127,7 @@ var events = {
     },
 
     init: function() {
-      $.fn.dataTable.enum(['Critical', 'Warning', 'OK']);
+      $.fn.dataTable.enum(['Critical', 'Warning','Ok', 'Unknown']);
       document.eventstable = $('#events').DataTable({
         'lengthMenu': [[25, 50, 100, -1], [25, 50, 100, 'All']],
         'autoWidth': false,
