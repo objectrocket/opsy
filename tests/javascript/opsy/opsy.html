@@ -10,7 +10,7 @@
   <script src="/opsy/views/main/static/js/opsy/opsy.js"></script>
  
   <script>
-  QUnit.test("opsy tasks", function( assert ) {
+  QUnit.test("tasks", function( assert ) {
 		var taskRan = assert.async(2);
 		var count = 0;
 		opsy.task.tickRate = 500;
@@ -38,16 +38,24 @@
     assert.notOk(opsy.task.remove('test-task-2'), "remove a non-existant task");
     
   });
-	QUnit.test("opsy notifications", function( assert ) {
+	QUnit.test("notifications", function( assert ) {
     var fixture = $('#qunit-fixture');
     fixture.append('<div id="notification-container"></div>');
 		assert.equal($('#notification-container').children().length, 0, "no notifications in list");
     assert.notOk(opsy.notification.remove('test-notification'), "fail to remove a non-existant notification");
     assert.ok(opsy.notification.add('Test Notification', 'This is a test notification', 'danger', 'test-notification', false), "add a notification");
 		assert.equal($('#notification-container').children().length, 1, "one notifications in list");
+    assert.equal($(fixture).children(1).html(), '<div id="notification-test-notification" class="notification-item alert alert-danger"><h4 class="item-title">Test Notification</h4><p class="item-info">This is a test notification</p></div>', "Notification HTML is correct");
     assert.ok(opsy.notification.remove('test-notification'), "Successfully remove an existing notification");
 		assert.equal($('#notification-container').children().length, 0, "no notifications in list");
 	});
+  QUnit.test("form groups", function( assert ){
+    var fixture = $('#qunit-fixture');
+    fixture.append('<div id="test-filter-div"></div>');
+    opsy.addFormGroup('test');
+    assert.equal($(fixture).children().length, 1, "One filter created");
+    assert.equal($(fixture).children(1).html(), '<select multiple="" class="ms" data-name="test" data-filter="test" id="test-filter"></select>', "Filter HTML is correct");
+  });
   </script>
 </head>
 <body>
