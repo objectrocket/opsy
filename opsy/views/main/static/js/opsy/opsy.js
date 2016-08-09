@@ -203,3 +203,8 @@ String.prototype.capitalize = function(all) {
     return b;
   })(window.location.search.substr(1).split('&'));
 })(jQuery);
+
+$(document).ready(function() {
+  opsy.task.tickRate = $.QueryString.tickrate !== undefined ?
+    $.QueryString.tickrate : opsy.task.tickRate;
+});
