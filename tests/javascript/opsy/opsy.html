@@ -14,7 +14,7 @@
 		var taskRan = assert.async(2);
 		var count = 0;
 		opsy.task.tickRate = 500;
-    assert.equal(typeof(opsy.task.list), typeof([]), "task list is an array");
+    assert.equal(opsy.task.list.constructor, Array, "task list is an array");
     assert.equal(opsy.task.list.length, 0, "task list is empty");
     assert.equal(opsy.ticker, undefined, "task ticker is not running");
 		assert.ok(opsy.task.register('test-task', 1, function() {
@@ -39,9 +39,11 @@
     
   });
 	QUnit.test("opsy notifications", function( assert ) {
+    var fixture = $('#qunit-fixture');
+    fixture.append('<div id="notification-container"></div>');
 		assert.equal($('#notification-container').children().length, 0, "no notifications in list");
     assert.notOk(opsy.notification.remove('test-notification'), "fail to remove a non-existant notification");
-    assert.ok(opsy.notification.add('Test Notification', 'This is a test notification', 'danger', 'test-notification', false));
+    assert.ok(opsy.notification.add('Test Notification', 'This is a test notification', 'danger', 'test-notification', false), "add a notification");
 		assert.equal($('#notification-container').children().length, 1, "one notifications in list");
     assert.ok(opsy.notification.remove('test-notification'), "Successfully remove an existing notification");
 		assert.equal($('#notification-container').children().length, 0, "no notifications in list");
@@ -52,22 +54,6 @@
 
 <div id="qunit"></div>
 <div id="qunit-fixture"></div>
-
-<ul class="nav navbar-nav navbar-right">
-  <li class="dropdown">
-    <a href="#" id="notification-label" class-"dropdown-toggle" data-toggle="dropdown" role="button">
-      <span id='notification-icon' class="glyphicon glyphicon-bell"></span>
-    </a>
-    <ul class="dropdown-menu notifications" role="menu" aria-labelledby="dLabel">
-      <div class="notification-heading"><h4 class="menu-title">Notifications (<span id='notification-count'>0</span>)</h4></div>
-      <li class="divider"></li>
-      <div id='notification-container' class="notifications-wrapper">
-      </div>
-    </ul><!--/.dropdown-menu -->
-
-  </li><!--/.dropdown -->
-</ul>
-
 
 </body>
 </html>

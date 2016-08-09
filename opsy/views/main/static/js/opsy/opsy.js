@@ -81,7 +81,6 @@ var opsy = {
           index = idx;
         }
       });
-      opsy.log(index);
       if (index > -1) {
         opsy.task.list.splice(index, 1);
         return true;
