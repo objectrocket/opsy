@@ -40,7 +40,7 @@ var clientsfilters = {
 
   updateZones: function(init) {
     var self = this;
-    $.getJSON('/api/zones', function(data) {
+    $.getJSON('/api/monitoring/zones', function(data) {
       newzones = [];
       $.each(data.zones, function(idx, obj) {
         newzones.push({label: obj.name, title: obj.name, value: obj.name});
@@ -70,7 +70,7 @@ var clientsfilters = {
       document.clientstable.ajax.url('/api/clients?' + $.param(params));
     } catch (err) {
     }
-    return '/api/clients?' + $.param(params);
+    return '/api/monitoring/clients?' + $.param(params);
   }
 };
 

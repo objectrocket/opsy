@@ -38,7 +38,7 @@ var opsy = {
   },
 
   checkZones: function() {
-    $.getJSON('/api/zones', function(json) {
+    $.getJSON('/api/monitoring/zones', function(json) {
       zones = json.zones;
       for (var i = 0; i < zones.length; i++) {
         zone = zones[i];

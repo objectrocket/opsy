@@ -32,7 +32,7 @@ class ExtraOut(BaseQuery):
 class BaseMetadata(db.Model):
 
     __bind_key__ = 'cache'
-    __tablename__ = 'metadata'
+    __tablename__ = 'monitoring_metadata'
 
     zone_name = db.Column(db.String(64), primary_key=True)
     entity = db.Column(db.String(64), primary_key=True)
@@ -42,7 +42,7 @@ class BaseMetadata(db.Model):
                            onupdate=db.func.now())
 
     __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+        db.ForeignKeyConstraint(['zone_name'], ['monitoring_zones.name']),
     )
 
     def __init__(self, zone_name, key, entity, value):
@@ -81,6 +81,28 @@ class CacheBase(object):
         return response
 
     @classmethod
+    def create_poll_metadata(cls, zone_name):
+        metadata = []
+        metadata.append(cls.metadata_class(zone_name, 'update_status',
+                                           cls.__tablename__,
+                                           'success'))
+        metadata.append(cls.metadata_class(zone_name, 'update_message',
+                                           cls.__tablename__,
+                                           'Poller created.'))
+        return metadata
+
+    @classmethod
+    def delete_poll_metadata(cls, zone_name):
+        cls.metadata_class.query.filter(
+            cls.metadata_class.key == 'update_status',
+            cls.metadata_class.entity == cls.__tablename__,
+            cls.metadata_class.zone_name == zone_name).delete()
+        cls.metadata_class.query.filter(
+            cls.metadata_class.key == 'update_message',
+            cls.metadata_class.entity == cls.__tablename__,
+            cls.metadata_class.zone_name == zone_name).delete()
+
+    @classmethod
     def last_poll_status(cls, zone_name):
         last_run = cls.metadata_class.query.filter(
             cls.metadata_class.key == 'update_status',
@@ -93,22 +115,18 @@ class CacheBase(object):
         return (last_run.updated_at, last_run.value, last_run_message.value)
 
     @classmethod
-    def update_last_poll_status(cls, zone_name, status):
-        cls.metadata_class.query.filter(
+    def update_last_poll(cls, zone_name, status, message):
+        status_obj = cls.metadata_class.query.filter(
             cls.metadata_class.key == 'update_status',
             cls.metadata_class.entity == cls.__tablename__,
-            cls.metadata_class.zone_name == zone_name).delete()
-        return cls.metadata_class(zone_name, 'update_status',
-                                  cls.__tablename__, status)
-
-    @classmethod
-    def update_last_poll_message(cls, zone_name, message):
-        cls.metadata_class.query.filter(
+            cls.metadata_class.zone_name == zone_name).first()
+        message_obj = cls.metadata_class.query.filter(
             cls.metadata_class.key == 'update_message',
             cls.metadata_class.entity == cls.__tablename__,
-            cls.metadata_class.zone_name == zone_name).delete()
-        return cls.metadata_class(zone_name, 'update_message',
-                                  cls.__tablename__, message)
+            cls.metadata_class.zone_name == zone_name).first()
+        status_obj.value = status
+        message_obj.value = message
+        return [status_obj, message_obj]
 
 
 class Client(CacheBase, db.Model):
@@ -129,7 +147,7 @@ class Client(CacheBase, db.Model):
 
     query_class = ClientQuery
     __bind_key__ = 'cache'
-    __tablename__ = 'clients'
+    __tablename__ = 'monitoring_clients'
 
     zone_name = db.Column(db.String(64), primary_key=True)
     name = db.Column(db.String(256), primary_key=True)
@@ -154,7 +172,7 @@ class Client(CacheBase, db.Model):
                                "Client.name == foreign(Silence.client_name))")
 
     __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+        db.ForeignKeyConstraint(['zone_name'], ['monitoring_zones.name']),
     )
 
     def __init__(self, zone_name, extra):
@@ -205,7 +223,7 @@ class Client(CacheBase, db.Model):
 class Check(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
-    __tablename__ = 'checks'
+    __tablename__ = 'monitoring_checks'
 
     zone_name = db.Column(db.String(64), primary_key=True)
     name = db.Column(db.String(256), primary_key=True)
@@ -225,7 +243,7 @@ class Check(CacheBase, db.Model):
                              "Check.name==foreign(Event.check_name))")
 
     __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+        db.ForeignKeyConstraint(['zone_name'], ['monitoring_zones.name']),
     )
 
     def __init__(self, zone_name, extra):
@@ -277,7 +295,7 @@ class Result(CacheBase, db.Model):
 
     query_class = ResultQuery
     __bind_key__ = 'cache'
-    __tablename__ = 'results'
+    __tablename__ = 'monitoring_results'
 
     zone_name = db.Column(db.String(64), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
@@ -289,7 +307,7 @@ class Result(CacheBase, db.Model):
     output = db.Column(db.Text)
 
     __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+        db.ForeignKeyConstraint(['zone_name'], ['monitoring_zones.name']),
         db.CheckConstraint(status.in_(
             ['ok', 'warning', 'critical', 'unknown']))
     )
@@ -350,7 +368,7 @@ class Event(CacheBase, db.Model):
 
     query_class = EventQuery
     __bind_key__ = 'cache'
-    __tablename__ = 'events'
+    __tablename__ = 'monitoring_events'
 
     zone_name = db.Column(db.String(64), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
@@ -373,7 +391,7 @@ class Event(CacheBase, db.Model):
                                "Silence.check_name))")
 
     __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+        db.ForeignKeyConstraint(['zone_name'], ['monitoring_zones.name']),
         db.CheckConstraint(status.in_(
             ['ok', 'warning', 'critical', 'unknown']))
     )
@@ -420,7 +438,7 @@ class Event(CacheBase, db.Model):
 class Silence(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
-    __tablename__ = 'silences'
+    __tablename__ = 'monitoring_silences'
 
     zone_name = db.Column(db.String(64), primary_key=True)
     client_name = db.Column(db.String(256), primary_key=True)
@@ -431,7 +449,7 @@ class Silence(CacheBase, db.Model):
     comment = db.Column(db.Text)
 
     __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['zones.name']),
+        db.ForeignKeyConstraint(['zone_name'], ['monitoring_zones.name']),
     )
 
     def __init__(self, zone_name, extra):
@@ -458,7 +476,7 @@ class Silence(CacheBase, db.Model):
 class Zone(CacheBase, db.Model):
 
     __bind_key__ = 'cache'
-    __tablename__ = 'zones'
+    __tablename__ = 'monitoring_zones'
 
     models = [Check, Client, Event, Silence, Result]
 
@@ -468,6 +486,7 @@ class Zone(CacheBase, db.Model):
     protocol = db.Column(db.String(64))
     port = db.Column(db.Integer())
     timeout = db.Column(db.Integer())
+    interval = db.Column(db.Integer())
     username = db.Column(db.String(64))
     password = db.Column(db.String(64))
     verify_ssl = db.Column(db.Boolean())
@@ -484,14 +503,15 @@ class Zone(CacheBase, db.Model):
                                query_class=ExtraOut)
 
     def __init__(self, name, host=None, path='/', protocol='http', port=80,
-                 timeout=30, username=None, password=None, verify_ssl=True,
-                 **kwargs):
+                 timeout=30, interval=30, username=None, password=None,
+                 verify_ssl=True, **kwargs):
         self.name = name
         self.host = host
         self.path = path
         self.protocol = protocol
         self.port = port
         self.timeout = timeout
+        self.interval = interval
         self.username = username
         self.password = password
         self.verify_ssl = verify_ssl
@@ -508,6 +528,19 @@ class Zone(CacheBase, db.Model):
         for model in self.models:
             tasks.append(async_task(self.update_objects(app, model)))
         return tasks
+
+    def create_poller_metadata(self, app):
+        metadata = []
+        for model in self.models:
+            metadata.extend(model.create_poll_metadata(self.name))
+        return metadata
+
+    def delete_cache(self, app):
+        for model in self.models:
+            app.logger.info('Purging %s cache for %s' % (
+                model.__tablename__, self.name))
+            model.delete_poll_metadata(self.name)
+            model.query.filter(model.zone_name == self.name).delete()
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
@@ -598,16 +631,11 @@ class HttpZoneMixin(object):
             message = 'Error updating %s cache for %s: %s' % (
                 model.__tablename__, self.name, exc)
             app.logger.error(message)
-            init_objects.append(model.update_last_poll_status(
-                self.name, 'critical'))
-            init_objects.append(model.update_last_poll_message(
-                self.name, message))
+            init_objects.extend(model.update_last_poll(
+                self.name, 'critical', message))
             return init_objects
         model.query.filter(model.zone_name == self.name).delete()
-        init_objects.append(model.update_last_poll_status(
-            self.name, 'ok'))
-        init_objects.append(model.update_last_poll_message(
-            self.name, 'Success'))
+        init_objects.extend(model.update_last_poll(self.name, 'ok', 'Success'))
         for result in results:
             init_objects.append(model(self.name, result))
         app.logger.info('Updated %s cache for %s' % (

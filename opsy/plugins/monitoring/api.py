@@ -1,12 +1,14 @@
 from opsy.db import db
 from opsy.utils import get_filters_list
-from opsy.backends.cache import Client, Check, Result, Event, Silence, \
-    Zone
-from flask import current_app, jsonify, request
-from . import api
+from opsy.plugins.monitoring.backends.base import Client, Check, Result, \
+    Event, Silence, Zone
+from flask import Blueprint, current_app, jsonify, request
 
 
-@api.route('/zones')
+monitoring_api = Blueprint('monitoring_api', __name__)
+
+
+@monitoring_api.route('/zones')
 def zones():
     dashboard = request.args.get('dashboard')
     if dashboard:
@@ -14,17 +16,17 @@ def zones():
         dash_filters_list = Zone.get_dashboard_filters_list(config, dashboard)
         zone_list = Zone.query.filter(*dash_filters_list).all_dict_out_or_404()
     else:
-        zone_list = Zone.query.filter().all_dict_out_or_404()
+        zone_list = Zone.query.filter().all_dict_out()
     return jsonify({'zones': zone_list})
 
 
-@api.route('/zones/<zone_name>')
+@monitoring_api.route('/zones/<zone_name>')
 def zone(zone_name):
     zoneobj = Zone.query.filter(Zone.name == zone_name).all_dict_out_or_404()
     return jsonify({'zone': zoneobj})
 
 
-@api.route('/events')
+@monitoring_api.route('/events')
 def events():
     dashboard = request.args.get('dashboard')
     count_checks = bool('count_checks' in request.args)
@@ -67,7 +69,7 @@ def events():
     return jsonify({'events': event_list})
 
 
-@api.route('/events/<zone_name>/<client_name>/<check_name>')
+@monitoring_api.route('/events/<zone_name>/<client_name>/<check_name>')
 def event(zone_name, client_name, check_name):
     extra = request.args.get('extra')
     filters = ((zone_name, Event.zone_name),
@@ -82,7 +84,7 @@ def event(zone_name, client_name, check_name):
     return jsonify({'events': event_list})
 
 
-@api.route('/checks')
+@monitoring_api.route('/checks')
 def checks():
     dashboard = request.args.get('dashboard')
     zone_list = request.args.get('zone')
@@ -100,7 +102,7 @@ def checks():
     return jsonify({'checks': check_list})
 
 
-@api.route('/checks/<zone_name>/<check_name>')
+@monitoring_api.route('/checks/<zone_name>/<check_name>')
 def check(zone_name, check_name):
     extra = request.args.get('extra')
     filters = ((zone_name, Check.zone_name),
@@ -114,7 +116,7 @@ def check(zone_name, check_name):
     return jsonify({'checks': check_list})
 
 
-@api.route('/clients')
+@monitoring_api.route('/clients')
 def clients():
     dashboard = request.args.get('dashboard')
     zone_list = request.args.get('zone')
@@ -133,7 +135,7 @@ def clients():
     return jsonify({'clients': client_list})
 
 
-@api.route('/clients/<zone_name>/<client_name>')
+@monitoring_api.route('/clients/<zone_name>/<client_name>')
 def client(zone_name, client_name):
     filters = ((zone_name, Client.zone_name),
                (client_name, Client.name))
@@ -142,7 +144,7 @@ def client(zone_name, client_name):
     return jsonify({'clients': client_list})
 
 
-@api.route('/clients/<zone_name>/<client_name>/events')
+@monitoring_api.route('/clients/<zone_name>/<client_name>/events')
 def client_events(zone_name, client_name):
     filters = ((zone_name, Event.zone_name),
                (client_name, Event.client_name))
@@ -151,7 +153,7 @@ def client_events(zone_name, client_name):
     return jsonify({'events': event_list})
 
 
-@api.route('/clients/<zone_name>/<client_name>/events/<check_name>')
+@monitoring_api.route('/clients/<zone_name>/<client_name>/events/<check_name>')
 def client_events_check(zone_name, client_name, check_name):
     filters = ((zone_name, Event.zone_name),
                (client_name, Event.client_name),
@@ -161,7 +163,7 @@ def client_events_check(zone_name, client_name, check_name):
     return jsonify({'events': event_list})
 
 
-@api.route('/clients/<zone_name>/<client_name>/results')
+@monitoring_api.route('/clients/<zone_name>/<client_name>/results')
 def client_results(zone_name, client_name):
     filters = ((zone_name, Result.zone_name),
                (client_name, Result.client_name))
@@ -170,7 +172,7 @@ def client_results(zone_name, client_name):
     return jsonify({'results': result_list})
 
 
-@api.route('/clients/<zone_name>/<client_name>/results/<check_name>')
+@monitoring_api.route('/clients/<zone_name>/<client_name>/results/<check_name>')
 def client_results_check(zone_name, client_name, check_name):
     filters = ((zone_name, Result.zone_name),
                (client_name, Result.client_name),
@@ -180,7 +182,7 @@ def client_results_check(zone_name, client_name, check_name):
     return jsonify({'results': result_list})
 
 
-@api.route('/clients/<zone_name>/<client_name>/silences')
+@monitoring_api.route('/clients/<zone_name>/<client_name>/silences')
 def client_silences(zone_name, client_name):
     filters = ((zone_name, Silence.zone_name),
                (client_name, Silence.client_name))
@@ -189,7 +191,7 @@ def client_silences(zone_name, client_name):
     return jsonify({'silences': silence_list})
 
 
-@api.route('/silences')
+@monitoring_api.route('/silences')
 def silences():
     zone_list = request.args.get('zone')
     client_list = request.args.get('client')

@@ -13,17 +13,17 @@
     <title>{% if title %}{{ title }} | {% endif %}Opsy</title>
 
     <!-- Bootstrap core CSS -->
-    <link href="{{url_for('main.static', filename='css/bootstrap/bootstrap.min.css')}}" rel="stylesheet">
+    <link href="{{url_for('core_main.static', filename='css/bootstrap/bootstrap.min.css')}}" rel="stylesheet">
 
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-    <link href="{{url_for('main.static', filename='css/bootstrap/ie10-viewport-bug-workaround.css')}}" rel="stylesheet">
+    <link href="{{url_for('core_main.static', filename='css/bootstrap/ie10-viewport-bug-workaround.css')}}" rel="stylesheet">
 
     <!-- Custom styles for this template -->
-    <link href="{{url_for('main.static', filename='css/opsy/opsy.css')}}" rel="stylesheet">
+    <link href="{{url_for('core_main.static', filename='css/opsy/opsy.css')}}" rel="stylesheet">
 
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]><script src="../../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
-    <script src="{{url_for('main.static', filename='js/bootstrap/ie-emulation-modes-warning.js')}}"></script>
+    <script src="{{url_for('core_main.static', filename='js/bootstrap/ie-emulation-modes-warning.js')}}"></script>
 
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
@@ -51,23 +51,12 @@
           <ul class="nav navbar-nav">
   {%- block leftnav -%}
           {% set leftnav_bar = [
-            ('main.events', 'events', 'Events'),
-            ('main.checks', 'checks', 'Checks'),
-            ('main.clients', 'clients', 'Clients'),
-            ('main.about', 'about', 'About'),
+            ('core_main.index', 'main', 'Main'),
           ] -%}
           {% set active_page = active_page|default('index') -%}
           {% for href, id, caption in leftnav_bar %}
             <li{% if id == active_page %} class="active"{% endif %}><a href="{{ url_for(href|e) }}">{{ caption|e }}</a></li>
           {%- endfor %}
-            <li class="dropdown">
-              <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">{% if request.args.get('dashboard') %}{{ request.args.get('dashboard') }}{% else %}Dashboards{% endif %}<span class="caret"></span></a>
-              <ul class="dropdown-menu">
-                {%- for dashboard in dashboards|sort %}
-                <li><a href="/events?dashboard={{ dashboard }}">{{ dashboard }}</a></li>
-                {%- endfor %}
-              </ul>
-            </li>
   {%- endblock %}
           </ul>
           <ul class="nav navbar-nav navbar-right">
@@ -100,20 +89,11 @@
     <!-- Bootstrap core JavaScript
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
-    <script src="{{url_for('main.static', filename='js/jquery/jquery.min.js')}}"></script>
-    <script src="{{url_for('main.static', filename='js/bootstrap/bootstrap.min.js')}}"></script>
+    <script src="{{url_for('core_main.static', filename='js/jquery/jquery.min.js')}}"></script>
+    <script src="{{url_for('core_main.static', filename='js/bootstrap/bootstrap.min.js')}}"></script>
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-    <script src="{{url_for('main.static', filename='js/bootstrap/ie10-viewport-bug-workaround.js')}}"></script>
-    <script src="{{url_for('main.static', filename='js/opsy/opsy.js')}}"></script>
-    <script type="text/javascript">
-      var UCHIWA_URL = "{{ uchiwa_url }}";
-      $(document).ready(function() {
-        opsy.task.register('zone-check', 5, opsy.checkZones, true);
-        if (Notification.permission !== 'granted') {
-          Notification.requestPermission();
-        }
-      });
-    </script>
+    <script src="{{url_for('core_main.static', filename='js/bootstrap/ie10-viewport-bug-workaround.js')}}"></script>
+    <script src="{{url_for('core_main.static', filename='js/opsy/opsy.js')}}"></script>
     {%- block footer -%}
     {%- endblock %}
   </body>
