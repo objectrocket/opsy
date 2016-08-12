@@ -78,7 +78,7 @@ var events = {
     },
 
     updateZones: function(init) {
-      url = opsy.getDashboardUrl('/api/zones');
+      url = opsy.getDashboardUrl('/api/monitoring/zones');
       $.getJSON(url, function(data) {
         newzones = [];
         $.each(data.zones, function(idx, obj) {
@@ -112,7 +112,7 @@ var events = {
     },
 
     updateChecks: function(init) {
-      url = opsy.getDashboardUrl('/api/events?count_checks');
+      url = opsy.getDashboardUrl('/api/monitoring/events?count_checks');
       $.getJSON(url, function(data) {
         newchecks = [];
         $.each(data.events, function(idx, obj) {
@@ -159,10 +159,10 @@ var events = {
         params.dashboard = $.QueryString.dashboard;
       }
       try {
-        document.eventstable.ajax.url('/api/events?' + $.param(params));
+        document.eventstable.ajax.url('/api/monitoring/events?' + $.param(params));
       } catch (err) {
       }
-      return '/api/events?' + $.param(params);
+      return '/api/monitoring/events?' + $.param(params);
     },
 
     init: function() {

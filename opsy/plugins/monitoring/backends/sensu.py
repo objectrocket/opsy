@@ -1,8 +1,8 @@
 from datetime import datetime
 from time import time
 from flask import json
-from opsy.backends.cache import (Client, Check, Result, Event, Silence,
-                                 Zone, HttpZoneMixin)
+from opsy.plugins.monitoring.backends.base import Client, Check, Result, \
+    Event, Silence, Zone, HttpZoneMixin
 
 
 class SensuBase(object):
@@ -115,8 +115,9 @@ class SensuZone(SensuBase, HttpZoneMixin, Zone):  # pylint: disable=abstract-met
     models = [SensuCheck, SensuClient, SensuEvent, SensuSilence, SensuResult]
 
     def __init__(self, name, host=None, path=None, protocol='http', port=4567,
-                 timeout=30, username=None, password=None, verify_ssl=True,
-                 **kwargs):
+                 timeout=30, interval=30, username=None, password=None,
+                 verify_ssl=True, **kwargs):
         super().__init__(name, host=host, path=path, protocol=protocol,
-                         port=port, timeout=timeout, username=username,
-                         password=password, verify_ssl=verify_ssl, **kwargs)
+                         port=port, timeout=timeout, interval=interval,
+                         username=username, password=password,
+                         verify_ssl=verify_ssl, **kwargs)

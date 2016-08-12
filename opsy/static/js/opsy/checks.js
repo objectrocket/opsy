@@ -44,7 +44,7 @@ var checksfilters = {
 
   updateZones: function(init) {
     var self = this;
-    $.getJSON('/api/zones', function(data) {
+    $.getJSON('/api/monitoring/zones', function(data) {
       newzones = [];
       $.each(data.zones, function(idx, obj) {
         newzones.push({label: obj.name, title: obj.name, value: obj.name});
@@ -62,7 +62,7 @@ var checksfilters = {
 
   updateChecks: function(init) {
     var self = this;
-    $.getJSON('/api/checks', function(data) {
+    $.getJSON('/api/monitoring/checks', function(data) {
       newchecks = [];
       $.each(data.checks.sort(), function(idx, obj) {
         newchecks.push({label: obj.name, title: obj.name, value: obj.name});
@@ -89,10 +89,10 @@ var checksfilters = {
       params.dashboard = $.QueryString.dashboard;
     }
     try {
-      document.checkstable.ajax.url('/api/checks?' + $.param(params));
+      document.checkstable.ajax.url('/api/monitoring/checks?' + $.param(params));
     } catch (err) {
     }
-    return '/api/checks?' + $.param(params);
+    return '/api/monitoring/checks?' + $.param(params);
   }
 };
 

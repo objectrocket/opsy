@@ -1,6 +1,6 @@
 $(document).ready(function() {
   $('#clientdetails').html(function() {
-    $.getJSON('/api/clients/' + ZONE + '/' + CLIENT, function(data) {
+    $.getJSON('/api/monitoring/clients/' + ZONE + '/' + CLIENT, function(data) {
       client = data.clients[0];
       $('#clientdetails').html('<h4>' + client.name + '</h4><pre>' +
         JSON.stringify(client, null, 2) + '</pre>');
@@ -14,7 +14,7 @@ $(document).ready(function() {
       [1, 'desc'],
     ],
     'ajax': {
-      'url': '/api/clients/' + ZONE + '/' + CLIENT + '/results',
+      'url': '/api/monitoring/clients/' + ZONE + '/' + CLIENT + '/results',
       'dataSrc': function(json) {
         json = json.results;
         returnData = new Array();

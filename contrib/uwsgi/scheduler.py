@@ -1,11 +1,13 @@
-from opsy.scheduler import Scheduler
-import time
+from opsy.app import create_app, create_scheduler
 import uwsgi
 
 
 config = uwsgi.opt.get('opsy_config', './opsy.ini')
-scheduler = Scheduler(config)
-scheduler.create_cache_db()
-while True:
-    scheduler.run_tasks()
-    time.sleep(scheduler.interval)
+app = create_app(config)
+scheduler = create_scheduler(app)
+try:
+    app.logger.info('Starting the scheduler')
+    scheduler.start()
+except (KeyboardInterrupt, SystemExit):
+    scheduler.shutdown()
+    app.logger.info('Stopping the scheduler')
