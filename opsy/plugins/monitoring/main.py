@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template, redirect, url_for, current_app
 
 
-monitoring_main = Blueprint('monitoring_main', __name__,
+monitoring_main = Blueprint('monitoring_main', __name__,  # pylint: disable=invalid-name
                             template_folder='templates',
                             static_url_path='/static/monitoring_main',
                             static_folder='static')

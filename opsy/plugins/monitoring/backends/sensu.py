@@ -114,7 +114,7 @@ class SensuZone(SensuBase, HttpZoneMixin, Zone):  # pylint: disable=abstract-met
 
     models = [SensuCheck, SensuClient, SensuEvent, SensuSilence, SensuResult]
 
-    def __init__(self, name, host=None, path=None, protocol='http', port=4567,
+    def __init__(self, name, host=None, path=None, protocol='http', port=4567,  # pylint: disable=too-many-arguments
                  timeout=30, interval=30, username=None, password=None,
                  verify_ssl=True, **kwargs):
         super().__init__(name, host=host, path=path, protocol=protocol,

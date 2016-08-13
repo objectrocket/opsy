@@ -502,7 +502,7 @@ class Zone(CacheBase, db.Model):
     silences = db.relationship('Silence', backref='zone', lazy='dynamic',
                                query_class=ExtraOut)
 
-    def __init__(self, name, host=None, path='/', protocol='http', port=80,
+    def __init__(self, name, host=None, path='/', protocol='http', port=80,  # pylint: disable=too-many-arguments
                  timeout=30, interval=30, username=None, password=None,
                  verify_ssl=True, **kwargs):
         self.name = name

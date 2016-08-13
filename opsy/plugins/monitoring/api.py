@@ -5,7 +5,7 @@ from opsy.plugins.monitoring.backends.base import Client, Check, Result, \
 from flask import Blueprint, current_app, jsonify, request
 
 
-monitoring_api = Blueprint('monitoring_api', __name__)
+monitoring_api = Blueprint('monitoring_api', __name__)  # pylint: disable=invalid-name
 
 
 @monitoring_api.route('/zones')

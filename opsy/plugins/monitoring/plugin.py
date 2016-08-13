@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from stevedore import driver
 from opsy.plugins.base import BaseOpsyPlugin
 from opsy.db import db
@@ -6,7 +7,6 @@ from .api import monitoring_api
 from .main import monitoring_main
 from .backends.base import Zone
 from opsy.exceptions import NoConfigSection
-from datetime import datetime
 from sqlalchemy.exc import OperationalError
 
 
@@ -74,14 +74,14 @@ class MonitoringPlugin(BaseOpsyPlugin):
                                 del_objects.delete()
                             db.session.bulk_save_objects(init_objects)
                             db.session.commit()
-                        except OperationalError as e:
+                        except OperationalError as e:  # pylint: disable=invalid-name
                             if i == (3 - 1):
                                 raise
                             current_app.logger.info(
                                 'Retryable error in transaction on '
                                 'attempt %d. %s: %s',
                                 i + 1, e.__class__.__name__, e)
-                            db.session.rollback()
+                            db.session.rollback()  # pylint: disable=no-member
                 current_app.logger.info('Cache updated for %s' % zone.name)
         # Create the db object for the zones.
         with app.app_context():

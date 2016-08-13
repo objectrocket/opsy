@@ -1,7 +1,7 @@
 from flask import Blueprint, render_template
 
 
-core_main = Blueprint('core_main', __name__,
+core_main = Blueprint('core_main', __name__,  # pylint: disable=invalid-name
                       template_folder='templates',
                       static_url_path='/monitoring/static',
                       static_folder='static')
