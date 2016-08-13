@@ -1,13 +1,13 @@
 import asyncio
 from datetime import datetime
 from stevedore import driver
+from sqlalchemy.exc import OperationalError
+from opsy.exceptions import NoConfigSection
 from opsy.plugins.base import BaseOpsyPlugin
 from opsy.db import db
 from .api import monitoring_api
 from .main import monitoring_main
 from .backends.base import Zone
-from opsy.exceptions import NoConfigSection
-from sqlalchemy.exc import OperationalError
 
 
 class MonitoringPlugin(BaseOpsyPlugin):
