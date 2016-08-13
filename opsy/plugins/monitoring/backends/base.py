@@ -633,11 +633,11 @@ class HttpZoneMixin(object):
             app.logger.error(message)
             init_objects.extend(model.update_last_poll(
                 self.name, 'critical', message))
-            return init_objects
-        model.query.filter(model.zone_name == self.name).delete()
+            return None, init_objects
+        del_objects = model.query.filter(model.zone_name == self.name)
         init_objects.extend(model.update_last_poll(self.name, 'ok', 'Success'))
         for result in results:
             init_objects.append(model(self.name, result))
         app.logger.info('Updated %s cache for %s' % (
             model.__tablename__, self.name))
-        return init_objects
+        return del_objects, init_objects

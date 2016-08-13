@@ -7,12 +7,11 @@ from .main import monitoring_main
 from .backends.base import Zone
 from opsy.exceptions import NoConfigSection
 from datetime import datetime
-from time import sleep
-from _mysql_exceptions import OperationalError
+from sqlalchemy.exc import OperationalError
 
 
 class MonitoringPlugin(BaseOpsyPlugin):
-    '''The monitoring dashboard plugin.'''
+    """The monitoring dashboard plugin."""
 
     def __init__(self, app):
         self.config = app.config.get('monitoring')
@@ -37,7 +36,8 @@ class MonitoringPlugin(BaseOpsyPlugin):
         monitoring_config['zones'] = {}
         monitoring_config['dashboards'] = {}
         if monitoring_config.get('enabled_zones'):
-            enabled_zones = monitoring_config.get('enabled_zones', '').split(',')
+            enabled_zones = monitoring_config.get(
+                'enabled_zones', '').split(',')
             for zone in enabled_zones:
                 monitoring_config['zones'][zone] = app.config[zone]
         if monitoring_config.get('enabled_dashboards'):
@@ -55,24 +55,10 @@ class MonitoringPlugin(BaseOpsyPlugin):
                                           % dashboard)
 
     def register_blueprints(self, app):
-        '''Registers any blueprints that the plugin provides.
-
-        :param app: Flask app object
-        :type app: Flask
-        :return: Flask app object
-        :rtype: Flask
-        '''
         app.register_blueprint(monitoring_main, url_prefix='/monitoring')
         app.register_blueprint(monitoring_api, url_prefix='/api/monitoring')
 
     def register_scheduler_jobs(self, app):
-        '''Registers any scheduler jobs for the plugin.
-
-        :param app: Flask app object
-        :type app: Flask
-        :return: List of apscheduler jobs
-        :rtype: List of Jobs
-        '''
         def update_cache(zone, config_file):
             from opsy.app import create_app
             from flask import current_app
@@ -81,14 +67,21 @@ class MonitoringPlugin(BaseOpsyPlugin):
                 asyncio.set_event_loop(loop)
                 tasks = zone.get_update_tasks(current_app)
                 results = loop.run_until_complete(asyncio.gather(*tasks))
-                for result in results:
-                    db.session.bulk_save_objects(result)
-                try:
-                    db.session.commit()
-                except:
-                    current_app.logger.error('Deadlock detected when updating %s, waiting one second.' % zone.name)
-                    sleep(1)
-                    db.session.commit()
+                for del_objects, init_objects in results:
+                    for i in range(3):  # three retries for deadlocks
+                        try:
+                            if del_objects:
+                                del_objects.delete()
+                            db.session.bulk_save_objects(init_objects)
+                            db.session.commit()
+                        except OperationalError as e:
+                            if i == (3 - 1):
+                                raise
+                            current_app.logger.info(
+                                'Retryable error in transaction on '
+                                'attempt %d. %s: %s',
+                                i + 1, e.__class__.__name__, e)
+                            db.session.rollback()
                 current_app.logger.info('Cache updated for %s' % zone.name)
         # Create the db object for the zones.
         with app.app_context():
