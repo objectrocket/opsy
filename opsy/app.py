@@ -4,7 +4,7 @@ from logging import StreamHandler
 import os.path
 import sys
 from flask import Flask
-from flask.ext.iniconfig import INIConfig
+from flask_iniconfig import INIConfig
 from opsy.main import core_main
 from opsy.db import db
 from opsy.exceptions import NoConfigFile, NoConfigSection

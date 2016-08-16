@@ -7,7 +7,7 @@ from opsy.plugins.base import BaseOpsyPlugin
 from opsy.db import db
 from .api import monitoring_api
 from .main import monitoring_main
-from .backends.base import Zone
+from .backends.base import Client, Check, Result, Event, Silence, Zone
 
 
 class MonitoringPlugin(BaseOpsyPlugin):
@@ -39,7 +39,11 @@ class MonitoringPlugin(BaseOpsyPlugin):
             enabled_zones = monitoring_config.get(
                 'enabled_zones', '').split(',')
             for zone in enabled_zones:
-                monitoring_config['zones'][zone] = app.config[zone]
+                try:
+                    monitoring_config['zones'][zone] = app.config[zone]
+                except KeyError:
+                    app.logger.error('Config section for zone "%s" does not '
+                                     'exist. Skipping.' % zone)
         if monitoring_config.get('enabled_dashboards'):
             enabled_dashboards = monitoring_config.get(
                 'enabled_dashboards').split(',')
@@ -79,8 +83,8 @@ class MonitoringPlugin(BaseOpsyPlugin):
                                 raise
                             current_app.logger.info(
                                 'Retryable error in transaction on '
-                                'attempt %d. %s: %s',
-                                i + 1, e.__class__.__name__, e)
+                                'attempt %d for zone %s. %s: %s',
+                                i + 1, zone.name, e.__class__.__name__, e)
                             db.session.rollback()  # pylint: disable=no-member
                 current_app.logger.info('Cache updated for %s' % zone.name)
         # Create the db object for the zones.
@@ -92,10 +96,18 @@ class MonitoringPlugin(BaseOpsyPlugin):
             for zone in self.zones:
                 db.session.bulk_save_objects(zone.create_poller_metadata(app))
             db.session.commit()
-        tasks = []
+        jobs = []
         for zone in self.zones:
-            tasks.append([[update_cache, 'interval'],
-                          {'next_run_time': datetime.now(),
-                           'seconds': zone.interval,
-                           'args': [zone, app.config_file]}])
-        return tasks
+            jobs.append([[update_cache, 'interval'],
+                         {'next_run_time': datetime.now(),
+                          'max_instances': 1,
+                          'seconds': zone.interval,
+                          'args': [zone, app.config_file]}])
+        return jobs
+
+    def register_cli_commands(self, app, cli):
+        pass
+
+    @property
+    def shell_objects(self):
+        return [Client, Check, Result, Event, Silence, Zone]

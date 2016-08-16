@@ -35,5 +35,24 @@ class BaseOpsyPlugin(object):
         :param app: Flask app object
         :type app: Flask
         :return: List of apscheduler jobs
-        :rtype: List of Jobs
+        :rtype: List
+        """
+
+    @abc.abstractmethod
+    def register_cli_commands(self, app, cli):
+        """Register any cli commands for the plugin.
+
+        :param app: Flask app object
+        :type app: Flask
+        :return: List of cli commands
+        :rtype: List
+        """
+
+    @property
+    @abc.abstractmethod
+    def shell_objects(self):
+        """Returns a dict of objects to be included in the shell context.
+
+        :return: Dict of objects
+        :rtype: Dict
         """

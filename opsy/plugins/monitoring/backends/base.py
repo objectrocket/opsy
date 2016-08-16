@@ -1,6 +1,6 @@
 import asyncio
 import aiohttp
-from flask.ext.sqlalchemy import BaseQuery
+from flask_sqlalchemy import BaseQuery
 from flask import abort
 import opsy
 from opsy.db import db
