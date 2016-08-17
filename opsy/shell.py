@@ -5,7 +5,8 @@ import opsy
 #                                  Zone)
 from opsy.db import db
 from opsy.app import create_app, create_scheduler
-from flask import current_app
+from opsy.utils import load_plugins
+from stevedore import extension
 
 DEFAULT_CONFIG = '%s/opsy.ini' % os.path.abspath(os.path.curdir)
 MANAGER = Manager(create_app)
@@ -26,21 +27,21 @@ def runscheduler():
         MANAGER.app.logger.info('Stopping the scheduler')
 
 
-# @MANAGER.shell
-# def make_shell_context():
-#     return dict(create_app=create_app, db=db, Check=Check, Client=Client,
-#                 Event=Event, Silence=Silence, Result=Result, Zone=Zone,
-#                 Scheduler=Scheduler, MANAGER=MANAGER)
+@MANAGER.shell
+def make_shell_context():
+    shell_vars = {'create_app': create_app, 'db': db}
+    for plugin in load_plugins(MANAGER.app):
+        plugin.register_shell_objects(shell_vars)
+    return shell_vars
 
 
 @MANAGER.command
 def initcache():
     """Drop everything in cache database and rebuilds schema."""
-    with MANAGER.app.app_context():
-        current_app.logger.info('Creating cache database')
-        db.drop_all(bind='cache')
-        db.create_all(bind='cache')
-        db.session.commit()
+    MANAGER.app.logger.info('Creating cache database')
+    db.drop_all(bind='cache')
+    db.create_all(bind='cache')
+    db.session.commit()
     print("Done!")
 
 
@@ -52,4 +53,9 @@ def initcache():
 
 
 def main():
+    mgr = extension.ExtensionManager(namespace='opsy.plugin',
+                                     invoke_on_load=False)
+    for ext in mgr:
+        for command, func in ext.plugin.get_cli_commands():
+            MANAGER.add_command(command, func)
     MANAGER.run()

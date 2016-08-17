@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime
 from stevedore import driver
+from flask_script import Command
 from sqlalchemy.exc import OperationalError
 from opsy.exceptions import NoConfigSection
 from opsy.plugins.base import BaseOpsyPlugin
@@ -105,9 +106,21 @@ class MonitoringPlugin(BaseOpsyPlugin):
                           'args': [zone, app.config_file]}])
         return jobs
 
-    def register_cli_commands(self, app, cli):
-        pass
+    @classmethod
+    def get_cli_commands(cls):
+        print('blahblah')
+        class UpdateCache(Command):
+            "Test"
 
-    @property
-    def shell_objects(self):
-        return [Client, Check, Result, Event, Silence, Zone]
+            def run(self):
+                print('test')
+        return [('updatecache', UpdateCache())]
+
+    def register_shell_objects(self, shell_vars):
+        monitoring_vars = {'Client': Client,
+                           'Check': Check,
+                           'Result': Result,
+                           'Event': Event,
+                           'Silence': Silence,
+                           'Zone': Zone}
+        return shell_vars.update(monitoring_vars)

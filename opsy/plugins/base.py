@@ -38,21 +38,16 @@ class BaseOpsyPlugin(object):
         :rtype: List
         """
 
+    @abc.abstractclassmethod
+    def get_cli_commands(cls):
+        """Register any cli commands for the plugin."""
+
     @abc.abstractmethod
-    def register_cli_commands(self, app, cli):
-        """Register any cli commands for the plugin.
+    def register_shell_objects(self, shell_vars):
+        """Register any shell objects for the plugin.
 
-        :param app: Flask app object
-        :type app: Flask
-        :return: List of cli commands
-        :rtype: List
-        """
-
-    @property
-    @abc.abstractmethod
-    def shell_objects(self):
-        """Returns a dict of objects to be included in the shell context.
-
+        :param shell_vars: Shell variables dict
+        :type app: Dict
         :return: Dict of objects
         :rtype: Dict
         """
