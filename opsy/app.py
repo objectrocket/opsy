@@ -5,17 +5,18 @@ import os.path
 import sys
 from flask import Flask
 from flask_iniconfig import INIConfig
+from apscheduler.schedulers.blocking import BlockingScheduler
 from opsy.main import core_main
 from opsy.db import db
 from opsy.exceptions import NoConfigFile, NoConfigSection
 from opsy.utils import OpsyJSONEncoder, load_plugins
-from apscheduler.schedulers.blocking import BlockingScheduler
 
 
 def create_app(config):
     if not os.path.exists(config):
         raise NoConfigFile('Config %s does not exist' % config)
     app = Flask(__name__)
+    app.jobs = []
     app.config_file = config
     INIConfig(app)
     app.config.from_inifile(config)
@@ -47,9 +48,8 @@ def create_logging(app):
 
 def create_scheduler(app, scheduler_class=BlockingScheduler):
     scheduler = scheduler_class()
-    jobs = []
     for plugin in load_plugins(app):
-        jobs.extend(plugin.register_scheduler_jobs(app))
-    for args, kwargs in jobs:
+        plugin.register_scheduler_jobs(app)
+    for args, kwargs in app.jobs:
         scheduler.add_job(*args, **kwargs)
     return scheduler

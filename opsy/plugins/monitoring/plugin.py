@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime
 from stevedore import driver
-from flask_script import Command
+from flask import current_app
 from sqlalchemy.exc import OperationalError
 from opsy.exceptions import NoConfigSection
 from opsy.plugins.base import BaseOpsyPlugin
@@ -63,10 +63,9 @@ class MonitoringPlugin(BaseOpsyPlugin):
         app.register_blueprint(monitoring_main, url_prefix='/monitoring')
         app.register_blueprint(monitoring_api, url_prefix='/api/monitoring')
 
-    def register_scheduler_jobs(self, app):
+    def register_scheduler_jobs(self, app, run_once=False):
         def update_cache(zone, config_file):
             from opsy.app import create_app
-            from flask import current_app
             with create_app(config_file).app_context():
                 loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(loop)
@@ -97,30 +96,39 @@ class MonitoringPlugin(BaseOpsyPlugin):
             for zone in self.zones:
                 db.session.bulk_save_objects(zone.create_poller_metadata(app))
             db.session.commit()
-        jobs = []
         for zone in self.zones:
-            jobs.append([[update_cache, 'interval'],
-                         {'next_run_time': datetime.now(),
-                          'max_instances': 1,
-                          'seconds': zone.interval,
-                          'args': [zone, app.config_file]}])
-        return jobs
+            if run_once:
+                app.jobs.append([[update_cache],
+                                 {'next_run_time': datetime.now(),
+                                  'max_instances': 1,
+                                  'args': [zone, app.config_file]}])
+            else:
+                app.jobs.append([[update_cache, 'interval'],
+                                 {'next_run_time': datetime.now(),
+                                  'max_instances': 1,
+                                  'seconds': zone.interval,
+                                  'args': [zone, app.config_file]}])
 
-    @classmethod
-    def get_cli_commands(cls):
-        print('blahblah')
-        class UpdateCache(Command):
-            "Test"
+    def register_cli_commands(self, cli):
 
-            def run(self):
-                print('test')
-        return [('updatecache', UpdateCache())]
+        @cli.command('update-monitoring-cache')
+        def update_monitoring_cache():  # pylint: disable=unused-variable
+            """Update the monitoring cache."""
+            from apscheduler.schedulers.background import BackgroundScheduler
+            scheduler = BackgroundScheduler()
+            self.register_scheduler_jobs(current_app, run_once=True)
+            for args, kwargs in current_app.jobs:
+                scheduler.add_job(*args, **kwargs)
+            scheduler.start()
+            while len(scheduler.get_jobs()) > 0:
+                continue
+            scheduler.shutdown(wait=True)
 
-    def register_shell_objects(self, shell_vars):
-        monitoring_vars = {'Client': Client,
-                           'Check': Check,
-                           'Result': Result,
-                           'Event': Event,
-                           'Silence': Silence,
-                           'Zone': Zone}
-        return shell_vars.update(monitoring_vars)
+    def register_shell_context(self, shell_ctx):
+        monitoring_ctx = {'Client': Client,
+                          'Check': Check,
+                          'Result': Result,
+                          'Event': Event,
+                          'Silence': Silence,
+                          'Zone': Zone}
+        shell_ctx.update(monitoring_ctx)

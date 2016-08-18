@@ -29,25 +29,23 @@ class BaseOpsyPlugin(object):
         """
 
     @abc.abstractmethod
-    def register_scheduler_jobs(self, app):
+    def register_scheduler_jobs(self, app, run_once=False):
         """Register any scheduler jobs for the plugin.
 
         :param app: Flask app object
         :type app: Flask
-        :return: List of apscheduler jobs
-        :rtype: List
+        :param run_once: Control if the jobs are scheduled once
+        :type run_once: bool
         """
 
-    @abc.abstractclassmethod
-    def get_cli_commands(cls):
+    @abc.abstractmethod
+    def register_cli_commands(self, cli):
         """Register any cli commands for the plugin."""
 
     @abc.abstractmethod
-    def register_shell_objects(self, shell_vars):
-        """Register any shell objects for the plugin.
+    def register_shell_context(self, shell_ctx):
+        """Register any objects for the plugin on the shell context.
 
-        :param shell_vars: Shell variables dict
-        :type app: Dict
-        :return: Dict of objects
-        :rtype: Dict
+        :param shell_ctx: Shell variables dict
+        :type shell_ctx: Dict
         """

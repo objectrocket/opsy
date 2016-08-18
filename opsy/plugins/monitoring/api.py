@@ -1,8 +1,8 @@
+from flask import Blueprint, current_app, jsonify, request
 from opsy.db import db
 from opsy.utils import get_filters_list
 from opsy.plugins.monitoring.backends.base import Client, Check, Result, \
     Event, Silence, Zone
-from flask import Blueprint, current_app, jsonify, request
 
 
 monitoring_api = Blueprint('monitoring_api', __name__)  # pylint: disable=invalid-name
