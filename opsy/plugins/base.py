@@ -29,6 +29,16 @@ class BaseOpsyPlugin(object):
         """
 
     @abc.abstractmethod
+    def register_link_structure(self, app):
+        """Register a link structure for the plugin.
+
+        :param app: Flask app object
+        :type app: Flask
+        :return: Dictionary
+        :rtype: Dict
+        """
+
+    @abc.abstractmethod
     def register_scheduler_jobs(self, app, run_once=False):
         """Register any scheduler jobs for the plugin.
 

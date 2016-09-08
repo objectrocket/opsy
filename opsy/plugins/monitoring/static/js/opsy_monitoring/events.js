@@ -189,7 +189,7 @@ var events = {
                 'status': row.status.capitalize(),
                 'zone': row.zone_name,
                 'source': '<a href="' + uchiwaHref + '"><img src="' +
-                  '/static/main/img/backends/sensu.ico"></img></a>' +
+                  STATICS_URL + 'img/backends/sensu.ico"></img></a>' +
                   '<a href="/clients/' + row.zone_name + '/' + row.client_name +
                   '">' + row.client_name + '</a>',
                 'check_name': row.check_name,

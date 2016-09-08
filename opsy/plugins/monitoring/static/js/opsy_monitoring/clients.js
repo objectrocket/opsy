@@ -98,7 +98,7 @@ $(document).ready(function() {
           returnData.push({
             'zone': row.zone_name,
             'name': '<a href="' + uchiwaHref + '"><img src="' +
-              '/static/main/img/backends/sensu.ico"></img></a> ' +
+              STATICS_URL + 'img/backends/sensu.ico"></img></a> ' +
               '<a href="/clients/' + row.zone_name + '/' + row.name + '">' +
               row.name + '</a>',
             'address': row.address,

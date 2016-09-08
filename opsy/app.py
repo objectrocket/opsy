@@ -22,8 +22,16 @@ def create_app(config):
     app.config.from_inifile(config)
     create_logging(app)
     db.init_app(app)
+    app.plugin_links = []
     for plugin in load_plugins(app):
         plugin.register_blueprints(app)
+        links = plugin.register_link_structure(app)
+        app.plugin_links.append(links)
+
+    @app.context_processor
+    def inject_links():  # pylint: disable=unused-variable
+        return dict(link_structures=app.plugin_links)
+
     app.register_blueprint(core_main)
     app.json_encoder = OpsyJSONEncoder
     return app

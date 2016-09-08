@@ -57,6 +57,9 @@
           {% for href, id, caption in leftnav_bar %}
             <li{% if id == active_page %} class="active"{% endif %}><a href="{{ url_for(href|e) }}">{{ caption|e }}</a></li>
           {%- endfor %}
+          {% for menu_item in link_structures %}
+            {% autoescape off %}{{ menu_item }}{% endautoescape %}
+          {%- endfor %}
   {%- endblock %}
           </ul>
           <ul class="nav navbar-nav navbar-right">
