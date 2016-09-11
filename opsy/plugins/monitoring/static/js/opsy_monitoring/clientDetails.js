@@ -4,10 +4,10 @@ var clientDetails = {
 
     init: function() {
       $('#clientdetails').html(function() {
-        $.getJSON('/api/monitoring/clients/' + ZONE + '/' + CLIENT, function(data) {
+        $.getJSON(Flask.url_for('monitoring_api.clients') + '/' + ZONE + '/' + CLIENT, function(data) {
           client = data.clients[0];
-          $('#clientdetails').html('<h4>' + client.name + '</h4><pre>' +
-            JSON.stringify(client, null, 2) + '</pre>');
+          $('#clientdetailsname').html(client.name);
+          $('#clientdetailstable').html(opsyMonitoring.formatJSONToTable(client));
         });
       });
       $.fn.dataTable.enum(['Critical', 'Warning', 'OK']);

@@ -108,10 +108,10 @@ var checks = {
         params.dashboard = $.QueryString.dashboard;
       }
       try {
-        document.checkstable.ajax.url('/api/monitoring/checks?' + $.param(params));
+        document.checkstable.ajax.url(Flask.url_for('monitoring_api.checks') + '?' + $.param(params));
       } catch (err) {
       }
-      return '/api/monitoring/checks?' + $.param(params);
+      return Flask.url_for('monitoring_api.checks') + '?' + $.param(params);
     },
 
     init: function() {

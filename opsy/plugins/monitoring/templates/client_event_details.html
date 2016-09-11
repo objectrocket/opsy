@@ -9,8 +9,14 @@
       <div class="row">
         <div class="col-md-12">
           <div id="clientdetails" class="col-md-4 well">
+            <h4 id="clientdetailsname"></h4>
+            <table id="clientdetailstable" class="jsontable">
+            </table>
           </div>
           <div id="eventdetails" class="col-md-8 well">
+            <h4 id="eventdetailsname"></h4>
+            <table id="eventdetailstable" class="jsontable">
+            </table>
           </div>
         </div>
       </div>
@@ -23,7 +29,7 @@
       CLIENT = "{{client}}";
       CHECK = "{{check}}";
       $(document).ready(function() {
-        clientEventDetails.datatables.init();
+        clientEventDetails.init();
       });
     </script>
 {% endblock %}

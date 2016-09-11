@@ -1,5 +1,9 @@
 var opsyMonitoring = {
 
+  linkedFields: [
+    'output',
+  ],
+
   statusclasses: {
     'Ok': 'success',
     'Warning': 'warning',
@@ -31,8 +35,20 @@ var opsyMonitoring = {
     }
   },
 
+  formatJSONToTable: function(data) {
+    html = [];
+    $.each(data, function(item, value) {
+      if (opsyMonitoring.linkedFields.indexOf(item) >= 0) {
+        opsy.log('autolinking ' + item);
+        value = autolinker.link(value);
+      }
+      html.push('<tr><td>' + item + '</td><td>' + value + '</td></tr>');
+    });
+    return html.join('\n');
+  },
+
   checkZones: function() {
-    $.getJSON('/api/monitoring/zones', function(json) {
+    $.getJSON(Flask.url_for('monitoring_api.zones'), function(json) {
       zones = json.zones;
       for (var i = 0; i < zones.length; i++) {
         zone = zones[i];

@@ -1,0 +1,54 @@
+table {
+    table-layout: fixed;
+}
+
+table td, table th {
+    overflow: hidden;
+    white-space: nowrap;
+}
+td {
+    text-overflow: ellipsis;
+}
+
+.form-group > label {
+    padding-right: 5px;
+    padding-left: 5px;
+}
+
+table.dataTable thead .sorting:after {
+    content: none !important;
+}
+table.dataTable thead .sorting_asc:after {
+    content: none !important;
+}
+table.dataTable thead .sorting_desc:after {
+    content: none !important;
+}
+table.dataTable thead .sorting:before {
+    padding-right: 5px;
+    font-family: "Glyphicons Halflings";
+    opacity: 0.2;
+    content: "\e150 "
+}
+table.dataTable thead .sorting_asc:before {
+    padding-right: 5px;
+    font-family: "Glyphicons Halflings";
+    opacity: 0.5;
+    content: "\e155 "
+}
+table.dataTable thead .sorting_desc:before {
+    padding-right: 5px;
+    font-family: "Glyphicons Halflings";
+    opacity: 0.5;
+    content: "\e156 "
+}
+
+/* ALL TABLES */
+th#zone{
+    width: 5%
+}
+
+.jsontable{
+    border-spacing: 10px 5px;
+    border-collapse: separate;
+}

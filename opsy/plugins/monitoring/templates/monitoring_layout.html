@@ -4,6 +4,7 @@
     <link href="{{url_for('monitoring_main.static', filename='css/datatables/dataTables.bootstrap.min.css')}}" rel="stylesheet">
     <link href="{{url_for('monitoring_main.static', filename='css/datatables-responsive/responsive.bootstrap.min.css')}}" rel="stylesheet">
     <link href="{{url_for('monitoring_main.static', filename='css/bootstrap-multiselect/bootstrap-multiselect.css')}}" rel="stylesheet">
+    <link href="{{url_for('monitoring_main.static', filename='css/opsy_monitoring/opsy_monitoring.css')}}" rel="stylesheet">
 {% endblock %}
 {% block footer %}{{ super() }}
     <script src="{{url_for('monitoring_main.static', filename='js/datatables/jquery.dataTables.min.js')}}"></script>
@@ -13,8 +14,30 @@
     <script src="{{url_for('monitoring_main.static', filename='js/bootstrap-multiselect/bootstrap-multiselect.js')}}"></script>
     <script src="{{url_for('monitoring_main.static', filename='js/datatables-plugins-sorting-enum/enum.js')}}"></script>
     <script src="{{url_for('monitoring_main.static', filename='js/timeago/jquery.timeago.js')}}"></script>
+    <script src="{{url_for('monitoring_main.static', filename='js/autolinker/Autolinker.min.js')}}"></script>
     <script src="{{url_for('monitoring_main.static', filename='js/opsy_monitoring/opsyMonitoring.js')}}"></script>
     <script type="text/javascript">
+      var autolinker = new Autolinker( {
+          urls : {
+              schemeMatches : true,
+              wwwMatches    : true,
+              tldMatches    : true
+          },
+          email       : false,
+          phone       : false,
+          mention     : false,
+          hashtag     : false,
+      
+          stripPrefix : false,
+          newWindow   : true,
+      
+          truncate : {
+              length   : 0,
+              location : 'end'
+          },
+      
+          className : ''
+      } );
       var UCHIWA_URL = "{{ uchiwa_url }}";
       var STATICS_URL = "{{ url_for('monitoring_main.static', filename='')}}";
       $(document).ready(function() {
