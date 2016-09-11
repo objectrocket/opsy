@@ -1,3 +1,11 @@
 {
 	"preset": "google",
+    "requireCamelCaseOrUpperCaseIdentifiers": {
+        "allowedPrefixes": ["opt_"],
+        "allExcept": ["var_args", "url_for"]
+    },
+    "maximumLineLength": {
+      "value": 160,
+      "allExcept": ["comments", "regex"]
+    },
 }

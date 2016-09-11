@@ -1,7 +1,7 @@
 import asyncio
 from datetime import datetime
 from stevedore import driver
-from flask import current_app
+from flask import current_app, render_template
 from sqlalchemy.exc import OperationalError
 from opsy.exceptions import NoConfigSection
 from opsy.plugins.base import BaseOpsyPlugin
@@ -62,6 +62,10 @@ class MonitoringPlugin(BaseOpsyPlugin):
     def register_blueprints(self, app):
         app.register_blueprint(monitoring_main, url_prefix='/monitoring')
         app.register_blueprint(monitoring_api, url_prefix='/api/monitoring')
+
+    def register_link_structure(self, app):
+        with app.app_context():
+            return render_template('links.html', dashboards=current_app.config['monitoring']['dashboards'])
 
     def register_scheduler_jobs(self, app, run_once=False):
         def update_cache(zone, config_file):

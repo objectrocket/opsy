@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>opsy.js unit tests - QUnit</title>
+ 
+  <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.0.1.css">
+  <script src="https://code.jquery.com/qunit/qunit-2.0.1.js"></script>
+  <script src="/opsy/static/js/jquery/jquery.js"></script>
+  <script src="/opsy/plugins/monitoring/static/js/opsy_monitoring/opsyMonitoring.js"></script>
+ 
+  <script>
+  QUnit.test("form groups", function( assert ){
+    var fixture = $('#qunit-fixture');
+    fixture.append('<div id="test-filter-div"></div>');
+    opsyMonitoring.addFormGroup('test');
+    assert.equal($(fixture).children().length, 1, "One filter created");
+    assert.equal($(fixture).children(1).html(), '<select multiple="" class="ms" data-name="test" data-filter="test" id="test-filter"></select>', "Filter HTML is correct");
+  });
+  </script>
+</head>
+<body>
+
+<div id="qunit"></div>
+<div id="qunit-fixture"></div>
+
+</body>
+</html>
