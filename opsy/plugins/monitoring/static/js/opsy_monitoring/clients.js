@@ -99,7 +99,7 @@ $(document).ready(function() {
             'zone': row.zone_name,
             'name': '<a href="' + uchiwaHref + '"><img src="' +
               STATICS_URL + 'img/backends/sensu.ico"></img></a> ' +
-              '<a href="/clients/' + row.zone_name + '/' + row.name + '">' +
+              '<a href="/monitoring/clients/' + row.zone_name + '/' + row.name + '">' +
               row.name + '</a>',
             'address': row.address,
             'version': row.version,
@@ -132,7 +132,7 @@ $(document).ready(function() {
     },
     'initComplete': function(foo) {
       clientsfilters.create();
-      opsy.registerTask('update-clients', 6, function() {
+      opsy.task.register('update-clients', 6, function() {
         //filters.update();
         document.clientstable.ajax.reload(null, false);
       });

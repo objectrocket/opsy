@@ -5,6 +5,7 @@ import os.path
 import sys
 from flask import Flask
 from flask_iniconfig import INIConfig
+from flask_jsglue import JSGlue
 from apscheduler.schedulers.blocking import BlockingScheduler
 from opsy.main import core_main
 from opsy.db import db
@@ -16,6 +17,7 @@ def create_app(config):
     if not os.path.exists(config):
         raise NoConfigFile('Config %s does not exist' % config)
     app = Flask(__name__)
+    JSGlue(app)
     app.jobs = []
     app.config_file = config
     INIConfig(app)

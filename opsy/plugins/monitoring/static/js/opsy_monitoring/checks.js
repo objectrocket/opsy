@@ -1,81 +1,92 @@
-var checksfilters = {
+var checks = {
 
   zoneOptions: [],
 
   checkOptions: [],
 
-  multiselectOptions: {
-    buttonWidth: '100%',
-    enableFiltering: true,
-    enableCaseInsensitiveFiltering: true,
-    numberDisplayed: 1,
-    includeSelectAllOption: true,
-    buttonText: function(options, select) {
-      if (options.length == 1) {
-        return $(options[0]).attr('label');
-      } else if (options.length == $(select).children(options).length) {
-        return 'All items selected';
-      } else if (options.length > 1) {
-        return options.length + ' items selected';
-      } else {
-        return $(select).data('name').replace('-', ' ').capitalize(true);
-      }
-    },
-    buttonTitle: function(options, select) {
-      return $(select).data('name').replace('-', ' ').capitalize(true);
-    },
-    onDropdownHidden: function() {
-      checksfilters.setDataTablesUrl();
-      document.checkstable.ajax.reload(null, false);
-    },
-  },
+  filters: {
 
-  create: function() {
-    opsy.addFormGroup('zone');
-    this.updateZones(true);
-    opsy.addFormGroup('check');
-    this.updateChecks(true);
-  },
+    create: function() {
+      opsy_monitoring.addFormGroup('zone');
+      opsy_monitoring.addFormGroup('check');
+      $('#zone-filter').multiselect(opsy_monitoring.multiselectOptions);
+      $('#check-filter').multiselect(opsy_monitoring.multiselectOptions);
+      checks.filters.updateAll(true);
+    },
 
-  update: function() {
-    this.updateZones();
-    this.updateChecks();
-  },
+    updateAll: function(init) {
+      checks.filters.updateZones(init);
+      checks.filters.updateChecks(init);
+    },
 
-  updateZones: function(init) {
-    var self = this;
-    $.getJSON('/api/monitoring/zones', function(data) {
-      newzones = [];
-      $.each(data.zones, function(idx, obj) {
-        newzones.push({label: obj.name, title: obj.name, value: obj.name});
-      });
-      self.zoneOptions = newzones;
-    }).success(function() {
-      if (init == true) {
-        $('#zone-filter').multiselect(self.multiselectOptions);
-        $('#zone-filter').multiselect('dataprovider', self.zoneOptions);
-      } else {
+    updateZones: function(init) {
+      url = opsy_monitoring.getDashboardUrl(Flask.url_for("monitoring_api.zones"));
+      $.getJSON(url, function(data) {
+        newzones = [];
+        $.each(data.zones, function(idx, obj) {
+          newzones.push({label: obj.name, title: obj.name, value: obj.name});
+        });
+        newzones.sort(function(a, b) { return a.value > b.value; });
+        checks.zoneOptions = newzones;
+      }).success(function() {
+        if (init) {
+          $('#zone-filter').multiselect('dataprovider', checks.zoneOptions);
+        } else {
+          selectedOptions = $('#zone-filter option:selected').map(
+            function(idx, obj) {
+              return obj.value;
+            }
+          );
+          $('#zone-filter option').remove();
+          $.each(checks.zoneOptions, function(idx, obj) {
+            $('#zone-filter')
+              .append('<option value="' + obj.value + '" label="' + obj.label +
+                '" title="' + obj.title + '"></option>'
+            );
+            if ($.inArray(obj.value, selectedOptions) !== -1) {
+              $('#zone-filter option[value="' + obj.value + '"')
+                .prop('selected', true);
+            }
+          });
+        }
         $('#zone-filter').multiselect('rebuild');
-      }
-    });
-  },
-
-  updateChecks: function(init) {
-    var self = this;
-    $.getJSON('/api/monitoring/checks', function(data) {
-      newchecks = [];
-      $.each(data.checks.sort(), function(idx, obj) {
-        newchecks.push({label: obj.name, title: obj.name, value: obj.name});
       });
-      self.checkOptions = newchecks;
-    }).success(function() {
-      if (init == true) {
-        $('#check-filter').multiselect(self.multiselectOptions);
-        $('#check-filter').multiselect('dataprovider', self.checkOptions);
-      } else {
+    },
+
+    updateChecks: function(init) {
+      url = opsy_monitoring.getDashboardUrl(Flask.url_for('monitoring_api.checks'));
+      $.getJSON(url, function(data) {
+        newchecks = [];
+        $.each(data.checks, function(idx, obj) {
+          newchecks.push({label: obj.name + ' (' + obj.count + ')',
+            title: obj.name, value: obj.name});
+        });
+        newchecks.sort(function(a, b) { return a.value > b.value; });
+        checks.checkOptions = newchecks;
+      }).success(function() {
+        if (init) {
+          $('#check-filter').multiselect('dataprovider', checks.checkOptions);
+        } else {
+          selectedOptions = $('#check-filter option:selected')
+            .map(function(idx, obj) {
+              return obj.value;
+            });
+          $('#check-filter option').remove();
+          $.each(checks.checkOptions, function(idx, obj) {
+            $('#check-filter')
+              .append('<option value="' + obj.value + '" label="' + obj.label +
+              '" title="' + obj.title + '"></option>');
+            if ($.inArray(obj.value, selectedOptions) !== -1) {
+              $('#check-filter option[value="' + obj.value + '"')
+                .prop('selected', true);
+            }
+          });
+        }
         $('#check-filter').multiselect('rebuild');
-      }
-    });
+      });
+      return;
+    },
+
   },
 
   setDataTablesUrl: function() {
@@ -103,7 +114,7 @@ $(document).ready(function() {
     'autoWidth': false,
     //'stateSave' : true,
     'ajax': {
-      url: checksfilters.setDataTablesUrl(),
+      url: checks.setDataTablesUrl(),
       dataSrc: 'checks',
     },
     'dom': '<"row"<"col-sm-2"l><"col-sm-2"<"#zone-filter-div">><"col-sm-2"' +
@@ -120,8 +131,8 @@ $(document).ready(function() {
       name: 'interval'},
     ],
     'initComplete': function(foo) {
-      checksfilters.create();
-      opsy.registerTask('update-checks', 6, function() {
+      checks.filters.create();
+      opsy.task.register('update-checks', 6, function() {
         //filters.update();
         document.checkstable.ajax.reload(null, false);
       });

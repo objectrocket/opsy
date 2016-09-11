@@ -21,7 +21,8 @@ module.exports = function(grunt) {
       opsy: {
         options: {
           urls: [
-            'http://localhost:8000/tests/javascript/opsy/opsy.html'
+            'http://localhost:8000/tests/javascript/opsy/opsy.html',
+            'http://localhost:8000/tests/javascript/opsy_monitoring/opsy_monitoring.html'
           ]
         },
       },

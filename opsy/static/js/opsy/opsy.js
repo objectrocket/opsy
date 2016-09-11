@@ -6,53 +6,6 @@ var opsy = {
     opsy.debug > -1 ? console.log('DEBUG: ' + msg) : null;
   },
 
-  statusclasses: {
-    'Ok': 'success',
-    'Warning': 'warning',
-    'Critical': 'danger'
-  },
-
-  statusnames: {
-    0: 'OK',
-    1: 'Warning',
-    2: 'Critical'
-  },
-
-  addFormGroup: function(name, filter) {
-    if (filter === undefined) {
-      filter = name;
-    }
-    formitem = $('<select multiple class="ms" data-name="' + name +
-      '" data-filter="' + filter + '" class="form-control" id="' + name +
-      '-filter"><select>').appendTo($('#' + name + '-filter-div'));
-  },
-
-  getDashboardUrl: function(url) {
-    dash = $.QueryString.dashboard;
-    if (dash) {
-      var separator = url.indexOf('?') !== -1 ? '&' : '?';
-      return url + separator + 'dashboard=' + dash;
-    } else {
-      return url;
-    }
-  },
-
-  checkZones: function() {
-    $.getJSON('/api/monitoring/zones', function(json) {
-      zones = json.zones;
-      for (var i = 0; i < zones.length; i++) {
-        zone = zones[i];
-        if (zone.status != 'ok') {
-          opsy.notification.add(zone.name + ' Poller Failure', 'Datacenter ' +
-            zone.name + ' is not responding!', 'danger', zone.name +
-            '-offline');
-        } else {
-          opsy.notification.remove(zone.name + '-offline');
-        }
-      }
-    });
-  },
-
   task: {
 
     list: [],

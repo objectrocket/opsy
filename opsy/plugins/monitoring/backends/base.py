@@ -195,10 +195,10 @@ class Client(CacheBase, db.Model):
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
-        if config['dashboards'].get(dashboard) is None:
+        if config['monitoring']['dashboards'].get(dashboard) is None:
             return ()
-        zones = config['dashboards'][dashboard].get('zone')
-        clients = config['dashboards'][dashboard].get('client')
+        zones = config['monitoring']['dashboards'][dashboard].get('zone')
+        clients = config['monitoring']['dashboards'][dashboard].get('client')
         filters = ((zones, cls.zone_name),
                    (clients, cls.name))
         return get_filters_list(filters)
@@ -251,10 +251,10 @@ class Check(CacheBase, db.Model):
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
-        if config['dashboards'].get(dashboard) is None:
+        if config['monitoring']['dashboards'].get(dashboard) is None:
             return ()
-        zones = config['dashboards'][dashboard].get('zone')
-        checks = config['dashboards'][dashboard].get('check')
+        zones = config['monitoring']['dashboards'][dashboard].get('zone')
+        checks = config['monitoring']['dashboards'][dashboard].get('check')
         filters = ((zones, cls.zone_name),
                    (checks, cls.name))
         return get_filters_list(filters)
@@ -317,12 +317,12 @@ class Result(CacheBase, db.Model):
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
-        if config['dashboards'].get(dashboard) is None:
+        if config['monitoring']['dashboards'].get(dashboard) is None:
             return ()
-        zones = config['dashboards'][dashboard].get('zone')
-        checks = config['dashboards'][dashboard].get('check')
-        clients = config['dashboards'][dashboard].get('client')
-        statuses = config['dashboards'][dashboard].get('status')
+        zones = config['monitoring']['dashboards'][dashboard].get('zone')
+        checks = config['monitoring']['dashboards'][dashboard].get('check')
+        clients = config['monitoring']['dashboards'][dashboard].get('client')
+        statuses = config['monitoring']['dashboards'][dashboard].get('status')
         filters = ((zones, cls.zone_name),
                    (checks, cls.check_name),
                    (clients, cls.client_name),
@@ -401,12 +401,12 @@ class Event(CacheBase, db.Model):
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
-        if config['dashboards'].get(dashboard) is None:
+        if config['monitoring']['dashboards'].get(dashboard) is None:
             return ()
-        zones = config['dashboards'][dashboard].get('zone')
-        checks = config['dashboards'][dashboard].get('check')
-        clients = config['dashboards'][dashboard].get('client')
-        statuses = config['dashboards'][dashboard].get('status')
+        zones = config['monitoring']['dashboards'][dashboard].get('zone')
+        checks = config['monitoring']['dashboards'][dashboard].get('check')
+        clients = config['monitoring']['dashboards'][dashboard].get('client')
+        statuses = config['monitoring']['dashboards'][dashboard].get('status')
         filters = ((zones, cls.zone_name),
                    (checks, cls.check_name),
                    (clients, cls.client_name),
@@ -544,9 +544,9 @@ class Zone(CacheBase, db.Model):
 
     @classmethod
     def get_dashboard_filters_list(cls, config, dashboard):
-        if config['dashboards'].get(dashboard) is None:
+        if config['monitoring']['dashboards'].get(dashboard) is None:
             return ()
-        zones = config['dashboards'][dashboard].get('zone')
+        zones = config['monitoring']['dashboards'][dashboard].get('zone')
         filters = ((zones, cls.name),)
         return get_filters_list(filters)
 

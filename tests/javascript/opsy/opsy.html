@@ -49,13 +49,6 @@
     assert.ok(opsy.notification.remove('test-notification'), "Successfully remove an existing notification");
 		assert.equal($('#notification-container').children().length, 0, "no notifications in list");
 	});
-  QUnit.test("form groups", function( assert ){
-    var fixture = $('#qunit-fixture');
-    fixture.append('<div id="test-filter-div"></div>');
-    opsy.addFormGroup('test');
-    assert.equal($(fixture).children().length, 1, "One filter created");
-    assert.equal($(fixture).children(1).html(), '<select multiple="" class="ms" data-name="test" data-filter="test" id="test-filter"></select>', "Filter HTML is correct");
-  });
   </script>
 </head>
 <body>
