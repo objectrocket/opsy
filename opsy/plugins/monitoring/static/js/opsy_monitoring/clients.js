@@ -1,143 +1,145 @@
-var clientsfilters = {
+var clients = {
 
   zoneOptions: [],
 
-  multiselectOptions: {
-    buttonWidth: '100%',
-    enableFiltering: true,
-    enableCaseInsensitiveFiltering: true,
-    numberDisplayed: 1,
-    includeSelectAllOption: true,
-    buttonText: function(options, select) {
-      if (options.length == 1) {
-        return $(options[0]).attr('label');
-      } else if (options.length == $(select).children(options).length) {
-        return 'All items selected';
-      } else if (options.length > 1) {
-        return options.length + ' items selected';
-      } else {
-        return $(select).data('name').replace('-', ' ').capitalize(true);
-      }
+  multiselectOptions: opsyMonitoring.multiselectOptions,
+
+  filters: {
+
+    create: function() {
+      clients.multiselectOptions.onDropdownHidden = function() {
+        clients.datatables.updateUrl();
+        document.clientstable.ajax.reload(null, false);
+      };
+      opsyMonitoring.addFormGroup('zone');
+      $('#zone-filter').multiselect(opsyMonitoring.multiselectOptions);
+      clients.filters.updateAll(true);
     },
-    buttonTitle: function(options, select) {
-      return $(select).data('name').replace('-', ' ').capitalize(true);
+
+    updateAll: function(init) {
+      clients.filters.updateZones(init);
     },
-    onDropdownHidden: function() {
-      clientsfilters.setDataTablesUrl();
-      document.clientstable.ajax.reload(null, false);
-    },
-  },
 
-  create: function() {
-    opsy.addFormGroup('zone');
-    this.updateZones(true);
-  },
-
-  update: function() {
-    this.updateZones();
-    this.updateChecks();
-  },
-
-  updateZones: function(init) {
-    var self = this;
-    $.getJSON('/api/monitoring/zones', function(data) {
-      newzones = [];
-      $.each(data.zones, function(idx, obj) {
-        newzones.push({label: obj.name, title: obj.name, value: obj.name});
-      });
-      self.zoneOptions = newzones;
-    }).success(function() {
-      if (init == true) {
-        $('#zone-filter').multiselect(self.multiselectOptions);
-        $('#zone-filter').multiselect('dataprovider', self.zoneOptions);
-      } else {
-        $('#zone-filter').multiselect('rebuild');
-      }
-    });
-  },
-
-  setDataTablesUrl: function() {
-    params = {};
-    $('select.ms').each(function(idx, obj) {
-      params[$(obj).data('filter')] = $(obj).children('option:selected').map(
-        function() { return this.value; }
-      ).get().join(',');
-    });
-    if ($.QueryString.dashboard) {
-      params.dashboard = $.QueryString.dashboard;
-    }
-    try {
-      document.clientstable.ajax.url('/api/clients?' + $.param(params));
-    } catch (err) {
-    }
-    return '/api/monitoring/clients?' + $.param(params);
-  }
-};
-
-$(document).ready(function() {
-
-  document.clientstable = $('#clients').DataTable({
-    'lengthMenu': [[25, 50, 100, -1], [25, 50, 100, 'All']],
-    'autoWidth': false,
-    //'stateSave' : true,
-    'order': [
-      [0, 'asc'],
-      [1, 'asc'],
-    ],
-    'ajax': {
-      url: clientsfilters.setDataTablesUrl(),
-      //dataSrc: 'clients',
-      dataSrc: function(json) {
-        json = json.clients;
-        returnData = new Array();
-        for (var i = 0; i < json.length; i++) {
-          var row = json[i];
-          //jscs:disable requireCamelCaseOrUpperCaseIdentifiers
-          uchiwaHref = UCHIWA_URL + '/#/client/' + row.zone_name + '/' +
-            row.client_name,
-          returnData.push({
-            'zone': row.zone_name,
-            'name': '<a href="' + uchiwaHref + '"><img src="' +
-              STATICS_URL + 'img/backends/sensu.ico"></img></a> ' +
-              '<a href="/monitoring/clients/' + row.zone_name + '/' + row.name + '">' +
-              row.name + '</a>',
-            'address': row.address,
-            'version': row.version,
-            'timestamp': '<time class="timeago" datetime="' +
-              row.last_poll_time + 'Z">' + row.last_poll_time + 'Z</time>',
-            //jscs:enable requireCamelCaseOrUpperCaseIdentifiers
+    updateZones: function(init) {
+      url = opsyMonitoring.getDashboardUrl(Flask.url_for('monitoring_api.zones'));
+      $.getJSON(url, function(data) {
+        newzones = [];
+        $.each(data.zones, function(idx, obj) {
+          newzones.push({label: obj.name, title: obj.name, value: obj.name});
+        });
+        newzones.sort(function(a, b) { return a.value > b.value; });
+        clients.zoneOptions = newzones;
+      }).success(function() {
+        if (init) {
+          $('#zone-filter').multiselect('dataprovider', clients.zoneOptions);
+        } else {
+          selectedOptions = $('#zone-filter option:selected').map(
+            function(idx, obj) {
+              return obj.value;
+            }
+          );
+          $('#zone-filter option').remove();
+          $.each(clients.zoneOptions, function(idx, obj) {
+            $('#zone-filter')
+              .append('<option value="' + obj.value + '" label="' + obj.label +
+                '" title="' + obj.title + '"></option>'
+            );
+            if ($.inArray(obj.value, selectedOptions) !== -1) {
+              $('#zone-filter option[value="' + obj.value + '"')
+                .prop('selected', true);
+            }
           });
         }
-        return returnData;
-      }
+        $('#zone-filter').multiselect('rebuild');
+      });
     },
-    'dom': '<"row"<"col-sm-2"l><"col-sm-2"<"#zone-filter-div">><"col-sm-6">' +
-      '<"col-sm-2"f>><"row"<"col-sm-12"tr>><"row"<"col-sm-5"i><"col-sm-7"p>>',
-    'columns': [
-      {data: 'zone'},
-      {data: 'name'},
-      {data: 'address'},
-      {data: 'version'},
-      {data: 'timestamp',
-      defaultContent: ''},
-    ],
-    'rowCallback': function(nRow, aData, iDisplayIndex, iDisplayIndexFull) {
-      var d = new Date(0);
-      d.setUTCSeconds(aData.timestamp);
+
+  },
+
+  datatables: {
+
+    updateUrl: function() {
+      params = {};
+      $('select.ms').each(function(idx, obj) {
+        params[$(obj).data('filter')] = $(obj).children('option:selected').map(
+          function() { return this.value; }
+        ).get().join(',');
+      });
+      if ($.QueryString.dashboard) {
+        params.dashboard = $.QueryString.dashboard;
+      }
       try {
-        $('td:last', nRow).html('<time class="timeago" datetime="' +
-          d.toISOString() + '">' + d + '</time>');
+        document.clientstable.ajax.url(Flask.url_for('monitoring_api.clients') + '?' + $.param(params));
       } catch (err) {
       }
+      return Flask.url_for('monitoring_api.clients') + '?' + $.param(params);
     },
-    'initComplete': function(foo) {
-      clientsfilters.create();
-      opsy.task.register('update-clients', 6, function() {
-        //filters.update();
-        document.clientstable.ajax.reload(null, false);
+
+    init: function() {
+      document.clientstable = $('#clients').DataTable({
+        'lengthMenu': [[25, 50, 100, -1], [25, 50, 100, 'All']],
+        'autoWidth': false,
+        //'stateSave' : true,
+        'order': [
+          [0, 'asc'],
+          [1, 'asc'],
+        ],
+        'ajax': {
+          url: clients.datatables.updateUrl(),
+          //dataSrc: 'clients',
+          dataSrc: function(json) {
+            json = json.clients;
+            returnData = new Array();
+            for (var i = 0; i < json.length; i++) {
+              var row = json[i];
+              //jscs:disable requireCamelCaseOrUpperCaseIdentifiers
+              uchiwaHref = UCHIWA_URL + '/#/client/' + row.zone_name + '/' +
+                row.client_name,
+              returnData.push({
+                'zone': row.zone_name,
+                'name': '<a href="' + uchiwaHref + '"><img src="' +
+                  STATICS_URL + 'img/backends/sensu.ico"></img></a> ' +
+                  '<a href="/monitoring/clients/' + row.zone_name + '/' + row.name + '">' +
+                  row.name + '</a>',
+                'address': row.address,
+                'version': row.version,
+                'timestamp': '<time class="timeago" datetime="' +
+                  row.last_poll_time + 'Z">' + row.last_poll_time + 'Z</time>',
+                //jscs:enable requireCamelCaseOrUpperCaseIdentifiers
+              });
+            }
+            return returnData;
+          }
+        },
+        'dom': '<"row"<"col-sm-2"l><"col-sm-2"<"#zone-filter-div">><"col-sm-6">' +
+          '<"col-sm-2"f>><"row"<"col-sm-12"tr>><"row"<"col-sm-5"i><"col-sm-7"p>>',
+        'columns': [
+          {data: 'zone'},
+          {data: 'name'},
+          {data: 'address'},
+          {data: 'version'},
+          {data: 'timestamp',
+          defaultContent: ''},
+        ],
+        'rowCallback': function(nRow, aData, iDisplayIndex, iDisplayIndexFull) {
+          var d = new Date(0);
+          d.setUTCSeconds(aData.timestamp);
+          try {
+            $('td:last', nRow).html('<time class="timeago" datetime="' +
+              d.toISOString() + '">' + d + '</time>');
+          } catch (err) {
+          }
+        },
+        'initComplete': function(foo) {
+          clients.filters.create();
+          opsy.task.register('update-clients', 6, function() {
+            //filters.update();
+            document.clientstable.ajax.reload(null, false);
+          });
+        }
+      }).on('draw.dt', function() {
+        $('time.timeago').timeago();
       });
-    }
-  }).on('draw.dt', function() {
-    $('time.timeago').timeago();
-  });
-});
+    },
+  },
+};

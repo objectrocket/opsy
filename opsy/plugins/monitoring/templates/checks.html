@@ -26,4 +26,9 @@
 {% block footer %}
   {{ super() }}
     <script src="{{url_for('monitoring_main.static', filename='js/opsy_monitoring/checks.js')}}"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        checks.datatables.init();
+      });
+    </script>
 {% endblock %}

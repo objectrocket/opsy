@@ -13,12 +13,12 @@
     <script src="{{url_for('monitoring_main.static', filename='js/bootstrap-multiselect/bootstrap-multiselect.js')}}"></script>
     <script src="{{url_for('monitoring_main.static', filename='js/datatables-plugins-sorting-enum/enum.js')}}"></script>
     <script src="{{url_for('monitoring_main.static', filename='js/timeago/jquery.timeago.js')}}"></script>
-    <script src="{{url_for('monitoring_main.static', filename='js/opsy_monitoring/opsy_monitoring.js')}}"></script>
+    <script src="{{url_for('monitoring_main.static', filename='js/opsy_monitoring/opsyMonitoring.js')}}"></script>
     <script type="text/javascript">
       var UCHIWA_URL = "{{ uchiwa_url }}";
       var STATICS_URL = "{{ url_for('monitoring_main.static', filename='')}}";
       $(document).ready(function() {
-        opsy.task.register('zone-check', 5, opsy_monitoring.checkZones, true);
+        opsy.task.register('zone-check', 5, opsyMonitoring.checkZones, true);
         if (Notification.permission !== 'granted') {
           Notification.requestPermission();
         }

@@ -1,4 +1,4 @@
-var opsy_monitoring = {
+var opsyMonitoring = {
 
   statusclasses: {
     'Ok': 'success',
@@ -67,10 +67,5 @@ var opsy_monitoring = {
     buttonTitle: function(options, select) {
       return $(select).data('name').replace('-', ' ').capitalize(true);
     },
-    onDropdownHidden: function() {
-      events.datatables.updateUrl();
-      document.eventstable.ajax.reload(null, false);
-    },
   }
-
-}
+};

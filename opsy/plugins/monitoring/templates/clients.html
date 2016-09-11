@@ -27,4 +27,9 @@
 {% block footer %}
   {{ super() }}
     <script src="{{url_for('monitoring_main.static', filename='js/opsy_monitoring/clients.js')}}"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        clients.datatables.init();
+      });
+    </script>
 {% endblock %}

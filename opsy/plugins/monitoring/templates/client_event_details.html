@@ -1,11 +1,8 @@
-{% extends "layout.html" %}
+{% extends "monitoring_layout.html" %}
 {% set active_page = 'clients' %}
 {% block head %}
   {{ super() }}
       <!-- Custom styles for this template -->
-      <link href="{{url_for('monitoring_main.static', filename='css/datatables/dataTables.bootstrap.min.css')}}" rel="stylesheet">
-      <link href="{{url_for('monitoring_main.static', filename='css/datatables-responsive/responsive.bootstrap.min.css')}}" rel="stylesheet">
-      <link href="{{url_for('monitoring_main.static', filename='css/bootstrap-multiselect/bootstrap-multiselect.css')}}" rel="stylesheet">
       <link href="{{url_for('monitoring_main.static', filename='css/opsy_monitoring/client_event_details.css')}}" rel="stylesheet">
 {% endblock %}
 {% block content %}
@@ -20,15 +17,13 @@
 {% endblock %}
 {% block footer %}
   {{ super() }}
-    <script src="{{url_for('monitoring_main.static', filename='js/opsy_monitoring/client_event_details.js')}}"></script>
-    <script src="{{url_for('monitoring_main.static', filename='js/datatables/jquery.dataTables.min.js')}}"></script>
-    <script src="{{url_for('monitoring_main.static', filename='js/datatables/dataTables.bootstrap.min.js')}}"></script>
-    <script src="{{url_for('monitoring_main.static', filename='js/datatables-responsive/dataTables.responsive.min.js')}}"></script>
-    <script src="{{url_for('monitoring_main.static', filename='js/datatables-responsive/responsive.bootstrap.min.js')}}"></script>
-    <script src="{{url_for('monitoring_main.static', filename='js/timeago/jquery.timeago.js')}}"></script>
+    <script src="{{url_for('monitoring_main.static', filename='js/opsy_monitoring/clientEventDetails.js')}}"></script>
     <script type="text/javascript">
       ZONE = "{{zone}}";
       CLIENT = "{{client}}";
       CHECK = "{{check}}";
+      $(document).ready(function() {
+        clientEventDetails.datatables.init();
+      });
     </script>
 {% endblock %}

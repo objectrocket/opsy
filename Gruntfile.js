@@ -12,7 +12,10 @@ module.exports = function(grunt) {
       ' Licensed <%= _.pluck(pkg.licenses, "type").join(", ") %> */\n',
     // Task configuration.
     jscs: {
-      src: ["opsy/views/main/static/js/opsy/"],
+      src: [
+        "opsy/static/js/opsy/",
+        "opsy/plugins/monitoring/static/js/opsy_monitoring/",
+      ],
       options: {
         reporter: "inline",
       }
@@ -22,7 +25,7 @@ module.exports = function(grunt) {
         options: {
           urls: [
             'http://localhost:8000/tests/javascript/opsy/opsy.html',
-            'http://localhost:8000/tests/javascript/opsy_monitoring/opsy_monitoring.html'
+            'http://localhost:8000/tests/javascript/opsyMonitoring/opsyMonitoring.html'
           ]
         },
       },

@@ -14,6 +14,8 @@ var events = {
     value: 'occurrences'},
   ],
 
+  multiselectOptions: opsyMonitoring.multiselectOptions,
+
   getStatusCount: function(state) {
     return document.eventstable.column(0).data().filter(function(value, idx) {
       return value == state ? true : false;
@@ -33,15 +35,19 @@ var events = {
   filters: {
 
     create: function() {
-      opsy_monitoring.addFormGroup('status');
-      opsy_monitoring.addFormGroup('zone');
-      opsy_monitoring.addFormGroup('check');
-      opsy_monitoring.addFormGroup('hide-events', 'hide_silenced');
-      $('#zone-filter').multiselect(opsy_monitoring.multiselectOptions);
-      $('#check-filter').multiselect(opsy_monitoring.multiselectOptions);
-      $('#status-filter').multiselect(opsy_monitoring.multiselectOptions);
+      events.multiselectOptions.onDropdownHidden = function() {
+        events.datatables.updateUrl();
+        document.eventstable.ajax.reload(null, false);
+      };
+      opsyMonitoring.addFormGroup('status');
+      opsyMonitoring.addFormGroup('zone');
+      opsyMonitoring.addFormGroup('check');
+      opsyMonitoring.addFormGroup('hide-events', 'hide_silenced');
+      $('#zone-filter').multiselect(events.multiselectOptions);
+      $('#check-filter').multiselect(events.multiselectOptions);
+      $('#status-filter').multiselect(events.multiselectOptions);
       $('#status-filter').multiselect('dataprovider', events.statusOptions);
-      $('#hide-events-filter').multiselect(opsy_monitoring.multiselectOptions);
+      $('#hide-events-filter').multiselect(events.multiselectOptions);
       $('#hide-events-filter').multiselect('dataprovider', events.hideOptions);
       events.filters.updateAll(true);
     },
@@ -52,7 +58,7 @@ var events = {
     },
 
     updateZones: function(init) {
-      url = opsy_monitoring.getDashboardUrl(Flask.url_for("monitoring_api.zones"));
+      url = opsyMonitoring.getDashboardUrl(Flask.url_for('monitoring_api.zones'));
       $.getJSON(url, function(data) {
         newzones = [];
         $.each(data.zones, function(idx, obj) {
@@ -86,7 +92,7 @@ var events = {
     },
 
     updateChecks: function(init) {
-      url = opsy_monitoring.getDashboardUrl(Flask.url_for('monitoring_api.events') + '?count_checks');
+      url = opsyMonitoring.getDashboardUrl(Flask.url_for('monitoring_api.events') + '?count_checks');
       $.getJSON(url, function(data) {
         newchecks = [];
         $.each(data.events, function(idx, obj) {
@@ -164,7 +170,7 @@ var events = {
                 'zone': row.zone_name,
                 'source': '<a href="' + uchiwaHref + '"><img src="' +
                   STATICS_URL + 'img/backends/sensu.ico"></img></a>' +
-                  '<a href="/clients/' + row.zone_name + '/' + row.client_name +
+                  '<a href="' + Flask.url_for('monitoring_main.clients') + '/' + row.zone_name + '/' + row.client_name +
                   '">' + row.client_name + '</a>',
                 'check_name': row.check_name,
                 'check_output': row.output,
@@ -191,7 +197,7 @@ var events = {
           {data: 'timestamp'},
         ],
         'rowCallback': function(nRow, aData, iDisplayIndex, iDisplayIndexFull) {
-          $('td:first', nRow).addClass(opsy_monitoring.statusclasses[aData.status]);
+          $('td:first', nRow).addClass(opsyMonitoring.statusclasses[aData.status]);
         },
         'initComplete': function(foo) {
           events.filters.create();
