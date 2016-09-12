@@ -25,8 +25,10 @@ var opsyMonitoring = {
       '-filter"><select>').appendTo($('#' + name + '-filter-div'));
   },
 
-  getDashboardUrl: function(url) {
-    dash = $.QueryString.dashboard;
+  getDashboardUrl: function(url, dash) {
+    if (dash === undefined) {
+      dash = $.QueryString.dashboard;
+    }
     if (dash) {
       var separator = url.indexOf('?') !== -1 ? '&' : '?';
       return url + separator + 'dashboard=' + dash;
@@ -47,8 +49,11 @@ var opsyMonitoring = {
     return html.join('\n');
   },
 
-  checkZones: function() {
-    $.getJSON(Flask.url_for('monitoring_api.zones'), function(json) {
+  checkZones: function(url, cb) {
+    if (url === undefined) {
+      url = Flask.url_for('monitoring_api.zones');
+    }
+    $.getJSON(url, function(json, status) {
       zones = json.zones;
       for (var i = 0; i < zones.length; i++) {
         zone = zones[i];
@@ -59,6 +64,10 @@ var opsyMonitoring = {
         } else {
           opsy.notification.remove(zone.name + '-offline');
         }
+      }
+    }).done(function() {
+      if (typeof(cb) === 'function') {
+        cb();
       }
     });
   },
