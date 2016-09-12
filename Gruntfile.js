@@ -20,16 +20,6 @@ module.exports = function(grunt) {
         reporter: "inline",
       }
     },
-    qunit: {
-      opsy: {
-        options: {
-          urls: [
-            'http://localhost:8000/tests/javascript/opsy/opsy.html',
-            'http://localhost:8000/tests/javascript/opsyMonitoring/opsyMonitoring.html'
-          ]
-        },
-      },
-    },
     watch: {
       gruntfile: {
         files: '<%= jshint.gruntfile.src %>',
@@ -47,17 +37,34 @@ module.exports = function(grunt) {
           base: '.',
         }
       }
-    }
-
+    },
+    blanket_qunit: {
+      opsy: {
+        options: {
+          urls: [
+            'http://localhost:8000/tests/javascript/opsy/opsy.html?coverage=true&gruntReport',
+          ],
+          threshold: 70,
+        },
+      },
+      opsy_monitoring: {
+        options: {
+          urls: [
+            'http://localhost:8000/tests/javascript/opsyMonitoring/opsyMonitoring.html?coverage=true&gruntReport',
+          ],
+          threshold: 70,
+        },
+      },
+    },
   });
 
   // These plugins provide necessary tasks.
   grunt.loadNpmTasks("grunt-jscs");
-  grunt.loadNpmTasks('grunt-contrib-qunit');
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-contrib-connect');
+  grunt.loadNpmTasks('grunt-blanket-qunit');
 
   // Default task.
-  grunt.registerTask('default', ['connect', 'jscs', 'qunit']);
+  grunt.registerTask('default', ['connect', 'jscs', 'blanket_qunit']);
 
 };
