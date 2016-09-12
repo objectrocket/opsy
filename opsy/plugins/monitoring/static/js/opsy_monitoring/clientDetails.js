@@ -10,7 +10,7 @@ var clientDetails = {
           $('#clientdetailstable').html(opsyMonitoring.formatJSONToTable(client));
         });
       });
-      $.fn.dataTable.enum(['Critical', 'Warning', 'OK']);
+      $.fn.dataTable.enum(['Critical', 'Warning','Ok', 'Unknown']);
       document.clientevents = $('#clientevents').DataTable({
         'lengthMenu': [[25, 50, 100, -1], [25, 50, 100, 'All']],
         'order': [
