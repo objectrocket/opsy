@@ -51,6 +51,7 @@ module.exports = function(grunt) {
         options: {
           urls: [
             'http://localhost:8000/tests/javascript/opsyMonitoring/opsyMonitoring.html?coverage=true&gruntReport',
+            'http://localhost:8000/tests/javascript/opsyMonitoring/events.html?coverage=true&gruntReport',
           ],
           threshold: 85,
         },

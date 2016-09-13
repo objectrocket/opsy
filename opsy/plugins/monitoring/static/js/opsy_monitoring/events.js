@@ -22,9 +22,9 @@ var events = {
     }).length;
   },
 
-  updateTitle: function() {
-    crits = events.getStatusCount('Critical');
-    warns = events.getStatusCount('Warning');
+  updateTitle: function(crits, warns) {
+    crits = typeof crits !== 'undefined' ? crits : events.getStatusCount('Critical');
+    warns = typeof warns !== 'undefined' ? warns : events.getStatusCount('Warning');
     document.title = crits + ' Critical, ' + warns + ' Warning | Events | Opsy';
   },
 
@@ -34,7 +34,8 @@ var events = {
 
   filters: {
 
-    create: function() {
+    create: function(update) {
+      update = typeof(update) !== undefined ? update : true;
       events.multiselectOptions.onDropdownHidden = function() {
         events.datatables.updateUrl();
         document.eventstable.ajax.reload(null, false);
@@ -49,15 +50,17 @@ var events = {
       $('#status-filter').multiselect('dataprovider', events.statusOptions);
       $('#hide-events-filter').multiselect(events.multiselectOptions);
       $('#hide-events-filter').multiselect('dataprovider', events.hideOptions);
-      events.filters.updateAll(true);
+      if (update) {
+        events.filters.updateAll(true, cb);
+      }
     },
 
-    updateAll: function(init) {
-      events.filters.updateZones(init);
-      events.filters.updateChecks(init);
+    updateAll: function(init, cb) {
+      events.filters.updateZones(init, cb);
+      events.filters.updateChecks(init, cb);
     },
 
-    updateZones: function(init) {
+    updateZones: function(init, cb) {
       url = opsyMonitoring.getDashboardUrl(Flask.url_for('monitoring_api.zones'));
       $.getJSON(url, function(data) {
         newzones = [];
@@ -88,10 +91,13 @@ var events = {
           });
         }
         $('#zone-filter').multiselect('rebuild');
+        if (typeof(cb) === 'function') {
+          cb();
+        }
       });
     },
 
-    updateChecks: function(init) {
+    updateChecks: function(init, cb) {
       url = opsyMonitoring.getDashboardUrl(Flask.url_for('monitoring_api.events') + '?count_checks');
       $.getJSON(url, function(data) {
         newchecks = [];
@@ -121,14 +127,17 @@ var events = {
           });
         }
         $('#check-filter').multiselect('rebuild');
+        if (typeof(cb) === 'function') {
+          cb();
+        }
       });
-      return;
     },
   },
 
   datatables: {
 
-    updateUrl: function() {
+    updateUrl: function(url) {
+      url = typeof(url) !== undefined ? url : Flask.url_for('monitoring_api.events');
       params = {};
       $('select.ms').each(function(idx, obj) {
         params[$(obj).data('filter')] = $(obj).children('option:selected').map(
@@ -139,10 +148,10 @@ var events = {
         params.dashboard = $.QueryString.dashboard;
       }
       try {
-        document.eventstable.ajax.url(Flask.url_for('monitoring_api.events') + '?' + $.param(params));
+        document.eventstable.ajax.url(url + '?' + $.param(params));
       } catch (err) {
       }
-      return Flask.url_for('monitoring_api.events') + '?' + $.param(params);
+      return url + '?' + $.param(params);
     },
 
     init: function() {
@@ -199,7 +208,7 @@ var events = {
         'rowCallback': function(nRow, aData, iDisplayIndex, iDisplayIndexFull) {
           $('td:first', nRow).addClass(opsyMonitoring.statusclasses[aData.status]);
         },
-        'initComplete': function(foo) {
+        'initComplete': function() {
           events.filters.create();
           opsy.task.register('update-events', 6, function() {
             events.filters.updateAll();
