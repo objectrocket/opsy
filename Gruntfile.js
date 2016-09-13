@@ -44,15 +44,16 @@ module.exports = function(grunt) {
           urls: [
             'http://localhost:8000/tests/javascript/opsy/opsy.html?coverage=true&gruntReport',
           ],
-          threshold: 70,
+          threshold: 85,
         },
       },
       opsy_monitoring: {
         options: {
           urls: [
             'http://localhost:8000/tests/javascript/opsyMonitoring/opsyMonitoring.html?coverage=true&gruntReport',
+            'http://localhost:8000/tests/javascript/opsyMonitoring/events.html?coverage=true&gruntReport',
           ],
-          threshold: 70,
+          threshold: 85,
         },
       },
     },

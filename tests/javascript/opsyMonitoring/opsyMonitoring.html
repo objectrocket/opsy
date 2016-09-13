@@ -66,19 +66,21 @@
       assert.equal($('#notification-container').children().length, 1, "One zone offline, notification added");
       done();
     }
-    opsyMonitoring.checkZones('/tests/javascript/opsyMonitoring/checkZones_offline.json', cb_offline);
+    opsyMonitoring.checkZones('/tests/javascript/opsyMonitoring/data/checkZones_offline.json', cb_offline);
     var cb_online = function(){
       assert.equal($('#notification-container').children().length, 0, "No zones offline, notification removed");
       done();
     }
-    opsyMonitoring.checkZones('/tests/javascript/opsyMonitoring/checkZones_online.json', cb_online);
+    opsyMonitoring.checkZones('/tests/javascript/opsyMonitoring/data/checkZones_online.json', cb_online);
   });
   QUnit.test("Dropdown labeling", function(assert){
     var fixture = $('#qunit-fixture');
     fixture.append('<select id="status-filter" class="ms" data-filter="status" data-name="status" multiple="" style="display: none;"><option value="Critical" label="Critical" title="Critical"></option><option value="Warning" label="Warning" title="Warning"></option><option value="OK" label="OK" title="OK"></option><option value="Unknown" label="Unknown" title="Unknown"></option></select>');
+    assert.equal(opsyMonitoring.multiselectOptions.buttonText([], $('#status-filter')), 'Status', 'No items selected');
     assert.equal(opsyMonitoring.multiselectOptions.buttonText([{'label': 'OK'}], $('#status-filter')), 'OK', 'Single item selected');
     assert.equal(opsyMonitoring.multiselectOptions.buttonText([{'label': 'OK'}, {'label': 'Warning'}], $('#status-filter')), '2 items selected', 'Multiple items selected');
     assert.equal(opsyMonitoring.multiselectOptions.buttonText([{'label': 'Unknown'}, {'label': 'OK'}, {'label': 'Warning'}, {'label': 'Critical'}], $('#status-filter')), 'All items selected', 'All items selected');
+    assert.equal(opsyMonitoring.multiselectOptions.buttonTitle([], $('#status-filter')), 'Status', 'No items selected');
   });
   </script>
 </head>
