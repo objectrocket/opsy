@@ -13,8 +13,7 @@ var opsy = {
     tickRate: 5000,
 
     register: function(slug, interval, func, runNow) {
-      opsy.log('registering task: ' + slug + ' to run every ' + interval +
-        ' ticks.');
+      opsy.log('registering task: ' + slug + ' to run every ' + interval + ' ticks.');
       opsy.task.list.push(
         {'slug': slug, 'interval': interval, 'callback': func}
       );
@@ -35,6 +34,7 @@ var opsy = {
         }
       });
       if (index > -1) {
+        opsy.log('deregistering task: ' + slug);
         opsy.task.list.splice(index, 1);
         return true;
       }

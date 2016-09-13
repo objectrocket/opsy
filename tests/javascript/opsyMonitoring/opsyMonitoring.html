@@ -66,12 +66,12 @@
       assert.equal($('#notification-container').children().length, 1, "One zone offline, notification added");
       done();
     }
-    opsyMonitoring.checkZones('/tests/javascript/opsyMonitoring/checkZones_offline.json', cb_offline);
+    opsyMonitoring.checkZones('/tests/javascript/opsyMonitoring/data/checkZones_offline.json', cb_offline);
     var cb_online = function(){
       assert.equal($('#notification-container').children().length, 0, "No zones offline, notification removed");
       done();
     }
-    opsyMonitoring.checkZones('/tests/javascript/opsyMonitoring/checkZones_online.json', cb_online);
+    opsyMonitoring.checkZones('/tests/javascript/opsyMonitoring/data/checkZones_online.json', cb_online);
   });
   QUnit.test("Dropdown labeling", function(assert){
     var fixture = $('#qunit-fixture');

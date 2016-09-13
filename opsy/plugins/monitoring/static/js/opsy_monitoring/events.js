@@ -34,8 +34,8 @@ var events = {
 
   filters: {
 
-    create: function(update) {
-      update = typeof(update) !== undefined ? update : true;
+    create: function(update, cb) {
+      update = typeof update !== 'undefined' ? update : true;
       events.multiselectOptions.onDropdownHidden = function() {
         events.datatables.updateUrl();
         document.eventstable.ajax.reload(null, false);
@@ -137,7 +137,7 @@ var events = {
   datatables: {
 
     updateUrl: function(url) {
-      url = typeof(url) !== undefined ? url : Flask.url_for('monitoring_api.events');
+      url = typeof url !== 'undefined' ? url : Flask.url_for('monitoring_api.events');
       params = {};
       $('select.ms').each(function(idx, obj) {
         params[$(obj).data('filter')] = $(obj).children('option:selected').map(
@@ -154,7 +154,7 @@ var events = {
       return url + '?' + $.param(params);
     },
 
-    init: function() {
+    init: function(cb) {
       $.fn.dataTable.enum(['Critical', 'Warning','Ok', 'Unknown']);
       document.eventstable = $('#events').DataTable({
         'lengthMenu': [[25, 50, 100, -1], [25, 50, 100, 'All']],
@@ -214,6 +214,9 @@ var events = {
             events.filters.updateAll();
             document.eventstable.ajax.reload(null, false);
           });
+          if (typeof(cb) === 'function') {
+            cb();
+          }
         }
       }).on('draw.dt', function() {
         events.updateTitle();
