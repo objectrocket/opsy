@@ -175,6 +175,7 @@ var events = {
               uchiwaHref = UCHIWA_URL + '/#/client/' + row.zone_name + '/' +
                 row.client_name + '?check=' + row.check_name,
               returnData.push({
+                'silenced': row.silenced,
                 'status': row.status.capitalize(),
                 'zone': row.zone_name,
                 'source': '<a href="' + uchiwaHref + '"><img src="' +
@@ -207,6 +208,9 @@ var events = {
         ],
         'rowCallback': function(nRow, aData, iDisplayIndex, iDisplayIndexFull) {
           $('td:first', nRow).addClass(opsyMonitoring.statusclasses[aData.status]);
+          if (aData.silenced) {
+            $(nRow).addClass('status-silenced');
+          }
         },
         'initComplete': function() {
           events.filters.create();

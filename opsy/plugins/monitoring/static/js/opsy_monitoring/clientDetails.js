@@ -24,7 +24,9 @@ var clientDetails = {
             returnData = new Array();
             for (var i = 0; i < json.length; i++) {
               var row = json[i];
+              console.log(row);
               returnData.push({
+                'silenced': row.silenced,
                 'status': row.status.capitalize(),
                 //jscs:disable requireCamelCaseOrUpperCaseIdentifiers
                 'check_name': row.check_name,
@@ -47,6 +49,9 @@ var clientDetails = {
         ],
         'rowCallback': function(nRow, aData, iDisplayIndex, iDisplayIndexFull) {
           $('td:first', nRow).addClass(opsyMonitoring.statusclasses[aData.status]);
+          if (aData.silenced) {
+            $(nRow).addClass('status-silenced');
+          }
         },
         'initComplete': function(foo) {
           opsy.task.register('update-client-details', 6, function() {
