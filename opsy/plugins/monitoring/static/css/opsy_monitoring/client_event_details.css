@@ -1,0 +1,19 @@
+#eventdetailstable {
+    table-layout: fixed;
+    width: 100%;
+}
+
+th.item {
+    width: 12em;
+}
+
+tr > td:first-child {
+    vertical-align: top;
+    white-space: nowrap;
+}
+
+table td {
+    overflow: scroll;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
