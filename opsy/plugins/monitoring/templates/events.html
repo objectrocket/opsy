@@ -1,0 +1,35 @@
+{% extends "monitoring_layout.html" %}
+{% set active_page = 'events' %}
+{% block head %}{{ super() }}
+    <!-- Custom styles for this template -->
+    <link href="{{url_for('monitoring_main.static', filename='css/opsy_monitoring/events.css')}}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+      <div class="row">
+        <div class="col-md-12">
+          <table id="events" class="dt table table-striped table-bordered table-hover">
+            <thead>
+              <tr>
+                <th id='status'>Status</th>
+                <th id="zone">Zone</th>
+                <th id="source">Source</th>
+                <th id="check">Check Name</th>
+                <th id="output">Output</th>
+                <th id="occurrences">Count</th>
+                <th id="lastcheck">Last&nbspCheck</th>
+              </tr>
+            </thead>
+            <tbody>
+            </tbody>
+          </table>
+        </div>
+      </div>
+{% endblock %}
+{% block footer %}{{ super() }}
+    <script src="{{url_for('monitoring_main.static', filename='js/opsy_monitoring/events.js')}}"></script>
+    <script type="text/javascript">
+      $(document).ready(function() {
+        events.datatables.init();
+      });
+    </script>
+{% endblock %}

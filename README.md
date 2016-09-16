@@ -1,5 +1,5 @@
 # Opsy
-A multi user/group web dashboard for Sensu
+The ultimate operations dashboard. Provides a framework for operations tools.
 
 # Developing
 Create a virtualenvironment with virtualenvwrapper
@@ -15,6 +15,9 @@ Run the app via uWSGI
 `~/opsy $ uwsgi -M --wsgi-file contrib/uwsgi/wsgi.py --callable app --http-socket 0.0.0.0:5000 --processes 4 --mule=contrib/uwsgi/scheduler.py`
 
 This should start the app server on http://127.0.0.1:5000/
+
+# Using the CLI utility
+Opsy comes with a CLI utility to interact with its database models or to perform some tasks. This can be invoked by running `opsy`.
 
 # Building a deb package
 

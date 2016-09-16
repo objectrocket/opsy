@@ -1,0 +1,47 @@
+{% extends "monitoring_layout.html" %}
+{% set active_page = 'clients' %}
+{% block head %}
+  {{ super() }}
+      <!-- Custom styles for this template -->
+      <link href="{{url_for('monitoring_main.static', filename='css/opsy_monitoring/client_event_details.css')}}" rel="stylesheet">
+{% endblock %}
+{% block content %}
+      <div class="row">
+        <div class="col-md-12">
+          <div id="clientdetails" class="col-md-4 well">
+            <h4 id="clientdetailsname"></h4>
+            <table id="clientdetailstable" class="jsontable">
+              <thead>
+                <th class="item">Item</th>
+                <th class="output">Output</th>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+          </div>
+          <div id="eventdetails" class="col-md-8 well">
+            <h4 id="eventdetailsname"></h4>
+            <table id="eventdetailstable" class="jsontable">
+              <thead>
+                <th class="item">Item</th>
+                <th class="output">Output</th>
+              </thead>
+              <tbody>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+{% endblock %}
+{% block footer %}
+  {{ super() }}
+    <script src="{{url_for('monitoring_main.static', filename='js/opsy_monitoring/clientEventDetails.js')}}"></script>
+    <script type="text/javascript">
+      ZONE = "{{zone}}";
+      CLIENT = "{{client}}";
+      CHECK = "{{check}}";
+      $(document).ready(function() {
+        clientEventDetails.init();
+      });
+    </script>
+{% endblock %}

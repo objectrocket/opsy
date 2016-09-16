@@ -1,10 +1,10 @@
 from datetime import date
-import importlib
 import uuid
 from flask.json import JSONEncoder
 from flask._compat import text_type
 from itsdangerous import json as _json
 from dateutil.tz import tzutc
+from stevedore import driver
 
 
 class OpsyJSONEncoder(JSONEncoder):
@@ -19,18 +19,6 @@ class OpsyJSONEncoder(JSONEncoder):
         if hasattr(o, '__html__'):
             return text_type(o.__html__())
         return _json.JSONEncoder.default(self, o)
-
-
-def load_zones(config):
-    zones = []
-    for name, zone_config in config['zones'].items():
-        backend = zone_config.get('backend')
-        package = backend.split(':')[0]
-        class_name = backend.split(':')[1]
-        zone_module = importlib.import_module(package)
-        zone_class = getattr(zone_module, class_name)
-        zones.append(zone_class(name, **zone_config))
-    return zones
 
 
 def get_filters_list(filters):
@@ -54,3 +42,16 @@ def parse_include_excludes(items):
     else:
         include, exclude = [], []
     return include, exclude
+
+
+def load_plugins(app):
+    opsy_config = app.config.get('opsy')
+    plugins = opsy_config.get('enabled_plugins')
+    if plugins:
+        for plugin in plugins.split(','):
+            plugin_manager = driver.DriverManager(
+                namespace='opsy.plugin',
+                name=plugin,
+                invoke_args=(app,),
+                invoke_on_load=True)
+            yield plugin_manager.driver
