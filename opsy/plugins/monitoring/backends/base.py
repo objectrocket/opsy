@@ -357,8 +357,8 @@ class Event(CacheBase, db.Model):
             clients_silences = self.outerjoin(Silence, db.and_(
                 Event.zone_name == Silence.zone_name,
                 Event.client_name == Silence.client_name,
-                Event.check_name.in_(
-                    [Silence.check_name, '']))).add_entity(Silence).all()
+                Silence.check_name.in_(
+                    [Event.check_name, '']))).add_entity(Silence).all()
             events_json = []
             for event, silence in clients_silences:
                 event_json = event.dict_out
