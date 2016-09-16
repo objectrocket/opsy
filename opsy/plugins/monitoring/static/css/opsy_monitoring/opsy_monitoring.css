@@ -44,6 +44,9 @@ table.dataTable thead .sorting_desc:before {
 }
 
 /* ALL TABLES */
+tr.status-silenced {
+    background-color: #BBDDFF !important;
+}
 th#zone{
     width: 5%
 }
