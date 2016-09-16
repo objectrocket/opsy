@@ -1,9 +1,9 @@
 import asyncio
+import random
+import time
 from datetime import datetime, timedelta
 from stevedore import driver
 from flask import current_app, render_template
-import random
-import time
 from sqlalchemy.exc import OperationalError
 from opsy.exceptions import NoConfigSection
 from opsy.plugins.base import BaseOpsyPlugin
