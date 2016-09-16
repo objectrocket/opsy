@@ -105,10 +105,11 @@ class MonitoringPlugin(BaseOpsyPlugin):
                 db.session.bulk_save_objects(zone.create_poller_metadata(app))
             db.session.commit()
         for zone in self.zones:
-            next_run = datetime.now() + timedelta(0, random.uniform(.5, 2.5))
+            next_run = datetime.now() + timedelta(
+                0, random.uniform(0, zone.interval))
             if run_once:
                 app.jobs.append([[update_cache],
-                                 {'next_run_time': next_run,
+                                 {'next_run_time': datetime.now(),
                                   'max_instances': 1,
                                   'args': [zone, app.config_file]}])
             else:
