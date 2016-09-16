@@ -78,8 +78,8 @@ class MonitoringPlugin(BaseOpsyPlugin):
                 for del_objects, init_objects in results:
                     for i in range(3):  # three retries for deadlocks
                         try:
-                            if del_objects:
-                                del_objects.delete()
+                            for del_object in del_objects:
+                                del_object.delete()
                             db.session.bulk_save_objects(init_objects)
                             db.session.commit()
                         except OperationalError as e:  # pylint: disable=invalid-name
