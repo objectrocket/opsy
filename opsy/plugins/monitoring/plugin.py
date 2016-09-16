@@ -1,5 +1,7 @@
 import asyncio
-from datetime import datetime
+import random
+import time
+from datetime import datetime, timedelta
 from stevedore import driver
 from flask import current_app, render_template
 from sqlalchemy.exc import OperationalError
@@ -82,15 +84,17 @@ class MonitoringPlugin(BaseOpsyPlugin):
                                 del_object.delete()
                             db.session.bulk_save_objects(init_objects)
                             db.session.commit()
+                            current_app.logger.info('Cache updated for %s' % zone.name)
+                            break
                         except OperationalError as e:  # pylint: disable=invalid-name
                             if i == (3 - 1):
                                 raise
                             current_app.logger.info(
                                 'Retryable error in transaction on '
-                                'attempt %d for zone %s. %s: %s',
-                                i + 1, zone.name, e.__class__.__name__, e)
+                                'attempt %d for zone %s: %s',
+                                i + 1, zone.name, e.__class__.__name__)
                             db.session.rollback()  # pylint: disable=no-member
-                current_app.logger.info('Cache updated for %s' % zone.name)
+                            time.sleep(random.uniform(.5, 1.5))
         # Create the db object for the zones.
         with app.app_context():
             for zone in Zone.query.all():
@@ -101,6 +105,8 @@ class MonitoringPlugin(BaseOpsyPlugin):
                 db.session.bulk_save_objects(zone.create_poller_metadata(app))
             db.session.commit()
         for zone in self.zones:
+            next_run = datetime.now() + timedelta(
+                0, random.uniform(0, zone.interval))
             if run_once:
                 app.jobs.append([[update_cache],
                                  {'next_run_time': datetime.now(),
@@ -108,7 +114,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
                                   'args': [zone, app.config_file]}])
             else:
                 app.jobs.append([[update_cache, 'interval'],
-                                 {'next_run_time': datetime.now(),
+                                 {'next_run_time': next_run,
                                   'max_instances': 1,
                                   'seconds': zone.interval,
                                   'args': [zone, app.config_file]}])
