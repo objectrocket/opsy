@@ -57,7 +57,12 @@ def create_logging(app):
 
 
 def create_scheduler(app, scheduler_class=BlockingScheduler):
-    scheduler = scheduler_class()
+    opsy_config = app.config.get('opsy')
+    grace_time = int(opsy_config.get('scheduler_grace_time', 10))
+    job_defaults = {
+        'misfire_grace_time': grace_time
+    }
+    scheduler = scheduler_class(job_defaults=job_defaults)
     for plugin in load_plugins(app):
         plugin.register_scheduler_jobs(app)
     for args, kwargs in app.jobs:
