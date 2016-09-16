@@ -87,8 +87,8 @@ class MonitoringPlugin(BaseOpsyPlugin):
                                 raise
                             current_app.logger.info(
                                 'Retryable error in transaction on '
-                                'attempt %d for zone %s. %s: %s',
-                                i + 1, zone.name, e.__class__.__name__, e)
+                                'attempt %d for zone %s. %s',
+                                i + 1, zone.name, e.__class__.__name__)
                             db.session.rollback()  # pylint: disable=no-member
                 current_app.logger.info('Cache updated for %s' % zone.name)
         # Create the db object for the zones.
