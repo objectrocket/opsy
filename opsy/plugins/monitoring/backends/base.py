@@ -633,7 +633,7 @@ class HttpZoneMixin(object):
             app.logger.error(message)
             init_objects.extend(model.update_last_poll(
                 self.name, 'critical', message))
-            return None, init_objects
+            return [], init_objects
         del_objects = [model.query.filter(model.zone_name == self.name)]
         init_objects.extend(model.update_last_poll(self.name, 'ok', 'Success'))
         for result in results:
