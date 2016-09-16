@@ -18,7 +18,7 @@ var clientEventDetails = {
       $.getJSON(Flask.url_for('monitoring_api.clients') + '/' + ZONE + '/' + CLIENT, function(data) {
         client = data.clients[0];
         $('#clientdetailsname').html(client.name);
-        $('#clientdetailstable').html(opsyMonitoring.formatJSONToTable(client));
+        $('tbody', '#clientdetailstable').html(opsyMonitoring.formatJSONToTable(client));
       });
     },
 
@@ -27,14 +27,14 @@ var clientEventDetails = {
       function(data) {
         event = data.events[0];
         $('#eventdetailsname').html(event.check_name); //jscs:ignore requireCamelCaseOrUpperCaseIdentifiers
-        $('#eventdetailstable').html(opsyMonitoring.formatJSONToTable(event));
+        $('tbody', '#eventdetailstable').html(opsyMonitoring.formatJSONToTable(event));
       })
       .fail(function() {
         $.getJSON(Flask.url_for('monitoring_api.clients') + '/' + ZONE + '/' + CLIENT + '/results/' + CHECK,
         function(data) {
           event = data.results[0];
           $('#eventdetailsname').html(event.check_name); //jscs:ignore requireCamelCaseOrUpperCaseIdentifiers
-          $('#eventdetailstable').html(opsyMonitoring.formatJSONToTable(event));
+          $('tbody', '#eventdetailstable').html(opsyMonitoring.formatJSONToTable(event));
         });
       });
     },
