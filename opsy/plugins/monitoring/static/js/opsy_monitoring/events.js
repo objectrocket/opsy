@@ -172,18 +172,21 @@ var events = {
             for (var i = 0; i < json.length; i++) {
               var row = json[i];
               //jscs:disable requireCamelCaseOrUpperCaseIdentifiers
-              uchiwaHref = UCHIWA_URL + '/#/client/' + row.zone_name + '/' +
+              uchiwaClientHref = UCHIWA_URL + '/#/client/' + row.zone_name + '/' +
+                row.client_name,
+              uchiwaCheckHref = UCHIWA_URL + '/#/client/' + row.zone_name + '/' +
                 row.client_name + '?check=' + row.check_name,
               returnData.push({
                 'silenced': row.silenced,
                 'status': row.status.capitalize(),
                 'zone': row.zone_name,
-                'source': '<a href="' + uchiwaHref + '"><img src="' +
+                'source': '<a href="' + uchiwaClientHref + '"><img src="' +
                   STATICS_URL + 'img/backends/sensu.ico"></img></a>' +
                   '<a href="' + Flask.url_for('monitoring_main.clients') + '/' + row.zone_name + '/' + row.client_name +
                   '">' + row.client_name + '</a>',
                 'check_name': row.check_name,
-                'check_output': row.output,
+                'check_output': '<a href="' + uchiwaCheckHref + '"><img src="' +
+                  STATICS_URL + 'img/backends/sensu.ico"></img></a>' + row.output,
                 'count': row.occurrences,
                 'timestamp': '<time class="timeago" datetime="' +
                   row.updated_at + 'Z">' + row.updated_at + 'Z</time>',
