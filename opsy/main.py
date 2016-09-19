@@ -8,5 +8,5 @@ core_main = Blueprint('core_main', __name__,  # pylint: disable=invalid-name
 
 
 @core_main.route('/')
-def index():
+def about():
     return render_template('about.html', title='About')
