@@ -3,7 +3,7 @@ import random
 import time
 from datetime import datetime, timedelta
 from stevedore import driver
-from flask import current_app, render_template
+from flask import current_app
 from sqlalchemy.exc import OperationalError
 from opsy.utils import get_config_section_or_fail
 from opsy.plugins.base import BaseOpsyPlugin
@@ -61,22 +61,24 @@ class MonitoringPlugin(BaseOpsyPlugin):
         def get_link(view, name, link_id, dashboards=False):
             if dashboards:
                 dropdown_links = [
-                    {'name': 'All %s' % name,
-                     'id': 'all_%s' % link_id,
-                     'content': view,
-                     'get_vars': None,
-                     'type': 'link'
-                     },
+                    {
+                        'name': 'All %s' % name,
+                        'id': 'all_%s' % link_id,
+                        'content': view,
+                        'get_vars': None,
+                        'type': 'link'
+                    },
                     {'type': 'divider'},
                     {'type': 'header', 'name': 'Dashboards'}
                 ]
                 dropdown_links.extend([
-                    {'name': dashboard,
-                     'id': dashboard,
-                     'content': view,
-                     'get_vars': 'dashboard=%s' % dashboard,
-                     'type': 'link'
-                     } for dashboard in self.config['dashboards']])
+                    {
+                        'name': dashboard,
+                        'id': dashboard,
+                        'content': view,
+                        'get_vars': 'dashboard=%s' % dashboard,
+                        'type': 'link'
+                    } for dashboard in self.config['dashboards']])
                 link = {
                     'name': name,
                     'id': link_id,
