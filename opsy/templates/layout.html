@@ -50,15 +50,20 @@
         <div id="navbar" class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
   {%- block leftnav -%}
-          {% set leftnav_bar = [
-            ('core_main.index', 'main', 'Main'),
-          ] -%}
-          {% set active_page = active_page|default('index') -%}
-          {% for href, id, caption in leftnav_bar %}
-            <li{% if id == active_page %} class="active"{% endif %}><a href="{{ url_for(href|e) }}">{{ caption|e }}</a></li>
-          {%- endfor %}
-          {% for menu_item in link_structures %}
-            {% autoescape off %}{{ menu_item }}{% endautoescape %}
+          {%- set active_page = active_page|default('about') -%}
+          {%- for item in link_structures recursive %}
+            {%- if item.type == 'link' %}
+              <li{% if item.id == active_page %} class="active"{% endif %}><a href="{{ url_for(item.content|e) }}{% if item.get_vars %}?{{ item.get_vars }}{% endif %}">{{ item.name|e }}</a></li>
+            {%- elif item.type == 'header' %}
+              <li class="dropdown-header">{{ item.name }}</li>
+            {%- elif item.type == 'divider' %}
+              <li role="separator" class="divider"></li>
+            {%- elif item.type == 'dropdown' %}
+              <li{% if item.id == active_page %} class="active"{% endif %} class="dropdown">
+                <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true" aria-expanded="false">{{ item.name }}<span class="caret"></span></a>
+                <ul class="dropdown-menu">{{ loop(item.content) }}</ul>
+              </li>
+            {% endif %}
           {%- endfor %}
   {%- endblock %}
           </ul>

@@ -1,10 +1,13 @@
 from datetime import date
 import uuid
+import os.path
 from flask.json import JSONEncoder
 from flask._compat import text_type
+from flask_iniconfig import INIConfig
 from itsdangerous import json as _json
 from dateutil.tz import tzutc
 from stevedore import driver
+from opsy.exceptions import NoConfigFile, NoConfigSection
 
 
 class OpsyJSONEncoder(JSONEncoder):
@@ -45,7 +48,7 @@ def parse_include_excludes(items):
 
 
 def load_plugins(app):
-    opsy_config = app.config.get('opsy')
+    opsy_config = get_config_section_or_fail(app, 'opsy')
     plugins = opsy_config.get('enabled_plugins')
     if plugins:
         for plugin in plugins.split(','):
@@ -55,3 +58,19 @@ def load_plugins(app):
                 invoke_args=(app,),
                 invoke_on_load=True)
             yield plugin_manager.driver
+
+
+def get_config_section_or_fail(app, config_section):
+    if not app.config.get(config_section):
+        raise NoConfigSection('Config section "%s" does not exist' %
+                              config_section)
+    return app.config.get(config_section)
+
+
+def load_config(app, config_file):
+    if not os.path.exists(config_file):
+        raise NoConfigFile('Config file "%s" does not exist' % config_file)
+    app.config_file = config_file
+    INIConfig(app)
+    app.config.from_inifile(config_file)
+    app.opsy_config = get_config_section_or_fail(app, 'opsy')

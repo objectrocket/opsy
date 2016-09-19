@@ -3,9 +3,9 @@ import random
 import time
 from datetime import datetime, timedelta
 from stevedore import driver
-from flask import current_app, render_template
+from flask import current_app
 from sqlalchemy.exc import OperationalError
-from opsy.exceptions import NoConfigSection
+from opsy.utils import get_config_section_or_fail
 from opsy.plugins.base import BaseOpsyPlugin
 from opsy.db import db
 from .api import monitoring_api
@@ -17,9 +17,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
     """The monitoring dashboard plugin."""
 
     def __init__(self, app):
-        self.config = app.config.get('monitoring')
-        if self.config is None:
-            raise NoConfigSection('Config section "monitoring" does not exist')
+        self.config = get_config_section_or_fail(app, 'monitoring')
         self._parse_config(app)
         self.zones = []
         for name, zone_config in self.config['zones'].items():
@@ -33,41 +31,77 @@ class MonitoringPlugin(BaseOpsyPlugin):
             self.zones.append(backend_manager.driver)
 
     def _parse_config(self, app):
-        monitoring_config = app.config.get('monitoring')
-        if monitoring_config is None:
-            raise NoConfigSection('Config section "monitoring" does not exist')
-        monitoring_config['zones'] = {}
-        monitoring_config['dashboards'] = {}
-        if monitoring_config.get('enabled_zones'):
-            enabled_zones = monitoring_config.get(
-                'enabled_zones', '').split(',')
+        self.config['zones'] = {}
+        self.config['dashboards'] = {}
+        if self.config.get('enabled_zones'):
+            enabled_zones = self.config.get('enabled_zones', '').split(',')
             for zone in enabled_zones:
                 try:
-                    monitoring_config['zones'][zone] = app.config[zone]
+                    self.config['zones'][zone] = app.config[zone]
                 except KeyError:
                     app.logger.error('Config section for zone "%s" does not '
                                      'exist. Skipping.' % zone)
-        if monitoring_config.get('enabled_dashboards'):
-            enabled_dashboards = monitoring_config.get(
+        if self.config.get('enabled_dashboards'):
+            enabled_dashboards = self.config.get(
                 'enabled_dashboards').split(',')
             for dashboard in enabled_dashboards:
-                if app.config.get(dashboard):
-                    monitoring_config['dashboards'][dashboard] = {}
-                    dash_config = monitoring_config['dashboards'][dashboard]
-                    dash_config['zone'] = app.config[dashboard].get('zone')
-                    dash_config['check'] = app.config[dashboard].get('check')
-                    dash_config['check'] = app.config[dashboard].get('check')
-                else:
-                    raise NoConfigSection('Config section "%s" does not exist'
-                                          % dashboard)
+                get_config_section_or_fail(app, dashboard)
+                self.config['dashboards'][dashboard] = {}
+                dash_config = self.config['dashboards'][dashboard]
+                dash_config['zone'] = app.config[dashboard].get('zone')
+                dash_config['check'] = app.config[dashboard].get('check')
+                dash_config['check'] = app.config[dashboard].get('check')
 
     def register_blueprints(self, app):
         app.register_blueprint(monitoring_main, url_prefix='/monitoring')
         app.register_blueprint(monitoring_api, url_prefix='/api/monitoring')
 
     def register_link_structure(self, app):
-        with app.app_context():
-            return render_template('links.html', dashboards=current_app.config['monitoring']['dashboards'])
+
+        def get_link(view, name, link_id, dashboards=False):
+            if dashboards:
+                dropdown_links = [
+                    {
+                        'name': 'All %s' % name,
+                        'id': 'all_%s' % link_id,
+                        'content': view,
+                        'get_vars': None,
+                        'type': 'link'
+                    },
+                    {'type': 'divider'},
+                    {'type': 'header', 'name': 'Dashboards'}
+                ]
+                dropdown_links.extend([
+                    {
+                        'name': dashboard,
+                        'id': dashboard,
+                        'content': view,
+                        'get_vars': 'dashboard=%s' % dashboard,
+                        'type': 'link'
+                    } for dashboard in self.config['dashboards']])
+                link = {
+                    'name': name,
+                    'id': link_id,
+                    'content': dropdown_links,
+                    'type': 'dropdown'
+                }
+            else:
+                link = {
+                    'name': name,
+                    'id': link_id,
+                    'content': view,
+                    'get_vars': None,
+                    'type': 'link'
+                }
+            return link
+
+        links = [
+            get_link(
+                'monitoring_main.events', 'Events', 'events', dashboards=True),
+            get_link('monitoring_main.checks', 'Checks', 'checks'),
+            get_link('monitoring_main.clients', 'Clients', 'clients')
+        ]
+        app.plugin_links.extend(links)
 
     def register_scheduler_jobs(self, app, run_once=False):
         def update_cache(zone, config_file):

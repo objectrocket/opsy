@@ -9,7 +9,7 @@ DEFAULT_CONFIG = '%s/opsy.ini' % os.path.abspath(os.path.curdir)
 
 
 def create_opsy_app(info):
-    return create_app(config=os.environ.get('OPSY_CONFIG', DEFAULT_CONFIG))
+    return create_app(os.environ.get('OPSY_CONFIG', DEFAULT_CONFIG))
 
 
 cli = FlaskGroup(create_app=create_opsy_app,  # pylint: disable=invalid-name
