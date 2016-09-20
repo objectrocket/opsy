@@ -13,7 +13,6 @@ tr > td:first-child {
 }
 
 table td {
-    overflow: scroll;
     word-wrap: break-word;
     white-space: pre-wrap;
 }
