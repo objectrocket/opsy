@@ -14,8 +14,9 @@ class SensuBase(object):
 class SensuClient(SensuBase, Client):
     uri = 'clients'
 
-    def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
+    def __init__(self, zone, extra):
+        self.zone_id = zone.id
+        self.zone_name = zone.name
         self.name = extra['name']
         try:
             self.updated_at = datetime.utcfromtimestamp(
@@ -30,8 +31,9 @@ class SensuClient(SensuBase, Client):
 class SensuCheck(SensuBase, Check):
     uri = 'checks'
 
-    def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
+    def __init__(self, zone, extra):
+        self.zone_id = zone.id
+        self.zone_name = zone.name
         self.name = extra['name']
         self.occurrences_threshold = extra.get('occurrences')
         self.interval = extra.get('interval')
@@ -42,8 +44,9 @@ class SensuCheck(SensuBase, Check):
 class SensuResult(SensuBase, Result):
     uri = 'results'
 
-    def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
+    def __init__(self, zone, extra):
+        self.zone_id = zone.id
+        self.zone_name = zone.name
         self.client_name = extra['client']
         self.check_name = extra['check']['name']
         status_map = ['ok', 'warning', 'critical']
@@ -61,8 +64,9 @@ class SensuResult(SensuBase, Result):
 class SensuEvent(SensuBase, Event):
     uri = 'events'
 
-    def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
+    def __init__(self, zone, extra):
+        self.zone_id = zone.id
+        self.zone_name = zone.name
         self.client_name = extra['client'].get('name')
         self.check_name = extra['check'].get('name')
         try:
@@ -86,8 +90,9 @@ class SensuEvent(SensuBase, Event):
 class SensuSilence(SensuBase, Silence):
     uri = 'stashes'
 
-    def __init__(self, zone_name, extra):
-        self.zone_name = zone_name
+    def __init__(self, zone, extra):
+        self.zone_id = zone.id
+        self.zone_name = zone.name
         path_list = extra['path'].split('/')
         self.client_name = path_list[1]
         try:
@@ -110,14 +115,14 @@ class SensuSilence(SensuBase, Silence):
         return [x for x in response if x['path'].startswith('silence/')]
 
 
-class SensuZone(SensuBase, HttpZoneMixin, Zone):  # pylint: disable=abstract-method
+class SensuZone(SensuBase, HttpZoneMixin, Zone):
 
     models = [SensuCheck, SensuClient, SensuEvent, SensuSilence, SensuResult]
 
-    def __init__(self, name, host=None, path=None, protocol='http', port=4567,  # pylint: disable=too-many-arguments
-                 timeout=30, interval=30, username=None, password=None,
-                 verify_ssl=True, **kwargs):
-        super().__init__(name, host=host, path=path, protocol=protocol,
-                         port=port, timeout=timeout, interval=interval,
-                         username=username, password=password,
-                         verify_ssl=verify_ssl, **kwargs)
+    def __init__(self, name, enabled=0, host=None, path=None, protocol='http',
+                 port=4567, timeout=30, interval=30, username=None,
+                 password=None, verify_ssl=True, **kwargs):
+        super().__init__(name, enabled=enabled, host=host, path=path,
+                         protocol=protocol, port=port, timeout=timeout,
+                         interval=interval, username=username,
+                         password=password, verify_ssl=verify_ssl, **kwargs)
