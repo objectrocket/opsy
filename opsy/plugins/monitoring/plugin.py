@@ -1,5 +1,6 @@
 import click
 import random
+import json
 from datetime import datetime, timedelta
 from flask import current_app
 from stevedore import extension
@@ -30,10 +31,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
 
         def get_link(view, name, link_id, show_dashboards=False):
             with app.app_context():
-                try:
-                    dashboards = Dashboard.get_dashboards()
-                except Exception:
-                    dashboards = []
+                dashboards = Dashboard.get()
             if show_dashboards:
                 dropdown_links = [
                     {
@@ -48,10 +46,10 @@ class MonitoringPlugin(BaseOpsyPlugin):
                 ]
                 dropdown_links.extend([
                     {
-                        'name': dashboard,
-                        'id': dashboard,
+                        'name': dashboard.name,
+                        'id': dashboard.name,
                         'content': view,
-                        'get_vars': 'dashboard=%s' % dashboard,
+                        'get_vars': 'dashboard=%s' % dashboard.name,
                         'type': 'link'
                     } for dashboard in dashboards])
                 link = {
@@ -88,14 +86,14 @@ class MonitoringPlugin(BaseOpsyPlugin):
                                      {'id': 'monitoring_poller_%s' % zone.name,
                                       'next_run_time': datetime.now(),
                                       'max_instances': 1,
-                                      'args': [zone, app.config_file]}])
+                                      'args': [zone.id, app.config_file]}])
                 else:
                     app.jobs.append([[update_cache, 'interval'],
                                      {'id': 'monitoring_poller_%s' % zone.name,
                                       'next_run_time': next_run,
                                       'max_instances': 1,
                                       'seconds': zone.interval,
-                                      'args': [zone, app.config_file]}])
+                                      'args': [zone.id, app.config_file]}])
 
     def register_cli_commands(self, cli):
 
@@ -139,7 +137,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
         def zone_create(name, backend, **kwargs):
             """Create a zone."""
             zone_kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            if Zone.get_zone_by_name(name):
+            if Zone.get_by_name(name):
                 print('Zone "%s" already exists!' % name)
             else:
                 Zone.create_zone(name, backend, **zone_kwargs)
@@ -152,7 +150,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
             columns = ['id', 'name', 'backend', 'status', 'status_message',
                        'enabled', 'created_at', 'updated_at']
             table = PrettyTable(columns)
-            for zone in Zone.get_zones():
+            for zone in Zone.gets():
                 table.add_row([getattr(zone, x) for x in columns])
             print(table)
 
@@ -161,7 +159,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
         # pylint: disable=unused-variable
         def zone_show(zone_id):
             """Show a zone."""
-            zone = Zone.get_zone_by_id(zone_id)
+            zone = Zone.get_by_id(zone_id)
             if zone:
                 properties = [(x.key, getattr(zone, x.key))
                               for x in Zone.__table__.columns]
@@ -191,7 +189,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
         def zone_modify(zone_id, **kwargs):
             """Modify a zone."""
             zone_kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            if Zone.get_zone_by_id(zone_id):
+            if Zone.get_by_id(zone_id):
                 zone = Zone.update_zone(zone_id, **zone_kwargs)
                 properties = [(x.key, getattr(zone, x.key))
                               for x in Zone.__table__.columns]
@@ -208,17 +206,20 @@ class MonitoringPlugin(BaseOpsyPlugin):
         @click.argument('name', type=click.STRING)
         @click.option('--description', type=click.STRING)
         @click.option('--enabled', type=click.BOOL)
+        @click.option('--zone_filters', type=click.STRING)
+        @click.option('--client_filters', type=click.STRING)
+        @click.option('--check_filters', type=click.STRING)
         # pylint: disable=unused-variable
         def dashboard_create(name, **kwargs):
             """Create a dashboard."""
             dashboard_kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            if Dashboard.get_dashboard_by_name(name):
+            if Dashboard.get_by_name(name):
                 print('Dashboard "%s" already exists!' % name)
-            else:
-                dashboard = Dashboard.create_dashboard(name, **dashboard_kwargs)
-                properties = [(x.key, getattr(dashboard, x.key))
-                              for x in Dashboard.__table__.columns]
-                print_property_table(properties)
+                return
+            dashboard = Dashboard.create_dashboard(name, **dashboard_kwargs)
+            properties = [(x.key, getattr(dashboard, x.key))
+                          for x in Dashboard.__table__.columns]
+            print_property_table(properties)
 
         @dashboard_cli.command('list')
         # pylint: disable=unused-variable
@@ -227,7 +228,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
             columns = ['id', 'name', 'description', 'enabled', 'created_at',
                        'updated_at']
             table = PrettyTable(columns)
-            for dashboard in Dashboard.get_dashboards():
+            for dashboard in Dashboard.get():
                 table.add_row([getattr(dashboard, x) for x in columns])
             print(table)
 
@@ -236,10 +237,12 @@ class MonitoringPlugin(BaseOpsyPlugin):
         # pylint: disable=unused-variable
         def dashboard_show(dashboard_id):
             """Show a dashboard."""
-            dashboard = Dashboard.get_dashboard_by_id(dashboard_id)
+            dashboard = Dashboard.get_by_id(dashboard_id)
             if dashboard:
                 properties = [(x.key, getattr(dashboard, x.key))
                               for x in Dashboard.__table__.columns]
+                properties += ('filters', json.loads(dashboard.filters))
+                print(properties)
                 print_property_table(properties)
 
         @dashboard_cli.command('delete')
@@ -260,7 +263,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
             """Modify a dashboard."""
             dashboard_kwargs = {k: v for k, v in kwargs.items()
                                 if v is not None}
-            if Dashboard.get_dashboard_by_id(dashboard_id):
+            if Dashboard.get_by_id(dashboard_id):
                 dashboard = Dashboard.update_dashboard(
                     dashboard_id, **dashboard_kwargs)
                 properties = [(x.key, getattr(dashboard, x.key))
@@ -277,7 +280,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
         def dashboard_test(dashboard_id, entity_name):
             """Test a dashboard."""
             entity = ENTITY_MAP[entity_name]
-            dashboard = Dashboard.get_dashboard_by_id(dashboard_id)
+            dashboard = Dashboard.get_by_id(dashboard_id)
             filters_list = dashboard.get_filters_list(entity)
             for entity_object in entity.query.filter(*filters_list).all():
                 print(entity_object)
@@ -295,7 +298,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
         # pylint: disable=unused-variable
         def dashboard_filter_create(dashboard_id, entity_name, filters):
             """Create a dashboard's filter."""
-            dashboard = Dashboard.get_dashboard_by_id(dashboard_id)
+            dashboard = Dashboard.get_by_id(dashboard_id)
             if not dashboard:
                 print('Could not find dashboard "%s"' % dashboard_id)
             if dashboard.get_filter_by_entity(entity_name):
@@ -308,7 +311,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
         # pylint: disable=unused-variable
         def dashboard_filter_list(dashboard_id):  # pylint: disable=unused-variable
             """List a dashboard's filters."""
-            dashboard = Dashboard.get_dashboard_by_id(dashboard_id)
+            dashboard = Dashboard.get_by_id(dashboard_id)
             if not dashboard:
                 print('Could not find dashboard "%s"' % dashboard_id)
                 return
@@ -325,7 +328,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
         # pylint: disable=unused-variable
         def dashboard_filter_show(dashboard_id, entity_name):
             """Show a dashboard's filters."""
-            dashboard = Dashboard.get_dashboard_by_id(dashboard_id)
+            dashboard = Dashboard.get_by_id(dashboard_id)
             if not dashboard:
                 print('Could not find dashboard "%s"' % dashboard_id)
                 return
@@ -345,7 +348,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
         # pylint: disable=unused-variable
         def dashboard_filter_delete(dashboard_id, entity_name):
             """Delete a dashboard's filter."""
-            dashboard = Dashboard.get_dashboard_by_id(dashboard_id)
+            dashboard = Dashboard.get_by_id(dashboard_id)
             if not dashboard:
                 print('Could not find dashboard "%s"' % dashboard_id)
                 return
@@ -361,7 +364,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
         # pylint: disable=unused-variable
         def dashboard_filter_modify(dashboard_id, entity_name, filters):
             """Modify a dashboard's filter."""
-            dashboard = Dashboard.get_dashboard_by_id(dashboard_id)
+            dashboard = Dashboard.get_by_id(dashboard_id)
             if not dashboard:
                 print('Could not find dashboard "%s"' % dashboard_id)
                 return

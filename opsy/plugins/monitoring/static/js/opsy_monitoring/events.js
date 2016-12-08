@@ -182,11 +182,13 @@ var events = {
                 'zone': row.zone_name,
                 'source': '<a href="' + uchiwaClientHref + '"><img src="' +
                   STATICS_URL + 'img/backends/sensu.ico"></img></a>' +
-                  '<a href="' + Flask.url_for('monitoring_main.clients') + '/' + row.zone_name + '/' + row.client_name +
+                  '<a href="' + Flask.url_for('monitoring_main.client', {'zone': row.zone_name, 'client_name': row.client_name}) +
                   '">' + row.client_name + '</a>',
-                'check_name': row.check_name,
-                'check_output': '<a href="' + uchiwaCheckHref + '"><img src="' +
-                  STATICS_URL + 'img/backends/sensu.ico"></img></a>' + row.output,
+                'check_name': '<a href="' + uchiwaCheckHref + '"><img src="' +
+                  STATICS_URL + 'img/backends/sensu.ico"></img></a>' +
+                  '<a href="' + Flask.url_for('monitoring_main.client_event', {'zone': row.zone_name, 'client_name': row.client_name, 'check': row.check_name}) +
+                  '">' + row.check_name + '</a>',
+                'check_output': row.output,
                 'count': row.occurrences,
                 'timestamp': '<time class="timeago" datetime="' +
                   row.updated_at + 'Z">' + row.updated_at + 'Z</time>',

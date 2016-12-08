@@ -99,6 +99,10 @@ class SensuSilence(SensuBase, Silence):
             self.check_name = path_list[2]
         except IndexError:
             self.check_name = None
+        if self.check_name:
+            self.silence_type = 'check'
+        else:
+            self.silence_type = 'client'
         self.comment = json.dumps(extra['content'])
         if extra['content'].get('timestamp'):
             self.created_at = datetime.utcfromtimestamp(

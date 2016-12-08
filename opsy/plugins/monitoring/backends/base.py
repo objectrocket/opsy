@@ -1,46 +1,20 @@
 import asyncio
 import aiohttp
-from flask_sqlalchemy import BaseQuery
-from flask import abort
-import uuid
+from datetime import datetime
 import opsy
-from opsy.db import db, TimeStampMixin
 from opsy.utils import get_filters_list
+from opsy.db import db, TimeStampMixin, DictOut, IDedResource, NamedResource
+from opsy.plugins.monitoring.dashboard import Dashboard
 from sqlalchemy.orm import synonym
 from stevedore import driver
 from . import async_task
+from opsy.plugins.monitoring.exceptions import PollFailure
 
 
-class DictOut(BaseQuery):
-
-    def all_dict_out(self):
-        return [x.dict_out for x in self]
-
-    def all_dict_out_or_404(self):
-        dict_list = self.all_dict_out()
-        if not dict_list:
-            abort(404)
-        return dict_list
-
-
-class ExtraOut(DictOut):
-
-    def all_dict_extra_out(self):
-        return [x.dict_extra_out for x in self]
-
-    def all_dict_extra_out_or_404(self):
-        dict_list = self.all_dict_extra_out()
-        if not dict_list:
-            abort(404)
-        return dict_list
-
-
-class BaseCache(object):
+class BaseCache(IDedResource):
 
     query_class = DictOut
 
-    id = db.Column(db.String(36),  # pylint: disable=invalid-name
-                   default=lambda: str(uuid.uuid4()), primary_key=True)
     backend = db.Column(db.String(20))
     last_poll_time = db.Column(db.DateTime, default=None)
 
@@ -49,13 +23,24 @@ class BaseCache(object):
         'polymorphic_identity': 'base'
     }
 
+    @classmethod
+    def _filter(cls, filters, dashboard=None):
+        filters_list = get_filters_list(filters)
+        obj_query = cls.query
+        if dashboard:
+            dashboard = Dashboard.get_by_name(dashboard)
+            dash_filters_list = dashboard.get_filters_list(cls)
+            obj_query = obj_query.filter(*dash_filters_list)
+        return obj_query.filter(*filters_list)
+
 
 class BaseEntity(BaseCache):
 
     entity = None
     zone_id = db.Column(db.String(36))
     zone_name = db.Column(db.String(64))
-    query_class = ExtraOut
+    query_class = DictOut
+    last_poll_time = db.Column(db.DateTime, default=datetime.utcnow())
     extra = db.Column(db.Text)
 
     @property
@@ -63,6 +48,12 @@ class BaseEntity(BaseCache):
         event_dict = self.dict_out
         event_dict['extra'] = self.extra
         return event_dict
+
+    def get_dict(self, extra=False, **kwargs):
+        if extra:
+            return self.dict_extra_out
+        else:
+            return self.dict_out
 
     @classmethod
     def filter_api_response(cls, response):
@@ -74,16 +65,19 @@ class Client(BaseEntity, db.Model):
     entity = 'clients'
     __tablename__ = 'monitoring_clients'
 
-    class ClientQuery(ExtraOut):
+    class ClientQuery(DictOut):
 
-        def all_dict_out(self):
+        def all_dict_out(self, extra=False):
             clients_silences = self.outerjoin(Silence, db.and_(
                 Client.zone_name == Silence.zone_name,
                 Client.name == Silence.client_name,
-                Silence.check_name == '')).add_entity(Silence).all()
+                Silence.silence_type == 'client')).add_entity(Silence).all()
             clients_json = []
             for client, silence in clients_silences:
-                client_json = client.dict_out
+                if extra:
+                    client_json = client.dict_extra_out
+                else:
+                    client_json = client.dict_out
                 client_json['silenced'] = bool(silence)
                 clients_json.append(client_json)
             return clients_json
@@ -96,17 +90,17 @@ class Client(BaseEntity, db.Model):
     address = db.Column(db.String(128))
 
     events = db.relationship('Event', backref='client', lazy='dynamic',
-                             query_class=ExtraOut, primaryjoin="and_("
+                             query_class=DictOut, primaryjoin="and_("
                              "Client.zone_id==foreign(Event.zone_id), "
                              "Client.name==foreign(Event.client_name))")
 
     results = db.relationship('Result', backref='client', lazy='dynamic',
-                              query_class=ExtraOut, primaryjoin="and_("
+                              query_class=DictOut, primaryjoin="and_("
                               "Client.zone_id==foreign(Result.zone_id), "
                               "Client.name==foreign(Result.client_name))")
 
     silences = db.relationship('Silence', backref='client', lazy='dynamic',
-                               query_class=ExtraOut, primaryjoin="and_("
+                               query_class=DictOut, primaryjoin="and_("
                                "Client.zone_id == foreign("
                                "Silence.zone_id), "
                                "Client.name == foreign(Silence.client_name))")
@@ -119,6 +113,12 @@ class Client(BaseEntity, db.Model):
 
     def __init__(self, zone, extra):
         raise NotImplementedError
+
+    @classmethod
+    def filter(cls, zones=None, clients=None, dashboard=None):
+        filters = ((zones, cls.zone_name),
+                   (clients, cls.name))
+        return cls._filter(filters, dashboard=dashboard)
 
     @classmethod
     def get_filters_maps(cls):
@@ -167,12 +167,12 @@ class Check(BaseEntity, db.Model):
     command = db.Column(db.Text)
 
     results = db.relationship('Result', backref='check', lazy='dynamic',
-                              query_class=ExtraOut,
+                              query_class=DictOut,
                               primaryjoin="and_("
                               "Check.zone_id==foreign(Result.zone_id), "
                               "Check.name==foreign(Result.check_name))")
     events = db.relationship('Event', backref='check', lazy='dynamic',
-                             query_class=ExtraOut,
+                             query_class=DictOut,
                              primaryjoin="and_("
                              "Check.zone_id==foreign(Event.zone_id), "
                              "Check.name==foreign(Event.check_name))")
@@ -185,6 +185,12 @@ class Check(BaseEntity, db.Model):
 
     def __init__(self, zone, extra):
         raise NotImplementedError
+
+    @classmethod
+    def filter(cls, zones=None, checks=None, dashboard=None):
+        filters = ((zones, cls.zone_name),
+                   (checks, cls.check_name))
+        return cls._filter(filters, dashboard=dashboard)
 
     @classmethod
     def get_filters_maps(cls):
@@ -212,9 +218,9 @@ class Result(BaseEntity, db.Model):
     entity = 'results'
     __tablename__ = 'monitoring_results'
 
-    class ResultQuery(ExtraOut):
+    class ResultQuery(DictOut):
 
-        def all_dict_out(self):
+        def all_dict_out(self, extra=False):
             clients_silences = self.outerjoin(Silence, db.and_(
                 Result.zone_name == Silence.zone_name,
                 Result.client_name == Silence.client_name,
@@ -222,7 +228,10 @@ class Result(BaseEntity, db.Model):
                     Silence).all()
             events_json = []
             for event, silence in clients_silences:
-                event_json = event.dict_out
+                if extra:
+                    event_json = event.dict_extra_out
+                else:
+                    event_json = event.dict_out
                 event_json['silenced'] = bool(silence)
                 events_json.append(event_json)
             return events_json
@@ -248,6 +257,13 @@ class Result(BaseEntity, db.Model):
 
     def __init__(self, zone, extra):
         raise NotImplementedError
+
+    @classmethod
+    def filter(cls, zones=None, clients=None, checks=None, dashboard=None):
+        filters = ((zones, cls.zone_name),
+                   (clients, cls.client_name),
+                   (checks, cls.check_name))
+        return cls._filter(filters, dashboard=dashboard)
 
     @classmethod
     def get_filters_maps(cls):
@@ -279,9 +295,9 @@ class Event(BaseEntity, db.Model):
     entity = 'events'
     __tablename__ = 'monitoring_events'
 
-    class EventQuery(ExtraOut):
+    class EventQuery(DictOut):
 
-        def all_dict_out(self):
+        def all_dict_out(self, extra=False):
             clients_silences = self.outerjoin(Silence, db.and_(
                 Event.zone_name == Silence.zone_name,
                 db.or_(
@@ -295,7 +311,10 @@ class Event(BaseEntity, db.Model):
                 ))).add_entity(Silence).all()
             events_json = []
             for event, silence in clients_silences:
-                event_json = event.dict_out
+                if extra:
+                    event_json = event.dict_extra_out
+                else:
+                    event_json = event.dict_out
                 event_json['silenced'] = bool(silence)
                 events_json.append(event_json)
             return events_json
@@ -313,7 +332,7 @@ class Event(BaseEntity, db.Model):
     output = db.Column(db.Text)
 
     silences = db.relationship('Silence', backref='events', lazy='dynamic',
-                               query_class=ExtraOut,
+                               query_class=DictOut,
                                primaryjoin="and_("
                                "Event.zone_id==foreign(Silence.zone_id),"
                                "Event.client_name==foreign("
@@ -332,6 +351,28 @@ class Event(BaseEntity, db.Model):
 
     def __init__(self, zone, extra):
         raise NotImplementedError
+
+    @classmethod
+    def filter(cls, zones=None, clients=None, checks=None, statuses=None,
+               hide_silenced=None, dashboard=None):
+        filters = ((zones, cls.zone_name),
+                   (clients, cls.client_name),
+                   (checks, cls.check_name),
+                   (statuses, cls.status))
+        events = cls._filter(filters, dashboard=dashboard)
+        if hide_silenced:
+            hide_silenced = hide_silenced.split(',')
+            if 'checks' in hide_silenced:
+                events = events.filter(db.not_(Event.silences.any(
+                    client_name=Event.client_name,
+                    check_name=Event.check_name)))
+            if 'clients' in hide_silenced:
+                events = events.filter(db.not_(Client.silences.any(
+                    client_name=Event.client_name, check_name='')))
+            if 'occurrences' in hide_silenced:
+                events = events.filter(db.not_(
+                    Event.occurrences < Event.occurrences_threshold))
+        return events
 
     @classmethod
     def get_filters_maps(cls):
@@ -385,6 +426,15 @@ class Silence(BaseEntity, db.Model):
         raise NotImplementedError
 
     @classmethod
+    def filter(cls, zones=None, clients=None, checks=None, types=None,
+               dashboard=None):
+        filters = ((zones, cls.zone_name),
+                   (clients, cls.client_name),
+                   (checks, cls.check_name),
+                   (types, Silence.silence_type))
+        return cls._filter(filters, dashboard=dashboard)
+
+    @classmethod
     def get_filters_maps(cls):
         return (('zone', cls.zone_name), ('check', cls.check_name),
                 ('client', cls.client_name))
@@ -408,16 +458,15 @@ class Silence(BaseEntity, db.Model):
                                   self.client_name, self.check_name)
 
 
-class Zone(TimeStampMixin, BaseCache, db.Model):
+class Zone(NamedResource, TimeStampMixin, BaseCache, db.Model):
 
     entity = 'zones'
     __tablename__ = 'monitoring_zones'
 
     models = [Check, Client, Event, Silence, Result]
 
-    name = db.Column(db.String(64))
     _enabled = db.Column('enabled', db.Boolean(), default=0)
-    status = db.Column(db.String(64))
+    _status = db.Column('status', db.String(64))
     status_message = db.Column(db.String(64))
     host = db.Column(db.String(64))
     path = db.Column(db.String(64))
@@ -430,19 +479,15 @@ class Zone(TimeStampMixin, BaseCache, db.Model):
     verify_ssl = db.Column(db.Boolean())
 
     clients = db.relationship('Client', backref='zone', lazy='dynamic',
-                              query_class=ExtraOut)
+                              query_class=DictOut)
     checks = db.relationship('Check', backref='zone', lazy='dynamic',
-                             query_class=ExtraOut)
+                             query_class=DictOut)
     events = db.relationship('Event', backref='zone', lazy='dynamic',
-                             query_class=ExtraOut)
+                             query_class=DictOut)
     results = db.relationship('Result', backref='zone', lazy='dynamic',
-                              query_class=ExtraOut)
+                              query_class=DictOut)
     silences = db.relationship('Silence', backref='zone', lazy='dynamic',
-                               query_class=ExtraOut)
-
-    __table_args__ = (
-        db.UniqueConstraint('name'),
-    )
+                               query_class=DictOut)
 
     def __init__(self, name, enabled=0, host=None, path=None, protocol='http',
                  port=80, timeout=30, interval=30, username=None, password=None,
@@ -450,11 +495,9 @@ class Zone(TimeStampMixin, BaseCache, db.Model):
         self.name = name
         self.enabled = enabled
         if self.enabled:
-            self.status = 'creating'
-            self.status_message = 'The zone is being created'
+            self.status = 'new'
         else:
             self.status = 'disabled'
-            self.status_message = 'The zone is disabled'
         self.host = host
         self.path = path
         self.protocol = protocol
@@ -466,8 +509,29 @@ class Zone(TimeStampMixin, BaseCache, db.Model):
         self.verify_ssl = verify_ssl
 
     @classmethod
+    def filter(cls, zones=None, dashboard=None):
+        filters = ((zones, cls.name),)
+        return cls._filter(filters, dashboard=dashboard)
+
+    @classmethod
     def get_filters_maps(cls):
         return (('zone', cls.name),)
+
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        status_map = {
+            'new': 'This zone is new and has not polled yet.',
+            'disabled': 'This zone is disabled.',
+            'ok': 'Last poll successful.',
+            'warning': 'Last poll encountered problems.',
+            'critical': 'Last poll failed.',
+        }
+        self._status = value
+        self.status_message = status_map.get(value)
 
     @property
     def enabled(self):
@@ -478,11 +542,9 @@ class Zone(TimeStampMixin, BaseCache, db.Model):
         if int(value) == 0:
             self._enabled = 0
             self.status = 'disabled'
-            self.status_message = 'The zone is disabled'
         if int(value) == 1:
             self._enabled = 1
-            self.status = 'enabling'
-            self.status_message = 'The zone is being enabled'
+            self.status = 'new'
 
     enabled = synonym('_enabled', descriptor=enabled)
 
@@ -497,18 +559,6 @@ class Zone(TimeStampMixin, BaseCache, db.Model):
         db.session.add(zone)
         db.session.commit()
         return zone
-
-    @classmethod
-    def get_zone_by_id(cls, zone_id):
-        return cls.query.filter(cls.id == zone_id).first()
-
-    @classmethod
-    def get_zone_by_name(cls, name):
-        return cls.query.filter(cls.name == name).first()
-
-    @classmethod
-    def get_zones(cls):
-        return cls.query.all()
 
     @classmethod
     def delete_zone(cls, zone_id):
@@ -545,7 +595,6 @@ class Zone(TimeStampMixin, BaseCache, db.Model):
 
     @property
     def dict_out(self):
-        overall_health, pollers = self.pollers_health
         return {
             'name': self.name,
             'backend': self.backend,
@@ -605,15 +654,12 @@ class HttpZoneMixin(object):
                 results = model.filter_api_response(response)
         except aiohttp.errors.ClientError as exc:
             message = 'Error updating %s cache for %s: %s' % (
-                model.__tablename__, self.name, exc)
+                model.entity, self.name, exc)
             app.logger.error(message)
-            # init_objects.extend(model.update_last_poll(
-            #     self.name, 'critical', message))
-            return del_objects, init_objects
+            raise PollFailure(message)
         del_objects = [model.query.filter(model.zone_id == self.id)]
-        # init_objects.extend(model.update_last_poll(self.name, 'ok', 'Success'))
         for result in results:
             init_objects.append(model(self, result))
         app.logger.info('Updated %s cache for %s' % (
-            model.__tablename__, self.name))
+            model.entity, self.name))
         return del_objects, init_objects

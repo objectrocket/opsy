@@ -1,24 +1,18 @@
-import uuid
-from opsy.db import db, TimeStampMixin
+from opsy.db import db, TimeStampMixin, DictOut, IDedResource, NamedResource
 from opsy.utils import parse_include_excludes
 
 
-class Dashboard(TimeStampMixin, db.Model):
+class Dashboard(IDedResource, NamedResource, TimeStampMixin, db.Model):
 
     __tablename__ = 'monitoring_dashboards'
 
-    id = db.Column(db.String(36),  # pylint: disable=invalid-name
-                   default=lambda: str(uuid.uuid4()), primary_key=True)
-    name = db.Column(db.String(64))
+    query_class = DictOut
+
     description = db.Column(db.String(256))
     enabled = db.Column('enabled', db.Boolean(), default=0)
 
-    __table_args__ = (
-        db.UniqueConstraint('name'),
-    )
-
     filters = db.relationship('DashboardFilter', backref='dashboard',
-                              lazy='dynamic')
+                              lazy='dynamic', query_class=DictOut)
 
     def __init__(self, name, description=None, enabled=0):
         self.name = name
@@ -29,23 +23,19 @@ class Dashboard(TimeStampMixin, db.Model):
         return '<%s %s>' % (self.__class__.__name__, self.name)
 
     @classmethod
-    def create_dashboard(cls, name, **kwargs):
-        dashboard = cls(name, **kwargs)
+    def create_dashboard(cls, name, description=None, enabled=0,
+                         zone_filters=None, client_filters=None,
+                         check_filters=None):
+        dashboard = cls(name, description=description, enabled=enabled)
         db.session.add(dashboard)
         db.session.commit()
+        if zone_filters:
+            dashboard.create_filter('zone', zone_filters)
+        if client_filters:
+            dashboard.create_filter('client', client_filters)
+        if check_filters:
+            dashboard.create_filter('check', check_filters)
         return dashboard
-
-    @classmethod
-    def get_dashboard_by_id(cls, dashboard_id):
-        return cls.query.filter(cls.id == dashboard_id).first()
-
-    @classmethod
-    def get_dashboard_by_name(cls, name):
-        return cls.query.filter(cls.name == name).first()
-
-    @classmethod
-    def get_dashboards(cls):
-        return cls.query.all()
 
     @classmethod
     def delete_dashboard(cls, dashboard_id):
@@ -80,11 +70,11 @@ class Dashboard(TimeStampMixin, db.Model):
         db.session.commit()
 
     def update_filter(self, entity_name, filters):
-        filter_object = self.get_filter(entity)
+        filter_object = self.get_filter_by_entity(entity_name)
         if filter_object:
-            filter_object.update_filters(filters)
+            filter_object.filters = filters
         else:
-            filter_object = self.create_filter(entity, filters)
+            filter_object = self.create_filter(entity_name, filters)
             db.session.add(filter_object)
         db.session.commit()
 
@@ -102,13 +92,27 @@ class Dashboard(TimeStampMixin, db.Model):
                         filters_list.append(~map_column.in_(excludes))
         return filters_list
 
+    @property
+    def dict_out(self):
+        filters_dict = self.filters.all_dict_out()
+        return {
+            'id': self.id,
+            'name': self.name,
+            'updated_at': self.updated_at,
+            'created_at': self.created_at,
+            'description': self.description,
+            'enabled': self.enabled,
+            'name': self.name,
+            'filters': filters_dict
+        }
 
-class DashboardFilter(TimeStampMixin, db.Model):
+
+class DashboardFilter(IDedResource, TimeStampMixin, db.Model):
 
     __tablename__ = 'monitoring_dashboards_filters'
 
-    id = db.Column(db.String(36),  # pylint: disable=invalid-name
-                   default=lambda: str(uuid.uuid4()), primary_key=True)
+    query_class = DictOut
+
     dashboard_id = db.Column(db.String(36))
     entity = db.Column(db.String(16))
     filters = db.Column(db.String(256))
@@ -116,7 +120,7 @@ class DashboardFilter(TimeStampMixin, db.Model):
     __table_args__ = (
         db.ForeignKeyConstraint(['dashboard_id'], ['monitoring_dashboards.id'],
                                 ondelete='CASCADE'),
-        db.CheckConstraint(entity.in_(['dashboard', 'client', 'check'])),
+        db.CheckConstraint(entity.in_(['zone', 'client', 'check'])),
         db.UniqueConstraint('dashboard_id', 'entity')
     )
 
@@ -124,6 +128,17 @@ class DashboardFilter(TimeStampMixin, db.Model):
         self.dashboard_id = dashboard_id
         self.entity = entity
         self.filters = filters
+
+    @property
+    def dict_out(self):
+        return {
+            'id': self.id,
+            'dashboard_id': self.dashboard_id,
+            'updated_at': self.updated_at,
+            'created_at': self.created_at,
+            'entity': self.entity,
+            'filters': self.filters,
+        }
 
     def __repr__(self):
         return '<%s %s %s>' % (self.id, self.entity, self.filters)
