@@ -18,7 +18,11 @@ var clientEventDetails = {
       $.getJSON(Flask.url_for('monitoring_api.client', {'zone_name': ZONE, 'client_name': CLIENT}),
       function(data) {
         client = data.clients[0];
-        $('#clientdetailsname').html('<a href="' + Flask.url_for('monitoring_main.client', {'zone': client.zone_name, 'client_name': client.name}) + '">' + client.name + '</a>');
+        //jscs:disable requireCamelCaseOrUpperCaseIdentifiers
+        $('#clientdetailsname').html('<a href="' +
+          Flask.url_for('monitoring_main.client', {'zone': client.zone_name, 'client_name': client.name}) +
+          '">' + client.name + '</a>');
+        //jscs:enable requireCamelCaseOrUpperCaseIdentifiers
         $('tbody', '#clientdetailstable').html(opsyMonitoring.formatJSONToTable(client));
       });
     },
