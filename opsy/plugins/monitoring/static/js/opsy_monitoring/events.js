@@ -98,7 +98,8 @@ var events = {
     },
 
     updateChecks: function(init, cb) {
-      url = opsyMonitoring.getDashboardUrl(Flask.url_for('monitoring_api.events') + '?count_checks');
+      url = opsyMonitoring.getDashboardUrl(Flask.url_for('monitoring_api.events') +
+      '?count_checks=true');
       $.getJSON(url, function(data) {
         newchecks = [];
         $.each(data.events, function(idx, obj) {
@@ -186,7 +187,8 @@ var events = {
                   '">' + row.client_name + '</a>',
                 'check_name': '<a href="' + uchiwaCheckHref + '"><img src="' +
                   STATICS_URL + 'img/backends/sensu.ico"></img></a>' +
-                  '<a href="' + Flask.url_for('monitoring_main.client_event', {'zone': row.zone_name, 'client_name': row.client_name, 'check': row.check_name}) +
+                  '<a href="' + Flask.url_for('monitoring_main.client_event',
+                  {'zone': row.zone_name, 'client_name': row.client_name, 'check': row.check_name}) +
                   '">' + row.check_name + '</a>',
                 'check_output': row.output,
                 'count': row.occurrences,

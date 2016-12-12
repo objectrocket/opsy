@@ -27,7 +27,7 @@ class Dashboard(IDedResource, NamedResource, TimeStampMixin, db.Model):
                          zone_filters=None, client_filters=None,
                          check_filters=None):
         dashboard = cls(name, description=description, enabled=enabled)
-        db.session.add(dashboard)
+        db.session.add(dashboard)  # pylint: disable=no-member
         db.session.commit()
         if zone_filters:
             dashboard.create_filter('zone', zone_filters)
@@ -44,9 +44,9 @@ class Dashboard(IDedResource, NamedResource, TimeStampMixin, db.Model):
 
     @classmethod
     def update_dashboard(cls, dashboard_id, **kwargs):
-        dashboard = cls.get_dashboard_by_id(dashboard_id)
-        for k, v in kwargs.items():
-            setattr(dashboard, k, v)
+        dashboard = cls.get_by_id(dashboard_id)
+        for key, value in kwargs.items():
+            setattr(dashboard, key, value)
         db.session.commit()
         return dashboard
 
@@ -60,7 +60,7 @@ class Dashboard(IDedResource, NamedResource, TimeStampMixin, db.Model):
         return DashboardFilter.query.filter(*filter_list).first()
 
     def create_filter(self, entity_name, filters):
-        db.session.add(DashboardFilter(self.id, entity_name, filters))
+        db.session.add(DashboardFilter(self.id, entity_name, filters))  # pylint: disable=no-member
         db.session.commit()
 
     def delete_filter(self, entity_name):
@@ -75,7 +75,7 @@ class Dashboard(IDedResource, NamedResource, TimeStampMixin, db.Model):
             filter_object.filters = filters
         else:
             filter_object = self.create_filter(entity_name, filters)
-            db.session.add(filter_object)
+            db.session.add(filter_object)  # pylint: disable=no-member
         db.session.commit()
 
     def get_filters_list(self, entity):
@@ -102,7 +102,6 @@ class Dashboard(IDedResource, NamedResource, TimeStampMixin, db.Model):
             'created_at': self.created_at,
             'description': self.description,
             'enabled': self.enabled,
-            'name': self.name,
             'filters': filters_dict
         }
 

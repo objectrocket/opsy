@@ -7,7 +7,7 @@ from opsy.plugins.monitoring.resources import ZonesAPI, ZoneAPI, EventsAPI, \
 
 
 monitoring_api = Blueprint('monitoring_api', __name__)  # pylint: disable=invalid-name
-api = Api(monitoring_api)
+api = Api(monitoring_api)  # pylint: disable=invalid-name
 
 api.add_resource(
     ZonesAPI, '/zones',

@@ -35,8 +35,9 @@ var clientDetails = {
                 'status': row.status.capitalize(),
                 'check_name': '<a href="' + uchiwaCheckHref + '"><img src="' +
                   STATICS_URL + 'img/backends/sensu.ico"></img></a>' +
-                  '<a href="' + Flask.url_for('monitoring_main.client_event', {'zone': row.zone_name, 'client_name': row.client_name, 'check': row.check_name}) + '">' +
-                  row.check_name + '</a>',
+                  '<a href="' + Flask.url_for('monitoring_main.client_event',
+                  {'zone': row.zone_name, 'client_name': row.client_name, 'check': row.check_name}) +
+                  '">' + row.check_name + '</a>',
                 'check_output': row.output,
                 'timestamp': '<time class="timeago" datetime="' +
                   row.last_poll_time + 'Z">' + row.last_poll_time + 'Z</time>',

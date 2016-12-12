@@ -119,7 +119,7 @@ class SensuSilence(SensuBase, Silence):
         return [x for x in response if x['path'].startswith('silence/')]
 
 
-class SensuZone(SensuBase, HttpZoneMixin, Zone):
+class SensuZone(SensuBase, HttpZoneMixin, Zone):  # pylint: disable=too-many-ancestors
 
     models = [SensuCheck, SensuClient, SensuEvent, SensuSilence, SensuResult]
 

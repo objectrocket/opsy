@@ -1,14 +1,14 @@
 import asyncio
-import aiohttp
 from datetime import datetime
+import aiohttp
 import opsy
 from opsy.utils import get_filters_list
 from opsy.db import db, TimeStampMixin, DictOut, IDedResource, NamedResource
 from opsy.plugins.monitoring.dashboard import Dashboard
+from opsy.plugins.monitoring.backends import async_task
+from opsy.plugins.monitoring.exceptions import PollFailure
 from sqlalchemy.orm import synonym
 from stevedore import driver
-from . import async_task
-from opsy.plugins.monitoring.exceptions import PollFailure
 
 
 class BaseCache(IDedResource):
@@ -67,7 +67,7 @@ class Client(BaseEntity, db.Model):
 
     class ClientQuery(DictOut):
 
-        def all_dict_out(self, extra=False):
+        def all_dict_out(self, extra=False, **kwargs):
             clients_silences = self.outerjoin(Silence, db.and_(
                 Client.zone_name == Silence.zone_name,
                 Client.name == Silence.client_name,
@@ -189,7 +189,7 @@ class Check(BaseEntity, db.Model):
     @classmethod
     def filter(cls, zones=None, checks=None, dashboard=None):
         filters = ((zones, cls.zone_name),
-                   (checks, cls.check_name))
+                   (checks, cls.name))
         return cls._filter(filters, dashboard=dashboard)
 
     @classmethod
@@ -220,7 +220,7 @@ class Result(BaseEntity, db.Model):
 
     class ResultQuery(DictOut):
 
-        def all_dict_out(self, extra=False):
+        def all_dict_out(self, extra=False, **kwargs):
             clients_silences = self.outerjoin(Silence, db.and_(
                 Result.zone_name == Silence.zone_name,
                 Result.client_name == Silence.client_name,
@@ -297,7 +297,7 @@ class Event(BaseEntity, db.Model):
 
     class EventQuery(DictOut):
 
-        def all_dict_out(self, extra=False):
+        def all_dict_out(self, extra=False, **kwargs):
             clients_silences = self.outerjoin(Silence, db.and_(
                 Event.zone_name == Silence.zone_name,
                 db.or_(
@@ -318,6 +318,15 @@ class Event(BaseEntity, db.Model):
                 event_json['silenced'] = bool(silence)
                 events_json.append(event_json)
             return events_json
+
+        def count_checks(self):
+            check_count = {x: y for x, y in self.with_entities(
+                Event.check_name, db.func.count(Event.check_name)).group_by(
+                    Event.check_name).order_by(db.desc(db.func.count(
+                        Event.check_name))).all()}
+            return sorted([{'name': x, 'count': y} for x, y in
+                           check_count.items()],
+                          key=lambda x: (-x['count'], x['name']))
 
     query_class = EventQuery
 
@@ -556,7 +565,7 @@ class Zone(NamedResource, TimeStampMixin, BaseCache, db.Model):
             invoke_on_load=True,
             invoke_args=(name,),
             invoke_kwds=(kwargs)).driver
-        db.session.add(zone)
+        db.session.add(zone)  # pylint: disable=no-member
         db.session.commit()
         return zone
 
@@ -567,14 +576,11 @@ class Zone(NamedResource, TimeStampMixin, BaseCache, db.Model):
 
     @classmethod
     def update_zone(cls, zone_id, **kwargs):
-        zone = cls.get_zone_by_id(zone_id)
-        for k, v in kwargs.items():
-            setattr(zone, k, v)
+        zone = cls.get_by_id(zone_id)
+        for key, value in kwargs.items():
+            setattr(zone, key, value)
         db.session.commit()
         return zone
-
-    def query_api(self, uri):
-        raise NotImplementedError
 
     @asyncio.coroutine
     def update_objects(self, app, model):

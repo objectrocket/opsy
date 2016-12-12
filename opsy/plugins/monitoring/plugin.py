@@ -1,7 +1,7 @@
-import click
 import random
 import json
 from datetime import datetime, timedelta
+import click
 from flask import current_app
 from stevedore import extension
 from opsy.utils import print_property_table
@@ -150,7 +150,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
             columns = ['id', 'name', 'backend', 'status', 'status_message',
                        'enabled', 'created_at', 'updated_at']
             table = PrettyTable(columns)
-            for zone in Zone.gets():
+            for zone in Zone.filter():
                 table.add_row([getattr(zone, x) for x in columns])
             print(table)
 
@@ -162,7 +162,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
             zone = Zone.get_by_id(zone_id)
             if zone:
                 properties = [(x.key, getattr(zone, x.key))
-                              for x in Zone.__table__.columns]
+                              for x in Zone.__table__.columns]  # pylint: disable=no-member
                 print_property_table(properties)
 
         @zone_cli.command('delete')
@@ -192,7 +192,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
             if Zone.get_by_id(zone_id):
                 zone = Zone.update_zone(zone_id, **zone_kwargs)
                 properties = [(x.key, getattr(zone, x.key))
-                              for x in Zone.__table__.columns]
+                              for x in Zone.__table__.columns]  # pylint: disable=no-member
                 print_property_table(properties)
             else:
                 print('Could not find zone "%s"' % zone_id)
@@ -218,7 +218,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
                 return
             dashboard = Dashboard.create_dashboard(name, **dashboard_kwargs)
             properties = [(x.key, getattr(dashboard, x.key))
-                          for x in Dashboard.__table__.columns]
+                          for x in Dashboard.__table__.columns]  # pylint: disable=no-member
             print_property_table(properties)
 
         @dashboard_cli.command('list')
@@ -240,7 +240,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
             dashboard = Dashboard.get_by_id(dashboard_id)
             if dashboard:
                 properties = [(x.key, getattr(dashboard, x.key))
-                              for x in Dashboard.__table__.columns]
+                              for x in Dashboard.__table__.columns]  # pylint: disable=no-member
                 properties += ('filters', json.loads(dashboard.filters))
                 print(properties)
                 print_property_table(properties)
@@ -267,7 +267,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
                 dashboard = Dashboard.update_dashboard(
                     dashboard_id, **dashboard_kwargs)
                 properties = [(x.key, getattr(dashboard, x.key))
-                              for x in Dashboard.__table__.columns]
+                              for x in Dashboard.__table__.columns]  # pylint: disable=no-member
                 print_property_table(properties)
             else:
                 print('Could not find dashboard "%s"' % dashboard_id)
@@ -338,7 +338,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
                       ' "%s"' % (entity_name, dashboard_id))
                 return
             properties = [(x.key, getattr(filter_object, x.key))
-                          for x in DashboardFilter.__table__.columns]
+                          for x in DashboardFilter.__table__.columns]  # pylint: disable=no-member
             print_property_table(properties)
 
         @dashboard_filter_cli.command('delete')
@@ -354,7 +354,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
                 return
             dashboard.delete_filter(entity_name)
             print('Filter for entity "%s" for dashboard "%s" deleted.' % (
-                  entity_name, dashboard_id))
+                entity_name, dashboard_id))
 
         @dashboard_filter_cli.command('modify')
         @click.argument('dashboard_id', type=click.UUID)
@@ -370,7 +370,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
                 return
             dashboard.update_filter(entity_name, filters)
             print('Filter for entity "%s" for dashboard "%s" updated.' % (
-                  entity_name, dashboard_id))
+                entity_name, dashboard_id))
 
     def register_shell_context(self, shell_ctx):
         monitoring_ctx = {'Client': Client,
