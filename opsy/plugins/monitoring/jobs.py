@@ -6,7 +6,7 @@ from flask import current_app
 from sqlalchemy.exc import OperationalError
 from opsy.app import create_app
 from opsy.db import db
-from .backends.base import Zone
+from opsy.plugins.monitoring.backends.base import Zone
 from opsy.plugins.monitoring.exceptions import PollFailure
 
 
