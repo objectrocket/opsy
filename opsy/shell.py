@@ -51,12 +51,12 @@ def shell():
         code.interact(banner, local=shell_ctx)
 
 
-@cli.command('init-cache')
-def init_cache():
-    """Drop everything in cache database and rebuild the schema."""
-    current_app.logger.info('Creating cache database')
-    db.drop_all(bind='cache')
-    db.create_all(bind='cache')
+@cli.command('init-db')
+def init_db():
+    """Drop everything in database and rebuild the schema."""
+    current_app.logger.info('Creating database')
+    db.drop_all()
+    db.create_all()
     db.session.commit()
 
 

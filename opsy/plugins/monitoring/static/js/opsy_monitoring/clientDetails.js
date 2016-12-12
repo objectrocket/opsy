@@ -25,14 +25,20 @@ var clientDetails = {
             for (var i = 0; i < json.length; i++) {
               var row = json[i];
               console.log(row);
+              //jscs:disable requireCamelCaseOrUpperCaseIdentifiers
+              uchiwaClientHref = UCHIWA_URL + '/#/client/' + row.zone_name + '/' +
+                row.client_name,
+              uchiwaCheckHref = UCHIWA_URL + '/#/client/' + row.zone_name + '/' +
+                row.client_name + '?check=' + row.check_name,
               returnData.push({
                 'silenced': row.silenced,
                 'status': row.status.capitalize(),
-                //jscs:disable requireCamelCaseOrUpperCaseIdentifiers
-                'check_name': row.check_name,
-                'check_output': '<a href="' + Flask.url_for('monitoring_main.clients') + '/' + row.zone_name + '/' +
-                  row.client_name + '/events/' + row.check_name + '">' +
-                  row.output + '</a>',
+                'check_name': '<a href="' + uchiwaCheckHref + '"><img src="' +
+                  STATICS_URL + 'img/backends/sensu.ico"></img></a>' +
+                  '<a href="' + Flask.url_for('monitoring_main.client_event',
+                  {'zone': row.zone_name, 'client_name': row.client_name, 'check': row.check_name}) +
+                  '">' + row.check_name + '</a>',
+                'check_output': row.output,
                 'timestamp': '<time class="timeago" datetime="' +
                   row.last_poll_time + 'Z">' + row.last_poll_time + 'Z</time>',
                 //jscs:enable requireCamelCaseOrUpperCaseIdentifiers

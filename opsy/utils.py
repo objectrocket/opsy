@@ -5,6 +5,7 @@ from flask.json import JSONEncoder
 from flask._compat import text_type
 from flask_iniconfig import INIConfig
 from itsdangerous import json as _json
+from prettytable import PrettyTable
 from dateutil.tz import tzutc
 from stevedore import driver
 from opsy.exceptions import NoConfigFile, NoConfigSection
@@ -74,3 +75,12 @@ def load_config(app, config_file):
     INIConfig(app)
     app.config.from_inifile(config_file)
     app.opsy_config = get_config_section_or_fail(app, 'opsy')
+
+
+def print_property_table(properties):
+    table = PrettyTable(['Property', 'Value'])
+    table.align['Property'] = 'l'
+    table.align['Value'] = 'l'
+    for key, value in properties:
+        table.add_row([key, value])
+    print(table)

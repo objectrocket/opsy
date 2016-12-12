@@ -1,74 +1,47 @@
 import asyncio
+from datetime import datetime
 import aiohttp
-from flask_sqlalchemy import BaseQuery
-from flask import abort
 import opsy
-from opsy.db import db
 from opsy.utils import get_filters_list
-from . import async_task
+from opsy.db import db, TimeStampMixin, DictOut, IDedResource, NamedResource
+from opsy.plugins.monitoring.dashboard import Dashboard
+from opsy.plugins.monitoring.backends import async_task
+from opsy.plugins.monitoring.exceptions import PollFailure
+from sqlalchemy.orm import synonym
+from stevedore import driver
 
 
-class ExtraOut(BaseQuery):
+class BaseCache(IDedResource):
 
-    def all_dict_out(self):
-        return [x.dict_out for x in self]
+    query_class = DictOut
 
-    def all_dict_extra_out(self):
-        return [x.dict_extra_out for x in self]
-
-    def all_dict_out_or_404(self):
-        dict_list = self.all_dict_out()
-        if not dict_list:
-            abort(404)
-        return dict_list
-
-    def all_dict_extra_out_or_404(self):
-        dict_list = self.all_dict_extra_out()
-        if not dict_list:
-            abort(404)
-        return dict_list
-
-
-class BaseMetadata(db.Model):
-
-    __bind_key__ = 'cache'
-    __tablename__ = 'monitoring_metadata'
-
-    zone_name = db.Column(db.String(64), primary_key=True)
-    entity = db.Column(db.String(64), primary_key=True)
-    key = db.Column(db.String(128), primary_key=True)
-    value = db.Column(db.String(512))
-    updated_at = db.Column(db.DateTime, default=db.func.now(),
-                           onupdate=db.func.now())
-
-    __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['monitoring_zones.name']),
-    )
-
-    def __init__(self, zone_name, key, entity, value):
-        self.zone_name = zone_name
-        self.key = key
-        self.entity = entity
-        self.value = value
-
-    def __repr__(self):
-        return '<%s %s: %s - %s>' % (self.__class__.__name__, self.zone_name,
-                                     self.key, self.value)
-
-
-class CacheBase(object):
-
-    metadata_class = BaseMetadata
-    query_class = ExtraOut
-    extra = db.Column(db.Text)
     backend = db.Column(db.String(20))
-    last_poll_time = db.Column(db.DateTime, default=db.func.now(),
-                               onupdate=db.func.now())
+    last_poll_time = db.Column(db.DateTime, default=None)
 
     __mapper_args__ = {
         'polymorphic_on': backend,
         'polymorphic_identity': 'base'
     }
+
+    @classmethod
+    def _filter(cls, filters, dashboard=None):
+        filters_list = get_filters_list(filters)
+        obj_query = cls.query
+        if dashboard:
+            dashboard = Dashboard.get_by_name(dashboard)
+            dash_filters_list = dashboard.get_filters_list(cls)
+            obj_query = obj_query.filter(*dash_filters_list)
+        return obj_query.filter(*filters_list)
+
+
+class BaseEntity(BaseCache):
+
+    entity = None
+    zone_id = db.Column(db.String(36))
+    zone_name = db.Column(db.String(64))
+    query_class = DictOut
+    last_poll_time = db.Column(db.DateTime, default=datetime.utcnow())
+    extra = db.Column(db.Text)
 
     @property
     def dict_extra_out(self):
@@ -76,107 +49,80 @@ class CacheBase(object):
         event_dict['extra'] = self.extra
         return event_dict
 
+    def get_dict(self, extra=False, **kwargs):
+        if extra:
+            return self.dict_extra_out
+        else:
+            return self.dict_out
+
     @classmethod
     def filter_api_response(cls, response):
         return response
 
-    @classmethod
-    def create_poll_metadata(cls, zone_name):
-        metadata = []
-        metadata.append(cls.metadata_class(zone_name, 'update_status',
-                                           cls.__tablename__,
-                                           'success'))
-        metadata.append(cls.metadata_class(zone_name, 'update_message',
-                                           cls.__tablename__,
-                                           'Poller created.'))
-        return metadata
 
-    @classmethod
-    def delete_poll_metadata(cls, zone_name):
-        cls.metadata_class.query.filter(
-            cls.metadata_class.key == 'update_status',
-            cls.metadata_class.entity == cls.__tablename__,
-            cls.metadata_class.zone_name == zone_name).delete()
-        cls.metadata_class.query.filter(
-            cls.metadata_class.key == 'update_message',
-            cls.metadata_class.entity == cls.__tablename__,
-            cls.metadata_class.zone_name == zone_name).delete()
+class Client(BaseEntity, db.Model):
 
-    @classmethod
-    def last_poll_status(cls, zone_name):
-        last_run = cls.metadata_class.query.filter(
-            cls.metadata_class.key == 'update_status',
-            cls.metadata_class.entity == cls.__tablename__,
-            cls.metadata_class.zone_name == zone_name).first()
-        last_run_message = cls.metadata_class.query.filter(
-            cls.metadata_class.key == 'update_message',
-            cls.metadata_class.entity == cls.__tablename__,
-            cls.metadata_class.zone_name == zone_name).first()
-        return (last_run.updated_at, last_run.value, last_run_message.value)
+    entity = 'clients'
+    __tablename__ = 'monitoring_clients'
 
-    @classmethod
-    def update_last_poll(cls, zone_name, status, message):
-        status_obj = cls.metadata_class.query.filter(
-            cls.metadata_class.key == 'update_status',
-            cls.metadata_class.entity == cls.__tablename__,
-            cls.metadata_class.zone_name == zone_name).first()
-        message_obj = cls.metadata_class.query.filter(
-            cls.metadata_class.key == 'update_message',
-            cls.metadata_class.entity == cls.__tablename__,
-            cls.metadata_class.zone_name == zone_name).first()
-        status_obj.value = status
-        message_obj.value = message
-        return [status_obj, message_obj]
+    class ClientQuery(DictOut):
 
-
-class Client(CacheBase, db.Model):
-
-    class ClientQuery(ExtraOut):
-
-        def all_dict_out(self):
+        def all_dict_out(self, extra=False, **kwargs):
             clients_silences = self.outerjoin(Silence, db.and_(
                 Client.zone_name == Silence.zone_name,
                 Client.name == Silence.client_name,
-                Silence.check_name == '')).add_entity(Silence).all()
+                Silence.silence_type == 'client')).add_entity(Silence).all()
             clients_json = []
             for client, silence in clients_silences:
-                client_json = client.dict_out
+                if extra:
+                    client_json = client.dict_extra_out
+                else:
+                    client_json = client.dict_out
                 client_json['silenced'] = bool(silence)
                 clients_json.append(client_json)
             return clients_json
 
     query_class = ClientQuery
-    __bind_key__ = 'cache'
-    __tablename__ = 'monitoring_clients'
 
-    zone_name = db.Column(db.String(64), primary_key=True)
-    name = db.Column(db.String(256), primary_key=True)
+    name = db.Column(db.String(128))
     updated_at = db.Column(db.DateTime)
-    version = db.Column(db.String(256))
-    address = db.Column(db.String(256))
+    version = db.Column(db.String(128))
+    address = db.Column(db.String(128))
 
     events = db.relationship('Event', backref='client', lazy='dynamic',
-                             query_class=ExtraOut, primaryjoin="and_("
-                             "Client.zone_name==foreign(Event.zone_name), "
+                             query_class=DictOut, primaryjoin="and_("
+                             "Client.zone_id==foreign(Event.zone_id), "
                              "Client.name==foreign(Event.client_name))")
 
     results = db.relationship('Result', backref='client', lazy='dynamic',
-                              query_class=ExtraOut, primaryjoin="and_("
-                              "Client.zone_name==foreign(Result.zone_name), "
+                              query_class=DictOut, primaryjoin="and_("
+                              "Client.zone_id==foreign(Result.zone_id), "
                               "Client.name==foreign(Result.client_name))")
 
     silences = db.relationship('Silence', backref='client', lazy='dynamic',
-                               query_class=ExtraOut, primaryjoin="and_("
-                               "Client.zone_name == foreign("
-                               "Silence.zone_name), "
+                               query_class=DictOut, primaryjoin="and_("
+                               "Client.zone_id == foreign("
+                               "Silence.zone_id), "
                                "Client.name == foreign(Silence.client_name))")
 
     __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['monitoring_zones.name']),
+        db.ForeignKeyConstraint(['zone_id'], ['monitoring_zones.id'],
+                                ondelete='CASCADE'),
+        db.UniqueConstraint('zone_id', 'name', name='client_uc'),
     )
 
-    def __init__(self, zone_name, extra):
+    def __init__(self, zone, extra):
         raise NotImplementedError
+
+    @classmethod
+    def filter(cls, zones=None, clients=None, dashboard=None):
+        filters = ((zones, cls.zone_name),
+                   (clients, cls.name))
+        return cls._filter(filters, dashboard=dashboard)
+
+    @classmethod
+    def get_filters_maps(cls):
+        return (('zone', cls.zone_name), ('client', cls.name))
 
     @property
     def status(self):
@@ -192,16 +138,6 @@ class Client(CacheBase, db.Model):
     @property
     def silenced(self):
         return bool(self.silences.filter(Silence.check_name == '').first())
-
-    @classmethod
-    def get_dashboard_filters_list(cls, config, dashboard):
-        if config['monitoring']['dashboards'].get(dashboard) is None:
-            return ()
-        zones = config['monitoring']['dashboards'][dashboard].get('zone')
-        clients = config['monitoring']['dashboards'][dashboard].get('client')
-        filters = ((zones, cls.zone_name),
-                   (clients, cls.name))
-        return get_filters_list(filters)
 
     @property
     def dict_out(self):
@@ -220,44 +156,45 @@ class Client(CacheBase, db.Model):
                                self.name)
 
 
-class Check(CacheBase, db.Model):
+class Check(BaseEntity, db.Model):
 
-    __bind_key__ = 'cache'
+    entity = 'checks'
     __tablename__ = 'monitoring_checks'
 
-    zone_name = db.Column(db.String(64), primary_key=True)
-    name = db.Column(db.String(256), primary_key=True)
+    name = db.Column(db.String(128))
     occurrences_threshold = db.Column(db.BigInteger)
     interval = db.Column(db.BigInteger)
     command = db.Column(db.Text)
 
     results = db.relationship('Result', backref='check', lazy='dynamic',
-                              query_class=ExtraOut,
+                              query_class=DictOut,
                               primaryjoin="and_("
-                              "Check.zone_name==foreign(Result.zone_name), "
+                              "Check.zone_id==foreign(Result.zone_id), "
                               "Check.name==foreign(Result.check_name))")
     events = db.relationship('Event', backref='check', lazy='dynamic',
-                             query_class=ExtraOut,
+                             query_class=DictOut,
                              primaryjoin="and_("
-                             "Check.zone_name==foreign(Event.zone_name), "
+                             "Check.zone_id==foreign(Event.zone_id), "
                              "Check.name==foreign(Event.check_name))")
 
     __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['monitoring_zones.name']),
+        db.ForeignKeyConstraint(['zone_id'], ['monitoring_zones.id'],
+                                ondelete='CASCADE'),
+        db.UniqueConstraint('zone_id', 'name', name='check_uc'),
     )
 
-    def __init__(self, zone_name, extra):
+    def __init__(self, zone, extra):
         raise NotImplementedError
 
     @classmethod
-    def get_dashboard_filters_list(cls, config, dashboard):
-        if config['monitoring']['dashboards'].get(dashboard) is None:
-            return ()
-        zones = config['monitoring']['dashboards'][dashboard].get('zone')
-        checks = config['monitoring']['dashboards'][dashboard].get('check')
+    def filter(cls, zones=None, checks=None, dashboard=None):
         filters = ((zones, cls.zone_name),
                    (checks, cls.name))
-        return get_filters_list(filters)
+        return cls._filter(filters, dashboard=dashboard)
+
+    @classmethod
+    def get_filters_maps(cls):
+        return (('zone', cls.zone_name), ('check', cls.name))
 
     @property
     def dict_out(self):
@@ -276,11 +213,14 @@ class Check(CacheBase, db.Model):
                                self.name)
 
 
-class Result(CacheBase, db.Model):
+class Result(BaseEntity, db.Model):
 
-    class ResultQuery(ExtraOut):
+    entity = 'results'
+    __tablename__ = 'monitoring_results'
 
-        def all_dict_out(self):
+    class ResultQuery(DictOut):
+
+        def all_dict_out(self, extra=False, **kwargs):
             clients_silences = self.outerjoin(Silence, db.and_(
                 Result.zone_name == Silence.zone_name,
                 Result.client_name == Silence.client_name,
@@ -288,46 +228,47 @@ class Result(CacheBase, db.Model):
                     Silence).all()
             events_json = []
             for event, silence in clients_silences:
-                event_json = event.dict_out
+                if extra:
+                    event_json = event.dict_extra_out
+                else:
+                    event_json = event.dict_out
                 event_json['silenced'] = bool(silence)
                 events_json.append(event_json)
             return events_json
 
     query_class = ResultQuery
-    __bind_key__ = 'cache'
-    __tablename__ = 'monitoring_results'
 
-    zone_name = db.Column(db.String(64), primary_key=True)
-    client_name = db.Column(db.String(256), primary_key=True)
-    check_name = db.Column(db.String(256), primary_key=True)
+    client_name = db.Column(db.String(128))
+    check_name = db.Column(db.String(128))
     occurrences_threshold = db.Column(db.BigInteger)
-    status = db.Column(db.String(256))
+    status = db.Column(db.String(16))
     interval = db.Column(db.BigInteger)
     command = db.Column(db.Text)
     output = db.Column(db.Text)
 
     __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['monitoring_zones.name']),
+        db.ForeignKeyConstraint(['zone_id'], ['monitoring_zones.id'],
+                                ondelete='CASCADE'),
+        db.UniqueConstraint('zone_id', 'client_name', 'check_name',
+                            name='result_uc'),
         db.CheckConstraint(status.in_(
             ['ok', 'warning', 'critical', 'unknown']))
     )
 
-    def __init__(self, zone_name, extra):
+    def __init__(self, zone, extra):
         raise NotImplementedError
 
     @classmethod
-    def get_dashboard_filters_list(cls, config, dashboard):
-        if config['monitoring']['dashboards'].get(dashboard) is None:
-            return ()
-        zones = config['monitoring']['dashboards'][dashboard].get('zone')
-        checks = config['monitoring']['dashboards'][dashboard].get('check')
-        clients = config['monitoring']['dashboards'][dashboard].get('client')
-        statuses = config['monitoring']['dashboards'][dashboard].get('status')
+    def filter(cls, zones=None, clients=None, checks=None, dashboard=None):
         filters = ((zones, cls.zone_name),
-                   (checks, cls.check_name),
                    (clients, cls.client_name),
-                   (statuses, cls.status))
-        return get_filters_list(filters)
+                   (checks, cls.check_name))
+        return cls._filter(filters, dashboard=dashboard)
+
+    @classmethod
+    def get_filters_maps(cls):
+        return (('zone', cls.zone_name), ('check', cls.check_name),
+                ('client', cls.client_name))
 
     @property
     def dict_out(self):
@@ -349,69 +290,103 @@ class Result(CacheBase, db.Model):
                                   self.client_name, self.check_name)
 
 
-class Event(CacheBase, db.Model):
+class Event(BaseEntity, db.Model):
 
-    class EventQuery(ExtraOut):
+    entity = 'events'
+    __tablename__ = 'monitoring_events'
 
-        def all_dict_out(self):
+    class EventQuery(DictOut):
+
+        def all_dict_out(self, extra=False, **kwargs):
             clients_silences = self.outerjoin(Silence, db.and_(
                 Event.zone_name == Silence.zone_name,
-                Event.client_name == Silence.client_name,
-                Silence.check_name.in_(
-                    [Event.check_name, '']))).add_entity(Silence).all()
+                db.or_(
+                    db.and_(
+                        Event.client_name == Silence.client_name,
+                        Silence.check_name == Event.check_name,
+                        Silence.silence_type == 'check'),
+                    db.and_(
+                        Event.client_name == Silence.client_name,
+                        Silence.silence_type == 'client')
+                ))).add_entity(Silence).all()
             events_json = []
             for event, silence in clients_silences:
-                event_json = event.dict_out
+                if extra:
+                    event_json = event.dict_extra_out
+                else:
+                    event_json = event.dict_out
                 event_json['silenced'] = bool(silence)
                 events_json.append(event_json)
             return events_json
 
-    query_class = EventQuery
-    __bind_key__ = 'cache'
-    __tablename__ = 'monitoring_events'
+        def count_checks(self):
+            check_count = {x: y for x, y in self.with_entities(
+                Event.check_name, db.func.count(Event.check_name)).group_by(
+                    Event.check_name).order_by(db.desc(db.func.count(
+                        Event.check_name))).all()}
+            return sorted([{'name': x, 'count': y} for x, y in
+                           check_count.items()],
+                          key=lambda x: (-x['count'], x['name']))
 
-    zone_name = db.Column(db.String(64), primary_key=True)
-    client_name = db.Column(db.String(256), primary_key=True)
-    check_name = db.Column(db.String(256), primary_key=True)
+    query_class = EventQuery
+
+    client_name = db.Column(db.String(128))
+    check_name = db.Column(db.String(128))
     updated_at = db.Column(db.DateTime)
     occurrences_threshold = db.Column(db.BigInteger)
     occurrences = db.Column(db.BigInteger)
-    status = db.Column(db.String(256))
+    status = db.Column(db.String(16))
     command = db.Column(db.Text)
     interval = db.Column(db.BigInteger)
     output = db.Column(db.Text)
 
     silences = db.relationship('Silence', backref='events', lazy='dynamic',
-                               query_class=ExtraOut,
+                               query_class=DictOut,
                                primaryjoin="and_("
-                               "Event.zone_name==foreign(Silence.zone_name),"
+                               "Event.zone_id==foreign(Silence.zone_id),"
                                "Event.client_name==foreign("
                                "Silence.client_name), "
                                "Event.check_name==foreign("
                                "Silence.check_name))")
 
     __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['monitoring_zones.name']),
+        db.ForeignKeyConstraint(['zone_id'], ['monitoring_zones.id'],
+                                ondelete='CASCADE'),
+        db.UniqueConstraint('zone_id', 'client_name', 'check_name',
+                            name='event_uc'),
         db.CheckConstraint(status.in_(
             ['ok', 'warning', 'critical', 'unknown']))
     )
 
-    def __init__(self, zone_name, extra):
+    def __init__(self, zone, extra):
         raise NotImplementedError
 
     @classmethod
-    def get_dashboard_filters_list(cls, config, dashboard):
-        if config['monitoring']['dashboards'].get(dashboard) is None:
-            return ()
-        zones = config['monitoring']['dashboards'][dashboard].get('zone')
-        checks = config['monitoring']['dashboards'][dashboard].get('check')
-        clients = config['monitoring']['dashboards'][dashboard].get('client')
-        statuses = config['monitoring']['dashboards'][dashboard].get('status')
+    def filter(cls, zones=None, clients=None, checks=None, statuses=None,
+               hide_silenced=None, dashboard=None):
         filters = ((zones, cls.zone_name),
-                   (checks, cls.check_name),
                    (clients, cls.client_name),
+                   (checks, cls.check_name),
                    (statuses, cls.status))
-        return get_filters_list(filters)
+        events = cls._filter(filters, dashboard=dashboard)
+        if hide_silenced:
+            hide_silenced = hide_silenced.split(',')
+            if 'checks' in hide_silenced:
+                events = events.filter(db.not_(Event.silences.any(
+                    client_name=Event.client_name,
+                    check_name=Event.check_name)))
+            if 'clients' in hide_silenced:
+                events = events.filter(db.not_(Client.silences.any(
+                    client_name=Event.client_name, check_name='')))
+            if 'occurrences' in hide_silenced:
+                events = events.filter(db.not_(
+                    Event.occurrences < Event.occurrences_threshold))
+        return events
+
+    @classmethod
+    def get_filters_maps(cls):
+        return (('zone', cls.zone_name), ('check', cls.check_name),
+                ('client', cls.client_name))
 
     @property
     def dict_out(self):
@@ -435,25 +410,43 @@ class Event(CacheBase, db.Model):
                                   self.client_name, self.check_name)
 
 
-class Silence(CacheBase, db.Model):
+class Silence(BaseEntity, db.Model):
 
-    __bind_key__ = 'cache'
+    entity = 'silences'
     __tablename__ = 'monitoring_silences'
 
-    zone_name = db.Column(db.String(64), primary_key=True)
-    client_name = db.Column(db.String(256), primary_key=True)
-    check_name = db.Column(db.String(256), nullable=True, primary_key=True,
-                           default="")
+    client_name = db.Column(db.String(128))
+    check_name = db.Column(db.String(128))
+    silence_type = db.Column(db.String(16))
     created_at = db.Column(db.DateTime)
     expire_at = db.Column(db.DateTime)
     comment = db.Column(db.Text)
 
     __table_args__ = (
-        db.ForeignKeyConstraint(['zone_name'], ['monitoring_zones.name']),
+        db.ForeignKeyConstraint(['zone_id'], ['monitoring_zones.id'],
+                                ondelete='CASCADE'),
+        db.UniqueConstraint('zone_id', 'client_name', 'check_name',
+                            'silence_type', name='silence_uc'),
+        db.CheckConstraint(silence_type.in_(
+            ['client', 'check']))
     )
 
-    def __init__(self, zone_name, extra):
+    def __init__(self, zone, extra):
         raise NotImplementedError
+
+    @classmethod
+    def filter(cls, zones=None, clients=None, checks=None, types=None,
+               dashboard=None):
+        filters = ((zones, cls.zone_name),
+                   (clients, cls.client_name),
+                   (checks, cls.check_name),
+                   (types, Silence.silence_type))
+        return cls._filter(filters, dashboard=dashboard)
+
+    @classmethod
+    def get_filters_maps(cls):
+        return (('zone', cls.zone_name), ('check', cls.check_name),
+                ('client', cls.client_name))
 
     @property
     def dict_out(self):
@@ -463,6 +456,7 @@ class Silence(CacheBase, db.Model):
             'last_poll_time': self.last_poll_time,
             'client_name': self.client_name,
             'check_name': self.check_name,
+            'silence_type': self.silence_type,
             'created_at': self.created_at,
             'expire_at': self.expire_at,
             'comment': self.comment
@@ -473,14 +467,16 @@ class Silence(CacheBase, db.Model):
                                   self.client_name, self.check_name)
 
 
-class Zone(CacheBase, db.Model):
+class Zone(NamedResource, TimeStampMixin, BaseCache, db.Model):
 
-    __bind_key__ = 'cache'
+    entity = 'zones'
     __tablename__ = 'monitoring_zones'
 
     models = [Check, Client, Event, Silence, Result]
 
-    name = db.Column(db.String(64), primary_key=True)
+    _enabled = db.Column('enabled', db.Boolean(), default=0)
+    _status = db.Column('status', db.String(64))
+    status_message = db.Column(db.String(64))
     host = db.Column(db.String(64))
     path = db.Column(db.String(64))
     protocol = db.Column(db.String(64))
@@ -492,20 +488,25 @@ class Zone(CacheBase, db.Model):
     verify_ssl = db.Column(db.Boolean())
 
     clients = db.relationship('Client', backref='zone', lazy='dynamic',
-                              query_class=ExtraOut)
+                              query_class=DictOut)
     checks = db.relationship('Check', backref='zone', lazy='dynamic',
-                             query_class=ExtraOut)
+                             query_class=DictOut)
     events = db.relationship('Event', backref='zone', lazy='dynamic',
-                             query_class=ExtraOut)
+                             query_class=DictOut)
     results = db.relationship('Result', backref='zone', lazy='dynamic',
-                              query_class=ExtraOut)
+                              query_class=DictOut)
     silences = db.relationship('Silence', backref='zone', lazy='dynamic',
-                               query_class=ExtraOut)
+                               query_class=DictOut)
 
-    def __init__(self, name, host=None, path='/', protocol='http', port=80,  # pylint: disable=too-many-arguments
-                 timeout=30, interval=30, username=None, password=None,
+    def __init__(self, name, enabled=0, host=None, path=None, protocol='http',
+                 port=80, timeout=30, interval=30, username=None, password=None,
                  verify_ssl=True, **kwargs):
         self.name = name
+        self.enabled = enabled
+        if self.enabled:
+            self.status = 'new'
+        else:
+            self.status = 'disabled'
         self.host = host
         self.path = path
         self.protocol = protocol
@@ -516,8 +517,70 @@ class Zone(CacheBase, db.Model):
         self.password = password
         self.verify_ssl = verify_ssl
 
-    def query_api(self, uri):
-        raise NotImplementedError
+    @classmethod
+    def filter(cls, zones=None, dashboard=None):
+        filters = ((zones, cls.name),)
+        return cls._filter(filters, dashboard=dashboard)
+
+    @classmethod
+    def get_filters_maps(cls):
+        return (('zone', cls.name),)
+
+    @property
+    def status(self):
+        return self._status
+
+    @status.setter
+    def status(self, value):
+        status_map = {
+            'new': 'This zone is new and has not polled yet.',
+            'disabled': 'This zone is disabled.',
+            'ok': 'Last poll successful.',
+            'warning': 'Last poll encountered problems.',
+            'critical': 'Last poll failed.',
+        }
+        self._status = value
+        self.status_message = status_map.get(value)
+
+    @property
+    def enabled(self):
+        return self._enabled
+
+    @enabled.setter
+    def enabled(self, value):
+        if int(value) == 0:
+            self._enabled = 0
+            self.status = 'disabled'
+        if int(value) == 1:
+            self._enabled = 1
+            self.status = 'new'
+
+    enabled = synonym('_enabled', descriptor=enabled)
+
+    @classmethod
+    def create_zone(cls, name, backend, **kwargs):
+        zone = driver.DriverManager(
+            namespace='opsy.monitoring.backend',
+            name=backend,
+            invoke_on_load=True,
+            invoke_args=(name,),
+            invoke_kwds=(kwargs)).driver
+        db.session.add(zone)  # pylint: disable=no-member
+        db.session.commit()
+        return zone
+
+    @classmethod
+    def delete_zone(cls, zone_id):
+        cls.query.filter(cls.id == zone_id).delete()
+        db.session.commit()
+
+    @classmethod
+    def update_zone(cls, zone_id, **kwargs):
+        zone = cls.get_by_id(zone_id)
+        for key, value in kwargs.items():
+            setattr(zone, key, value)
+        db.session.commit()
+        return zone
 
     @asyncio.coroutine
     def update_objects(self, app, model):
@@ -529,54 +592,21 @@ class Zone(CacheBase, db.Model):
             tasks.append(async_task(self.update_objects(app, model)))
         return tasks
 
-    def create_poller_metadata(self, app):
-        metadata = []
-        for model in self.models:
-            metadata.extend(model.create_poll_metadata(self.name))
-        return metadata
-
-    def delete_cache(self, app):
-        for model in self.models:
-            app.logger.info('Purging %s cache for %s' % (
-                model.__tablename__, self.name))
-            model.delete_poll_metadata(self.name)
-            model.query.filter(model.zone_name == self.name).delete()
-
     @classmethod
-    def get_dashboard_filters_list(cls, config, dashboard):
-        if config['monitoring']['dashboards'].get(dashboard) is None:
-            return ()
-        zones = config['monitoring']['dashboards'][dashboard].get('zone')
-        filters = ((zones, cls.name),)
-        return get_filters_list(filters)
-
-    @property
-    def pollers_health(self):
-        pollers = []
-        zone_healths = []
-        for model in self.models:
-            updated_at, status, message = model.last_poll_status(self.name)
-            pollers.append({'name': model.__tablename__,
-                            'updated_at': updated_at,
-                            'status': status,
-                            'message': message})
-            zone_healths.append(status == 'ok')
-        if all(zone_healths):
-            overall_health = 'ok'
-        elif any(zone_healths):
-            overall_health = 'warning'
-        else:
-            overall_health = 'critical'
-        return overall_health, pollers
+    def purge_cache(cls, zone_name, app):
+        for model in cls.models:
+            app.logger.info('Purging %s cache for %s' % (
+                model.__tablename__, zone_name))
+            model.query.filter(model.zone_name == zone_name).delete()
 
     @property
     def dict_out(self):
-        overall_health, pollers = self.pollers_health
         return {
             'name': self.name,
             'backend': self.backend,
-            'status': overall_health,
-            'pollers': pollers
+            'status': self.status,
+            'status_message': self.status_message,
+            'last_poll_time': self.last_poll_time
         }
 
     def __repr__(self):
@@ -619,6 +649,7 @@ class HttpZoneMixin(object):
 
     @asyncio.coroutine
     def update_objects(self, app, model):
+        del_objects = []
         init_objects = []
         results = []
         url = '%s/%s' % (self.base_url, model.uri)
@@ -629,15 +660,12 @@ class HttpZoneMixin(object):
                 results = model.filter_api_response(response)
         except aiohttp.errors.ClientError as exc:
             message = 'Error updating %s cache for %s: %s' % (
-                model.__tablename__, self.name, exc)
+                model.entity, self.name, exc)
             app.logger.error(message)
-            init_objects.extend(model.update_last_poll(
-                self.name, 'critical', message))
-            return [], init_objects
-        del_objects = [model.query.filter(model.zone_name == self.name)]
-        init_objects.extend(model.update_last_poll(self.name, 'ok', 'Success'))
+            raise PollFailure(message)
+        del_objects = [model.query.filter(model.zone_id == self.id)]
         for result in results:
-            init_objects.append(model(self.name, result))
+            init_objects.append(model(self, result))
         app.logger.info('Updated %s cache for %s' % (
-            model.__tablename__, self.name))
+            model.entity, self.name))
         return del_objects, init_objects
