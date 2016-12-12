@@ -141,8 +141,10 @@ class MonitoringPlugin(BaseOpsyPlugin):
             if Zone.get_by_name(name):
                 print('Zone "%s" already exists!' % name)
             else:
-                Zone.create_zone(name, backend, **zone_kwargs)
-                print('Zone "%s" created.' % name)
+                zone = Zone.create_zone(name, backend, **zone_kwargs)
+                properties = [(x.key, getattr(zone, x.key))
+                              for x in Zone.__table__.columns]  # pylint: disable=no-member
+                print_property_table(properties)
 
         @zone_cli.command('list')
         # pylint: disable=unused-variable
