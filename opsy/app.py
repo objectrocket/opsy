@@ -18,22 +18,22 @@ def create_app(config_file):
     app.jobs = []
     create_logging(app)
     db.init_app(app)
-    app.plugin_links = [{
-        'name': 'About',
-        'id': 'about',
-        'content': 'core_main.about',
-        'get_vars': None,
-        'type': 'link'
-    }]
+    # app.plugin_links = [{
+    #     'name': 'About',
+    #     'id': 'about',
+    #     'content': 'core_main.about',
+    #     'get_vars': None,
+    #     'type': 'link'
+    # }]
     for plugin in load_plugins(app):
         plugin.register_blueprints(app)
-        plugin.register_link_structure(app)
+        # plugin.register_link_structure(app)
     app.register_blueprint(core_main)
     app.json_encoder = OpsyJSONEncoder
 
-    @app.context_processor
-    def inject_links():  # pylint: disable=unused-variable
-        return dict(link_structures=app.plugin_links)
+    # @app.context_processor
+    # def inject_links():  # pylint: disable=unused-variable
+    #     return dict(link_structures=app.plugin_links)
 
     return app
 

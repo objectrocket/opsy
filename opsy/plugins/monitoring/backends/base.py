@@ -137,7 +137,7 @@ class Client(BaseEntity, db.Model):
 
     @property
     def silenced(self):
-        return bool(self.silences.filter(Silence.check_name == '').first())
+        return bool(self.silences.filter(Silence.silence_type == 'client').first())
 
     @property
     def dict_out(self):
@@ -377,7 +377,7 @@ class Event(BaseEntity, db.Model):
                     check_name=Event.check_name)))
             if 'clients' in hide_silenced:
                 events = events.filter(db.not_(Client.silences.any(
-                    client_name=Event.client_name, check_name='')))
+                    client_name=Event.client_name, silence_type='client')))
             if 'occurrences' in hide_silenced:
                 events = events.filter(db.not_(
                     Event.occurrences < Event.occurrences_threshold))
