@@ -11,6 +11,9 @@ Clone down the opsy source code
 Install opsy for development (ensure you are in your previously created virtualenv)
 `~/opsy $ pip install --editable .`
 
+A database should be created for opsy and initialized by running:
+`opsy init-db`
+
 Run the app via uWSGI
 `~/opsy $ uwsgi -M --wsgi-file contrib/uwsgi/wsgi.py --callable app --http-socket 0.0.0.0:5000 --processes 4 --mule=contrib/uwsgi/scheduler.py`
 
