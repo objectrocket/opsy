@@ -1,7 +1,8 @@
 from datetime import date
 import uuid
 import os.path
-from flask.json import JSONEncoder
+import sys
+from flask import json
 from flask._compat import text_type
 from flask_iniconfig import INIConfig
 from itsdangerous import json as _json
@@ -11,7 +12,7 @@ from stevedore import driver
 from opsy.exceptions import NoConfigFile, NoConfigSection
 
 
-class OpsyJSONEncoder(JSONEncoder):
+class OpsyJSONEncoder(json.JSONEncoder):
 
     def default(self, o):  # pylint: disable=method-hidden
         if isinstance(o, date):
@@ -77,10 +78,36 @@ def load_config(app, config_file):
     app.opsy_config = get_config_section_or_fail(app, 'opsy')
 
 
-def print_property_table(properties):
+def print_property_table(properties, ignore_fields=None):
     table = PrettyTable(['Property', 'Value'])
     table.align['Property'] = 'l'
     table.align['Value'] = 'l'
-    for key, value in properties:
+    for key, value in sorted(properties):
+        if ignore_fields and key in ignore_fields:
+            continue
         table.add_row([key, value])
     print(table)
+
+
+def gwrap(some_string):
+    """Returns green text."""
+    return "\033[92m%s\033[0m" % some_string
+
+
+def rwrap(some_string):
+    """Returns red text."""
+    return "\033[91m%s\033[0m" % some_string
+
+
+def print_error(error, title=None, exit_script=True):
+    if not title:
+        title = "Something broke"
+    print("[%s] %s" % (rwrap(title), error), file=sys.stderr)
+    if exit_script:
+        sys.exit(1)
+
+
+def print_notice(msg, title=None):
+    if not title:
+        title = "Notice"
+    print("[%s] %s" % (gwrap(title), msg))

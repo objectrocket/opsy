@@ -1,11 +1,11 @@
 import random
-import json
 from datetime import datetime, timedelta
 import click
 from flask import current_app
 from stevedore import extension
 from prettytable import PrettyTable
-from opsy.utils import print_property_table
+from opsy.exceptions import DuplicateName
+from opsy.utils import print_property_table, print_notice, print_error
 from opsy.plugins.base import BaseOpsyPlugin
 from opsy.plugins.monitoring.api import monitoring_api
 from opsy.plugins.monitoring.jobs import update_cache
@@ -14,6 +14,7 @@ from opsy.plugins.monitoring.backends.base import Client, Check, Result, \
     Event, Silence, Zone
 from opsy.plugins.monitoring.dashboard import Dashboard, DashboardFilter
 from opsy.plugins.monitoring.utils import ENTITY_MAP
+from opsy.plugins.monitoring.exceptions import BackendNotFound
 
 
 class MonitoringPlugin(BaseOpsyPlugin):
@@ -26,7 +27,8 @@ class MonitoringPlugin(BaseOpsyPlugin):
 
     def register_blueprints(self, app):
         app.register_blueprint(monitoring_main, url_prefix='/monitoring')
-        app.register_blueprint(monitoring_api, url_prefix='/api/monitoring')
+        app.register_blueprint(
+            monitoring_api, url_prefix='/api/plugins/monitoring')
 
     # def register_link_structure(self, app):
 
@@ -138,13 +140,13 @@ class MonitoringPlugin(BaseOpsyPlugin):
         def zone_create(name, backend, **kwargs):
             """Create a zone."""
             zone_kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            if Zone.get_by_name(name):
-                print('Zone "%s" already exists!' % name)
-            else:
-                zone = Zone.create_zone(name, backend, **zone_kwargs)
-                properties = [(x.key, getattr(zone, x.key))
-                              for x in Zone.__table__.columns]  # pylint: disable=no-member
-                print_property_table(properties)
+            try:
+                zone = Zone.create(name, backend, **zone_kwargs)
+            except (DuplicateName, BackendNotFound) as error:
+                print_error(error)
+            properties = [(key, value) for key, value in
+                          zone.get_dict(all_attrs=True).items()]
+            print_property_table(properties)
 
         @zone_cli.command('list')
         # pylint: disable=unused-variable
@@ -153,31 +155,37 @@ class MonitoringPlugin(BaseOpsyPlugin):
             columns = ['id', 'name', 'backend', 'status', 'status_message',
                        'enabled', 'created_at', 'updated_at']
             table = PrettyTable(columns)
-            for zone in Zone.filter():
-                table.add_row([getattr(zone, x) for x in columns])
+            for zone in Zone.get():
+                zone_dict = zone.get_dict(all_attrs=True)
+                table.add_row([zone_dict.get(x) for x in columns])
             print(table)
 
         @zone_cli.command('show')
-        @click.argument('zone_id', type=click.UUID)
+        @click.argument('zone_id_or_name', type=click.STRING)
         # pylint: disable=unused-variable
-        def zone_show(zone_id):
+        def zone_show(zone_id_or_name):
             """Show a zone."""
-            zone = Zone.get_by_id(zone_id)
-            if zone:
-                properties = [(x.key, getattr(zone, x.key))
-                              for x in Zone.__table__.columns]  # pylint: disable=no-member
-                print_property_table(properties)
+            try:
+                zone = Zone.get_by_id_or_name(zone_id_or_name)
+            except ValueError as error:
+                print_error(error)
+            properties = [(key, value) for key, value in
+                          zone.get_dict(all_attrs=True).items()]
+            print_property_table(properties)
 
         @zone_cli.command('delete')
-        @click.argument('zone_id', type=click.UUID)
+        @click.argument('zone_id_or_name', type=click.STRING)
         # pylint: disable=unused-variable
-        def zone_delete(zone_id):
+        def zone_delete(zone_id_or_name):
             """Delete a zone."""
-            Zone.delete_zone(zone_id)
-            print('Zone "%s" deleted.' % zone_id)
+            try:
+                Zone.delete_by_id_or_name(zone_id_or_name)
+            except ValueError as error:
+                print_error(error)
+            print_notice('Zone "%s" deleted.' % zone_id_or_name)
 
         @zone_cli.command('modify')
-        @click.argument('zone_id', type=click.UUID)
+        @click.argument('zone_id_or_name', type=click.STRING)
         @click.option('--name', type=click.STRING)
         @click.option('--host', type=click.STRING)
         @click.option('--path', type=click.STRING)
@@ -189,16 +197,16 @@ class MonitoringPlugin(BaseOpsyPlugin):
         @click.option('--verify_ssl', type=click.BOOL)
         @click.option('--enabled', type=click.BOOL)
         # pylint: disable=unused-variable
-        def zone_modify(zone_id, **kwargs):
+        def zone_modify(zone_id_or_name, **kwargs):
             """Modify a zone."""
             zone_kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            if Zone.get_by_id(zone_id):
-                zone = Zone.update_zone(zone_id, **zone_kwargs)
-                properties = [(x.key, getattr(zone, x.key))
-                              for x in Zone.__table__.columns]  # pylint: disable=no-member
-                print_property_table(properties)
-            else:
-                print('Could not find zone "%s"' % zone_id)
+            try:
+                zone = Zone.update_by_id_or_name(zone_id_or_name, **zone_kwargs)
+            except ValueError as error:
+                print_error(error)
+            properties = [(key, value) for key, value in
+                          zone.get_dict(all_attrs=True).items()]
+            print_property_table(properties)
 
         @monitoring_cli.group('dashboard')
         def dashboard_cli():
@@ -216,13 +224,20 @@ class MonitoringPlugin(BaseOpsyPlugin):
         def dashboard_create(name, **kwargs):
             """Create a dashboard."""
             dashboard_kwargs = {k: v for k, v in kwargs.items() if v is not None}
-            if Dashboard.get_by_name(name):
-                print('Dashboard "%s" already exists!' % name)
-                return
-            dashboard = Dashboard.create_dashboard(name, **dashboard_kwargs)
-            properties = [(x.key, getattr(dashboard, x.key))
-                          for x in Dashboard.__table__.columns]  # pylint: disable=no-member
-            print_property_table(properties)
+            try:
+                dashboard = Dashboard.create(name, **dashboard_kwargs)
+            except DuplicateName as error:
+                print_error(error)
+            properties = [(key, value) for key, value in
+                          dashboard.get_dict(all_attrs=True).items()]
+            print_property_table(properties, ignore_fields=['filters'])
+            print('\nFilters:')
+            columns = ['id', 'entity', 'filters', 'created_at', 'updated_at']
+            table = PrettyTable(columns)
+            for filter_object in dashboard.get_filters():  # pylint: disable=no-member
+                filter_object_dict = filter_object.get_dict(all_attrs=True)
+                table.add_row([filter_object_dict.get(x) for x in columns])
+            print(table)
 
         @dashboard_cli.command('list')
         # pylint: disable=unused-variable
@@ -232,148 +247,101 @@ class MonitoringPlugin(BaseOpsyPlugin):
                        'updated_at']
             table = PrettyTable(columns)
             for dashboard in Dashboard.get():
-                table.add_row([getattr(dashboard, x) for x in columns])
+                dashboard_dict = dashboard.get_dict(all_attrs=True)
+                table.add_row([dashboard_dict.get(x) for x in columns])
             print(table)
 
         @dashboard_cli.command('show')
-        @click.argument('dashboard_id', type=click.UUID)
+        @click.argument('dashboard_id_or_name', type=click.STRING)
         # pylint: disable=unused-variable
-        def dashboard_show(dashboard_id):
+        def dashboard_show(dashboard_id_or_name):
             """Show a dashboard."""
-            dashboard = Dashboard.get_by_id(dashboard_id)
-            if dashboard:
-                properties = [(x.key, getattr(dashboard, x.key))
-                              for x in Dashboard.__table__.columns]  # pylint: disable=no-member
-                properties += ('filters', json.loads(dashboard.filters))
-                print(properties)
-                print_property_table(properties)
-
-        @dashboard_cli.command('delete')
-        @click.argument('dashboard_id', type=click.UUID)
-        # pylint: disable=unused-variable
-        def dashboard_delete(dashboard_id):
-            """Delete a dashboard."""
-            Dashboard.delete_dashboard(dashboard_id)
-            print('Dashboard "%s" deleted.' % dashboard_id)
-
-        @dashboard_cli.command('modify')
-        @click.argument('dashboard_id', type=click.UUID)
-        @click.option('--name', type=click.STRING)
-        @click.option('--description', type=click.STRING)
-        @click.option('--enabled', type=click.BOOL)
-        # pylint: disable=unused-variable
-        def dashboard_modify(dashboard_id, **kwargs):
-            """Modify a dashboard."""
-            dashboard_kwargs = {k: v for k, v in kwargs.items()
-                                if v is not None}
-            if Dashboard.get_by_id(dashboard_id):
-                dashboard = Dashboard.update_dashboard(
-                    dashboard_id, **dashboard_kwargs)
-                properties = [(x.key, getattr(dashboard, x.key))
-                              for x in Dashboard.__table__.columns]  # pylint: disable=no-member
-                print_property_table(properties)
-            else:
-                print('Could not find dashboard "%s"' % dashboard_id)
-
-        @dashboard_cli.command('test')
-        @click.argument('dashboard_id', type=click.UUID)
-        @click.argument('entity_name', type=click.Choice(
-            ['client', 'check', 'result', 'event', 'silence', 'zone']))
-        # pylint: disable=unused-variable
-        def dashboard_test(dashboard_id, entity_name):
-            """Test a dashboard."""
-            entity = ENTITY_MAP[entity_name]
-            dashboard = Dashboard.get_by_id(dashboard_id)
-            filters_list = dashboard.get_filters_list(entity)
-            for entity_object in entity.query.filter(*filters_list).all():
-                print(entity_object)
-
-        @dashboard_cli.group('filter')
-        def dashboard_filter_cli():
-            """Commands related to dashboard filters."""
-            pass
-
-        @dashboard_filter_cli.command('create')
-        @click.argument('dashboard_id', type=click.UUID)
-        @click.argument('entity_name', type=click.Choice(['client', 'check',
-                                                          'zone']))
-        @click.argument('filters', type=click.STRING)
-        # pylint: disable=unused-variable
-        def dashboard_filter_create(dashboard_id, entity_name, filters):
-            """Create a dashboard's filter."""
-            dashboard = Dashboard.get_by_id(dashboard_id)
-            if not dashboard:
-                print('Could not find dashboard "%s"' % dashboard_id)
-            if dashboard.get_filter_by_entity(entity_name):
-                print('A filter for entity "%s" already exists on '
-                      'dashboard "%s".' % (entity_name, dashboard_id))
-            dashboard.create_filter(entity_name, filters)
-
-        @dashboard_filter_cli.command('list')
-        @click.argument('dashboard_id', type=click.UUID)
-        # pylint: disable=unused-variable
-        def dashboard_filter_list(dashboard_id):  # pylint: disable=unused-variable
-            """List a dashboard's filters."""
-            dashboard = Dashboard.get_by_id(dashboard_id)
-            if not dashboard:
-                print('Could not find dashboard "%s"' % dashboard_id)
-                return
+            try:
+                dashboard = Dashboard.get_by_id_or_name(dashboard_id_or_name)
+            except ValueError as error:
+                print_error(error)
+            properties = [(key, value) for key, value in
+                          dashboard.get_dict(all_attrs=True,
+                                             serialize=True).items()]
+            print_property_table(properties, ignore_fields=['filters'])
+            print('\nFilters:')
             columns = ['id', 'entity', 'filters', 'created_at', 'updated_at']
             table = PrettyTable(columns)
             for filter_object in dashboard.get_filters():
-                table.add_row([getattr(filter_object, x) for x in columns])
+                filter_object_dict = filter_object.get_dict(all_attrs=True)
+                table.add_row([filter_object_dict.get(x) for x in columns])
             print(table)
 
-        @dashboard_filter_cli.command('show')
-        @click.argument('dashboard_id', type=click.UUID)
-        @click.argument('entity_name', type=click.Choice(['client', 'check',
-                                                          'zone']))
+        @dashboard_cli.command('delete')
+        @click.argument('dashboard_id_or_name', type=click.STRING)
         # pylint: disable=unused-variable
-        def dashboard_filter_show(dashboard_id, entity_name):
-            """Show a dashboard's filters."""
-            dashboard = Dashboard.get_by_id(dashboard_id)
-            if not dashboard:
-                print('Could not find dashboard "%s"' % dashboard_id)
-                return
-            filter_object = dashboard.get_filter_by_entity(entity_name)
-            if not filter_object:
-                print('Could not find filter for entity "%s" for dashboard'
-                      ' "%s"' % (entity_name, dashboard_id))
-                return
-            properties = [(x.key, getattr(filter_object, x.key))
-                          for x in DashboardFilter.__table__.columns]  # pylint: disable=no-member
-            print_property_table(properties)
+        def dashboard_delete(dashboard_id_or_name):
+            """Delete a dashboard."""
+            try:
+                Dashboard.delete_by_id_or_name(dashboard_id_or_name)
+            except ValueError as error:
+                print_error(error)
+            print_notice('Dashboard "%s" deleted.' % dashboard_id_or_name)
 
-        @dashboard_filter_cli.command('delete')
-        @click.argument('dashboard_id', type=click.UUID)
+        @dashboard_cli.command('modify')
+        @click.argument('dashboard_id_or_name', type=click.STRING)
+        @click.option('--name', type=click.STRING)
+        @click.option('--description', type=click.STRING)
+        @click.option('--enabled', type=click.BOOL)
+        @click.option('--zone_filters', type=click.STRING)
+        @click.option('--client_filters', type=click.STRING)
+        @click.option('--check_filters', type=click.STRING)
+        # pylint: disable=unused-variable
+        def dashboard_modify(dashboard_id_or_name, **kwargs):
+            """Modify a dashboard."""
+            dashboard_kwargs = {k: v for k, v in kwargs.items()
+                                if v is not None}
+            try:
+                dashboard = Dashboard.update_by_id_or_name(
+                    dashboard_id_or_name, **dashboard_kwargs)
+            except ValueError as error:
+                print_error(error)
+            properties = [(key, value) for key, value in
+                          dashboard.get_dict(all_attrs=True).items()]
+            print_property_table(properties, ignore_fields=['filters'])
+            print('\nFilters:')
+            columns = ['id', 'entity', 'filters', 'created_at', 'updated_at']
+            table = PrettyTable(columns)
+            for filter_object in dashboard.get_filters():
+                filter_object_dict = filter_object.get_dict(all_attrs=True)
+                table.add_row([filter_object_dict.get(x) for x in columns])
+            print(table)
+
+        @dashboard_cli.command('delete-filter')
+        @click.argument('dashboard_id_or_name', type=click.STRING)
         @click.argument('entity_name', type=click.Choice(['client', 'check',
                                                           'zone']))
         # pylint: disable=unused-variable
-        def dashboard_filter_delete(dashboard_id, entity_name):
+        def dashboard_filter_delete(dashboard_id_or_name, entity_name):
             """Delete a dashboard's filter."""
-            dashboard = Dashboard.get_by_id(dashboard_id)
-            if not dashboard:
-                print('Could not find dashboard "%s"' % dashboard_id)
-                return
-            dashboard.delete_filter(entity_name)
-            print('Filter for entity "%s" for dashboard "%s" deleted.' % (
-                entity_name, dashboard_id))
+            try:
+                dashboard = Dashboard.get_by_id_or_name(dashboard_id_or_name)
+                dashboard.delete_filter(entity_name)
+            except ValueError as error:
+                print_error(error)
+            print_notice('Filter for entity "%s" for dashboard "%s" '
+                         'deleted.' % (entity_name, dashboard_id_or_name))
 
-        @dashboard_filter_cli.command('modify')
-        @click.argument('dashboard_id', type=click.UUID)
-        @click.argument('entity_name', type=click.Choice(['client', 'check',
-                                                          'zone']))
-        @click.argument('filters', type=click.STRING)
+        @dashboard_cli.command('test')
+        @click.argument('dashboard_id_or_name', type=click.STRING)
+        @click.argument('entity_name', type=click.Choice(
+            ['client', 'check', 'result', 'event', 'silence', 'zone']))
         # pylint: disable=unused-variable
-        def dashboard_filter_modify(dashboard_id, entity_name, filters):
-            """Modify a dashboard's filter."""
-            dashboard = Dashboard.get_by_id(dashboard_id)
-            if not dashboard:
-                print('Could not find dashboard "%s"' % dashboard_id)
-                return
-            dashboard.update_filter(entity_name, filters)
-            print('Filter for entity "%s" for dashboard "%s" updated.' % (
-                entity_name, dashboard_id))
+        def dashboard_test(dashboard_id_or_name, entity_name):
+            """Test a dashboard."""
+            entity = ENTITY_MAP[entity_name]
+            try:
+                dashboard = Dashboard.get_by_id_or_name(dashboard_id_or_name)
+            except ValueError as error:
+                print_error(error)
+            filters_list = dashboard.get_filters_list(entity)
+            for entity_object in entity.query.filter(*filters_list).all():
+                print(entity_object)
 
     def register_shell_context(self, shell_ctx):
         monitoring_ctx = {'Client': Client,

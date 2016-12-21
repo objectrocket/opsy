@@ -26,6 +26,7 @@ class SensuClient(SensuBase, Client):
         self.version = extra.get('version')
         self.address = extra.get('address')
         self.extra = json.dumps(extra)
+        super().__init__(zone, extra)
 
 
 class SensuCheck(SensuBase, Check):
@@ -39,6 +40,7 @@ class SensuCheck(SensuBase, Check):
         self.interval = extra.get('interval')
         self.command = extra.get('command')
         self.extra = json.dumps(extra)
+        super().__init__(zone, extra)
 
 
 class SensuResult(SensuBase, Result):
@@ -59,6 +61,7 @@ class SensuResult(SensuBase, Result):
         self.output = extra['check'].get('output')
         self.interval = extra['check'].get('interval')
         self.extra = json.dumps(extra)
+        super().__init__(zone, extra)
 
 
 class SensuEvent(SensuBase, Event):
@@ -85,6 +88,7 @@ class SensuEvent(SensuBase, Event):
         self.output = extra['check'].get('output')
         self.interval = extra['check'].get('interval')
         self.extra = json.dumps(extra)
+        super().__init__(zone, extra)
 
 
 class SensuSilence(SensuBase, Silence):
@@ -113,6 +117,7 @@ class SensuSilence(SensuBase, Silence):
             self.expire_at = datetime.utcfromtimestamp(
                 int(time() + int(extra['expire'])))
         self.extra = json.dumps(extra)
+        super().__init__(zone, extra)
 
     @classmethod
     def filter_api_response(cls, response):

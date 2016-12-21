@@ -16,3 +16,9 @@ class NoConfigSection(OpsyError):
     """Config section not found."""
 
     pass
+
+
+class DuplicateName(OpsyError):
+    """Resource with this name already exists."""
+
+    pass

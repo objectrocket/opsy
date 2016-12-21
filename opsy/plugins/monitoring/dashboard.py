@@ -1,8 +1,9 @@
-from opsy.db import db, TimeStampMixin, DictOut, IDedResource, NamedResource
+from opsy.db import db, TimeStampMixin, DictOut, BaseResource, NamedResource
 from opsy.utils import parse_include_excludes
+from opsy.plugins.monitoring.exceptions import DuplicateFilterEntity
 
 
-class Dashboard(IDedResource, NamedResource, TimeStampMixin, db.Model):
+class Dashboard(NamedResource, TimeStampMixin, db.Model):
 
     __tablename__ = 'monitoring_dashboards'
 
@@ -14,69 +15,62 @@ class Dashboard(IDedResource, NamedResource, TimeStampMixin, db.Model):
     filters = db.relationship('DashboardFilter', backref='dashboard',
                               lazy='dynamic', query_class=DictOut)
 
-    def __init__(self, name, description=None, enabled=0):
-        self.name = name
-        self.description = description
-        self.enabled = enabled
-
-    def __repr__(self):
-        return '<%s %s>' % (self.__class__.__name__, self.name)
-
     @classmethod
-    def create_dashboard(cls, name, description=None, enabled=0,
-                         zone_filters=None, client_filters=None,
-                         check_filters=None):
-        dashboard = cls(name, description=description, enabled=enabled)
-        db.session.add(dashboard)  # pylint: disable=no-member
-        db.session.commit()
+    def create(cls, name, description=None, enabled=0, zone_filters=None,
+               client_filters=None, check_filters=None):
+        dashboard = super().create(name, description=description,
+                                   enabled=enabled)
         if zone_filters:
-            dashboard.create_filter('zone', zone_filters)
+            dashboard.create_filter('zone', zone_filters)  # pylint: disable=no-member
         if client_filters:
-            dashboard.create_filter('client', client_filters)
+            dashboard.create_filter('client', client_filters)  # pylint: disable=no-member
         if check_filters:
-            dashboard.create_filter('check', check_filters)
+            dashboard.create_filter('check', check_filters)  # pylint: disable=no-member
         return dashboard
 
-    @classmethod
-    def delete_dashboard(cls, dashboard_id):
-        cls.query.filter(cls.id == dashboard_id).delete()
-        db.session.commit()
-
-    @classmethod
-    def update_dashboard(cls, dashboard_id, **kwargs):
-        dashboard = cls.get_by_id(dashboard_id)
-        for key, value in kwargs.items():
-            setattr(dashboard, key, value)
-        db.session.commit()
-        return dashboard
+    def update(self, **kwargs):
+        if kwargs.get('zone_filters'):
+            self.update_filter('zone', kwargs['zone_filters'])
+            del kwargs['zone_filters']
+        if kwargs.get('client_filters'):
+            self.update_filter('client', kwargs['client_filters'])
+            del kwargs['client_filters']
+        if kwargs.get('check_filters'):
+            self.update_filter('check', kwargs['check_filters'])
+            del kwargs['check_filters']
+        return super().update(**kwargs)
 
     def get_filters(self):
         filter_list = [DashboardFilter.dashboard_id == self.id]
         return DashboardFilter.query.filter(*filter_list).all()
 
     def get_filter_by_entity(self, entity_name):
-        filter_list = [DashboardFilter.dashboard_id == self.id]
-        filter_list.append(DashboardFilter.entity == entity_name)
-        return DashboardFilter.query.filter(*filter_list).first()
+        obj = DashboardFilter.query.filter(
+            DashboardFilter.dashboard_id == self.id,
+            DashboardFilter.entity == entity_name).first()
+        if not obj:
+            raise ValueError('No filter found for dashboard "%s" with entity '
+                             '"%s".' % (self.name, entity_name))
+        return obj
 
     def create_filter(self, entity_name, filters):
-        db.session.add(DashboardFilter(self.id, entity_name, filters))  # pylint: disable=no-member
-        db.session.commit()
+        try:
+            self.get_filter_by_entity(entity_name)
+            raise DuplicateFilterEntity('Filter already exists for entity'
+                                        ' "%s".' % (entity_name))
+        except ValueError:
+            pass
+        return DashboardFilter(self.id, entity_name, filters).save()
 
     def delete_filter(self, entity_name):
-        DashboardFilter.query.filter(
-            DashboardFilter.dashboard_id == self.id,
-            DashboardFilter.entity == entity_name).delete()
-        db.session.commit()
+        return self.get_filter_by_entity(entity_name).delete()
 
     def update_filter(self, entity_name, filters):
-        filter_object = self.get_filter_by_entity(entity_name)
-        if filter_object:
-            filter_object.filters = filters
-        else:
-            filter_object = self.create_filter(entity_name, filters)
-            db.session.add(filter_object)  # pylint: disable=no-member
-        db.session.commit()
+        try:
+            filter_object = self.get_filter_by_entity(entity_name)
+            return filter_object.update(filters=filters)
+        except ValueError:
+            return self.create_filter(entity_name, filters).save()
 
     def get_filters_list(self, entity):
         filters_list = []
@@ -105,8 +99,11 @@ class Dashboard(IDedResource, NamedResource, TimeStampMixin, db.Model):
             'filters': filters_dict
         }
 
+    def __repr__(self):
+        return '<%s %s>' % (self.__class__.__name__, self.name)
 
-class DashboardFilter(IDedResource, TimeStampMixin, db.Model):
+
+class DashboardFilter(BaseResource, TimeStampMixin, db.Model):
 
     __tablename__ = 'monitoring_dashboards_filters'
 
@@ -124,9 +121,8 @@ class DashboardFilter(IDedResource, TimeStampMixin, db.Model):
     )
 
     def __init__(self, dashboard_id, entity, filters):
-        self.dashboard_id = dashboard_id
-        self.entity = entity
-        self.filters = filters
+        super().__init__(dashboard_id=dashboard_id, entity=entity,
+                         filters=filters)
 
     @property
     def dict_out(self):

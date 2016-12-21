@@ -1,19 +1,19 @@
 import asyncio
+import uuid
 from datetime import datetime
 import aiohttp
 import opsy
 from opsy.utils import get_filters_list
-from opsy.db import db, TimeStampMixin, DictOut, IDedResource, NamedResource
+from opsy.db import db, TimeStampMixin, DictOut, NamedResource, BaseResource
 from opsy.plugins.monitoring.dashboard import Dashboard
 from opsy.plugins.monitoring.backends import async_task
-from opsy.plugins.monitoring.exceptions import PollFailure
+from opsy.plugins.monitoring.exceptions import PollFailure, BackendNotFound
 from sqlalchemy.orm import synonym
 from stevedore import driver
+from stevedore.exception import NoMatches
 
 
-class BaseCache(IDedResource):
-
-    query_class = DictOut
+class BaseCache(BaseResource):
 
     backend = db.Column(db.String(20))
     last_poll_time = db.Column(db.DateTime, default=None)
@@ -24,14 +24,16 @@ class BaseCache(IDedResource):
     }
 
     @classmethod
-    def _filter(cls, filters, dashboard=None):
-        filters_list = get_filters_list(filters)
+    def get(cls, filters=None, dashboard=None):
         obj_query = cls.query
         if dashboard:
             dashboard = Dashboard.get_by_name(dashboard)
-            dash_filters_list = dashboard.get_filters_list(cls)
+            dash_filters_list = dashboard.get_filters_list(cls)  # FIXME: throws a 500 if no dashboard exists
             obj_query = obj_query.filter(*dash_filters_list)
-        return obj_query.filter(*filters_list)
+        if filters:
+            filters_list = get_filters_list(filters)
+            return obj_query.filter(*filters_list)
+        return obj_query
 
 
 class BaseEntity(BaseCache):
@@ -112,13 +114,13 @@ class Client(BaseEntity, db.Model):
     )
 
     def __init__(self, zone, extra):
-        raise NotImplementedError
+        self.id = str(uuid.uuid3(uuid.UUID(self.zone_id), self.name))
 
     @classmethod
     def filter(cls, zones=None, clients=None, dashboard=None):
         filters = ((zones, cls.zone_name),
                    (clients, cls.name))
-        return cls._filter(filters, dashboard=dashboard)
+        return cls.get(filters=filters, dashboard=dashboard)
 
     @classmethod
     def get_filters_maps(cls):
@@ -142,6 +144,7 @@ class Client(BaseEntity, db.Model):
     @property
     def dict_out(self):
         return {
+            'id': self.id,
             'zone_name': self.zone_name,
             'backend': self.backend,
             'updated_at': self.updated_at,
@@ -184,13 +187,13 @@ class Check(BaseEntity, db.Model):
     )
 
     def __init__(self, zone, extra):
-        raise NotImplementedError
+        self.id = str(uuid.uuid3(uuid.UUID(self.zone_id), self.name))
 
     @classmethod
     def filter(cls, zones=None, checks=None, dashboard=None):
         filters = ((zones, cls.zone_name),
                    (checks, cls.name))
-        return cls._filter(filters, dashboard=dashboard)
+        return cls.get(filters=filters, dashboard=dashboard)
 
     @classmethod
     def get_filters_maps(cls):
@@ -199,6 +202,7 @@ class Check(BaseEntity, db.Model):
     @property
     def dict_out(self):
         return {
+            'id': self.id,
             'zone_name': self.zone_name,
             'backend': self.backend,
             'last_poll_time': self.last_poll_time,
@@ -256,14 +260,14 @@ class Result(BaseEntity, db.Model):
     )
 
     def __init__(self, zone, extra):
-        raise NotImplementedError
+        self.id = str(uuid.uuid3(uuid.UUID(self.zone_id), self.client_name + self.check_name))
 
     @classmethod
     def filter(cls, zones=None, clients=None, checks=None, dashboard=None):
         filters = ((zones, cls.zone_name),
                    (clients, cls.client_name),
                    (checks, cls.check_name))
-        return cls._filter(filters, dashboard=dashboard)
+        return cls.get(filters=filters, dashboard=dashboard)
 
     @classmethod
     def get_filters_maps(cls):
@@ -273,6 +277,7 @@ class Result(BaseEntity, db.Model):
     @property
     def dict_out(self):
         return {
+            'id': self.id,
             'zone_name': self.zone_name,
             'backend': self.backend,
             'last_poll_time': self.last_poll_time,
@@ -359,7 +364,7 @@ class Event(BaseEntity, db.Model):
     )
 
     def __init__(self, zone, extra):
-        raise NotImplementedError
+        self.id = str(uuid.uuid3(uuid.UUID(self.zone_id), self.client_name + self.check_name))
 
     @classmethod
     def filter(cls, zones=None, clients=None, checks=None, statuses=None,
@@ -368,7 +373,7 @@ class Event(BaseEntity, db.Model):
                    (clients, cls.client_name),
                    (checks, cls.check_name),
                    (statuses, cls.status))
-        events = cls._filter(filters, dashboard=dashboard)
+        events = cls.get(filters=filters, dashboard=dashboard)
         if hide_silenced:
             hide_silenced = hide_silenced.split(',')
             if 'checks' in hide_silenced:
@@ -391,6 +396,7 @@ class Event(BaseEntity, db.Model):
     @property
     def dict_out(self):
         return {
+            'id': self.id,
             'backend': self.backend,
             'zone_name': self.zone_name,
             'last_poll_time': self.last_poll_time,
@@ -432,7 +438,7 @@ class Silence(BaseEntity, db.Model):
     )
 
     def __init__(self, zone, extra):
-        raise NotImplementedError
+        self.id = str(uuid.uuid3(uuid.UUID(self.zone_id), self.silence_type + self.client_name + self.check_name))
 
     @classmethod
     def filter(cls, zones=None, clients=None, checks=None, types=None,
@@ -441,7 +447,7 @@ class Silence(BaseEntity, db.Model):
                    (clients, cls.client_name),
                    (checks, cls.check_name),
                    (types, Silence.silence_type))
-        return cls._filter(filters, dashboard=dashboard)
+        return cls.get(filters=filters, dashboard=dashboard)
 
     @classmethod
     def get_filters_maps(cls):
@@ -451,6 +457,7 @@ class Silence(BaseEntity, db.Model):
     @property
     def dict_out(self):
         return {
+            'id': self.id,
             'zone_name': self.zone_name,
             'backend': self.backend,
             'last_poll_time': self.last_poll_time,
@@ -467,7 +474,7 @@ class Silence(BaseEntity, db.Model):
                                   self.client_name, self.check_name)
 
 
-class Zone(NamedResource, TimeStampMixin, BaseCache, db.Model):
+class Zone(BaseCache, NamedResource, TimeStampMixin, db.Model):
 
     entity = 'zones'
     __tablename__ = 'monitoring_zones'
@@ -518,9 +525,20 @@ class Zone(NamedResource, TimeStampMixin, BaseCache, db.Model):
         self.verify_ssl = verify_ssl
 
     @classmethod
+    def create(cls, name, backend, **kwargs):
+        try:
+            backend_class = driver.DriverManager(
+                namespace='opsy.monitoring.backend',
+                name=backend,
+                invoke_on_load=False).driver
+        except NoMatches:
+            raise BackendNotFound('Unable to load backend "%s"' % backend)
+        return super().create(name, obj_class=backend_class, **kwargs)
+
+    @classmethod
     def filter(cls, zones=None, dashboard=None):
         filters = ((zones, cls.name),)
-        return cls._filter(filters, dashboard=dashboard)
+        return cls.get(filters=filters, dashboard=dashboard)
 
     @classmethod
     def get_filters_maps(cls):
@@ -557,31 +575,6 @@ class Zone(NamedResource, TimeStampMixin, BaseCache, db.Model):
 
     enabled = synonym('_enabled', descriptor=enabled)
 
-    @classmethod
-    def create_zone(cls, name, backend, **kwargs):
-        zone = driver.DriverManager(
-            namespace='opsy.monitoring.backend',
-            name=backend,
-            invoke_on_load=True,
-            invoke_args=(name,),
-            invoke_kwds=(kwargs)).driver
-        db.session.add(zone)  # pylint: disable=no-member
-        db.session.commit()
-        return zone
-
-    @classmethod
-    def delete_zone(cls, zone_id):
-        cls.query.filter(cls.id == zone_id).delete()
-        db.session.commit()
-
-    @classmethod
-    def update_zone(cls, zone_id, **kwargs):
-        zone = cls.get_by_id(zone_id)
-        for key, value in kwargs.items():
-            setattr(zone, key, value)
-        db.session.commit()
-        return zone
-
     @asyncio.coroutine
     def update_objects(self, app, model):
         raise NotImplementedError
@@ -602,6 +595,7 @@ class Zone(NamedResource, TimeStampMixin, BaseCache, db.Model):
     @property
     def dict_out(self):
         return {
+            'id': self.id,
             'name': self.name,
             'backend': self.backend,
             'status': self.status,
