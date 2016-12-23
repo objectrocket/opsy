@@ -1,6 +1,5 @@
 from flask import jsonify
 from flask_restful import Resource, reqparse
-from opsy.utils import get_filters_list
 from opsy.plugins.monitoring.backends.base import Client, Check, Result, \
     Event, Silence, Zone
 from opsy.plugins.monitoring.dashboard import Dashboard
@@ -16,15 +15,15 @@ class ZonesAPI(Resource):
 
     def get(self):
         args = self.reqparse.parse_args()
-        zones = Zone.filter(zones=args['zone'],
-                            dashboard=args['dashboard']).all_dict_out()
+        zones = Zone.get(name=args['zone'],
+                         dashboard=args['dashboard']).all_dict_out()
         return jsonify({'zones': zones})
 
 
 class ZoneAPI(Resource):
 
     def get(self, zone_name):  # pylint: disable=no-self-use
-        zones = Zone.filter(zones=zone_name).all_dict_out_or_404()
+        zones = Zone.get(name=zone_name).all_dict_out_or_404()
         return jsonify({'zones': zones})
 
 
@@ -45,9 +44,9 @@ class EventsAPI(Resource):
     def get(self):
         args = self.reqparse.parse_args()
 
-        events_query = Event.filter(
-            zones=args['zone'], clients=args['client'],
-            checks=args['check'], statuses=args['status'],
+        events_query = Event.get(
+            zone_name=args['zone'], client_name=args['client'],
+            check_name=args['check'], status=args['status'],
             hide_silenced=args['hide_silenced'], dashboard=args['dashboard'])
         if args['count_checks']:
             events = events_query.count_checks()
@@ -68,9 +67,9 @@ class ChecksAPI(Resource):
 
     def get(self):
         args = self.reqparse.parse_args()
-        checks = Check.filter(
-            zones=args['zone'],
-            checks=args['check']).all_dict_out(extra=args['extra'])
+        checks = Check.get(
+            zone_name=args['zone'], dashboard=args['dashboard'],
+            name=args['check']).all_dict_out(extra=args['extra'])
         return jsonify({'checks': checks})
 
 
@@ -83,9 +82,9 @@ class CheckAPI(Resource):
 
     def get(self, zone_name, check_name):
         args = self.reqparse.parse_args()
-        checks = Check.filter(
-            zones=args['zone'],
-            checks=args['check']).all_dict_out_or_404(extra=args['extra'])
+        checks = Check.get(
+            zone_name=args['zone'],
+            name=args['check']).all_dict_out_or_404(extra=args['extra'])
         return jsonify({'checks': checks})
 
 
@@ -103,9 +102,10 @@ class SilencesAPI(Resource):
 
     def get(self):
         args = self.reqparse.parse_args()
-        silences = Silence.filter(
-            zones=args['zone'], clients=args['client'], checks=args['check'],
-            types=args['type']).all_dict_out(extra=args['extra'])
+        silences = Silence.get(
+            zone_name=args['zone'], client_name=args['client'],
+            check_name=args['check'], silence_type=args['type'],
+            dashboard=args['dashboard']).all_dict_out(extra=args['extra'])
         return jsonify({'silences': silences})
 
 
@@ -121,8 +121,8 @@ class ClientsAPI(Resource):
 
     def get(self):
         args = self.reqparse.parse_args()
-        clients = Client.filter(
-            zones=args['zone'], clients=args['client'],
+        clients = Client.get(
+            zone_name=args['zone'], name=args['client'],
             dashboard=args['dashboard']).all_dict_out(extra=args['extra'])
         return jsonify({'clients': clients})
 
@@ -136,9 +136,9 @@ class ClientAPI(Resource):
 
     def get(self, zone_name, client_name):
         args = self.reqparse.parse_args()
-        clients = Client.filter(
-            zones=zone_name,
-            clients=client_name).all_dict_out_or_404(extra=args['extra'])
+        clients = Client.get(
+            zone_name=zone_name,
+            name=client_name).all_dict_out_or_404(extra=args['extra'])
         return jsonify({'clients': clients})
 
 
@@ -151,9 +151,9 @@ class ClientEventsAPI(Resource):
 
     def get(self, zone_name, client_name):
         args = self.reqparse.parse_args()
-        event_list = Event.filter(
-            zones=zone_name,
-            clients=client_name).all_dict_out(extra=args['extra'])
+        event_list = Event.get(
+            zone_name=zone_name,
+            client_name=client_name).all_dict_out(extra=args['extra'])
         return jsonify({'events': event_list})
 
 
@@ -166,10 +166,10 @@ class ClientEventAPI(Resource):
 
     def get(self, zone_name, client_name, check_name):
         args = self.reqparse.parse_args()
-        events = Event.filter(
-            zones=zone_name,
-            clients=client_name,
-            checks=check_name).all_dict_out_or_404(extra=args['extra'])
+        events = Event.get(
+            zone_name=zone_name,
+            client_name=client_name,
+            check_name=check_name).all_dict_out_or_404(extra=args['extra'])
         return jsonify({'events': events})
 
 
@@ -182,9 +182,9 @@ class ClientResultsAPI(Resource):
 
     def get(self, zone_name, client_name):
         args = self.reqparse.parse_args()
-        results = Result.filter(
-            zones=zone_name,
-            clients=client_name).all_dict_out(extra=args['extra'])
+        results = Result.get(
+            zone_name=zone_name,
+            client_name=client_name).all_dict_out(extra=args['extra'])
         return jsonify({'results': results})
 
 
@@ -197,10 +197,10 @@ class ClientResultAPI(Resource):
 
     def get(self, zone_name, client_name, check_name):
         args = self.reqparse.parse_args()
-        results = Result.filter(
-            zones=zone_name,
-            clients=client_name,
-            checks=check_name).all_dict_out_or_404(extra=args['extra'])
+        results = Result.get(
+            zone_name=zone_name,
+            client_name=client_name,
+            check_name=check_name).all_dict_out_or_404(extra=args['extra'])
         return jsonify({'results': results})
 
 
@@ -214,10 +214,10 @@ class ClientSilencesAPI(Resource):
 
     def get(self, zone_name, client_name):
         args = self.reqparse.parse_args()
-        silences = Silence.filter(
-            zones=zone_name,
-            clients=client_name,
-            types=args['type']).all_dict_out(extra=args['extra'])
+        silences = Silence.get(
+            zone_name=zone_name,
+            client_name=client_name,
+            silence_type=args['type']).all_dict_out(extra=args['extra'])
         return jsonify({'silences': silences})
 
 
@@ -230,10 +230,10 @@ class ClientSilenceAPI(Resource):
 
     def get(self, zone_name, client_name, check_name):
         args = self.reqparse.parse_args()
-        silences = Silence.filter(
-            zones=zone_name,
-            clients=client_name,
-            checks=check_name).all_dict_out_or_404(extra=args['extra'])
+        silences = Silence.get(
+            zone_name=zone_name,
+            client_name=client_name,
+            check_name=check_name).all_dict_out_or_404(extra=args['extra'])
         return jsonify({'silences': silences})
 
 
@@ -246,10 +246,7 @@ class DashboardsAPI(Resource):
 
     def get(self):
         args = self.reqparse.parse_args()
-        filters = ((args['name'], Dashboard.name),)
-        filters_list = get_filters_list(filters)
-        dashboard_list = Dashboard.get(
-            output_query=True, filters_list=filters_list).all_dict_out()
+        dashboard_list = Dashboard.get(name=args['name']).all_dict_out()
         return jsonify({'dashboards': dashboard_list})
 
 

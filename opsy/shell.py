@@ -86,7 +86,6 @@ def user_cli():
 @click.option('--full_name', type=click.STRING)
 @click.option('--enabled', type=click.BOOL)
 @click.option('--email', type=click.STRING)
-@click.option('--role_id', type=click.STRING)
 @click.option('--password', type=click.STRING)
 # pylint: disable=unused-variable
 def user_create(user_name, **kwargs):
@@ -106,7 +105,7 @@ def user_create(user_name, **kwargs):
 def user_password(user_id_or_name):
     """Change a user's password interactively."""
     try:
-        user = User.get_by_id_or_name(user_id_or_name)
+        user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
     except ValueError as error:
         print_error(error)
     password1 = getpass('New password: ')
@@ -136,7 +135,7 @@ def user_list():
 def user_show(user_id_or_name):
     """Show a user."""
     try:
-        user = User.get_by_id_or_name(user_id_or_name)
+        user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
     except ValueError as error:
         print_error(error)
     properties = [(key, value) for key, value in user.get_dict().items()]
@@ -213,7 +212,7 @@ def role_list():
 def role_show(role_id_or_name):
     """Show a role."""
     try:
-        role = Role.get_by_id_or_name(role_id_or_name)
+        role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
     except ValueError as error:
         print_error(error)
     properties = [(key, value) for key, value in role.get_dict().items()]
@@ -255,8 +254,8 @@ def role_modify(role_id_or_name, **kwargs):
 def role_add_user(role_id_or_name, user_id_or_name):
     """Add a user to a role."""
     try:
-        user = User.get_by_id_or_name(user_id_or_name)
-        role = Role.get_by_id_or_name(role_id_or_name)
+        user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
+        role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
     except ValueError as error:
         print_error(error)
     role.add_user(user)
@@ -271,8 +270,8 @@ def role_add_user(role_id_or_name, user_id_or_name):
 def role_remove_user(role_id_or_name, user_id_or_name):
     """Remove a user from a role."""
     try:
-        user = User.get_by_id_or_name(user_id_or_name)
-        role = Role.get_by_id_or_name(role_id_or_name)
+        user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
+        role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
     except ValueError as error:
         print_error(error)
     role.remove_user(user)
@@ -287,7 +286,7 @@ def role_remove_user(role_id_or_name, user_id_or_name):
 def role_add_permission(role_id_or_name, permission_name):
     """Add a permission to a role."""
     try:
-        role = Role.get_by_id_or_name(role_id_or_name)
+        role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
         role.add_permission(permission_name)
     except ValueError as error:
         print_error(error)
@@ -302,7 +301,7 @@ def role_add_permission(role_id_or_name, permission_name):
 def role_remove_permission(role_id_or_name, permission_name):
     """Remove a permission from a role."""
     try:
-        role = Role.get_by_id_or_name(role_id_or_name)
+        role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
         role.add_permission(permission_name)
     except ValueError as error:
         print_error(error)

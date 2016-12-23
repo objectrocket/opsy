@@ -1,6 +1,8 @@
 from datetime import datetime
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+# from itsdangerous import (TimedJSONWebSignatureSerializer
+#                           as Serializer, BadSignature, SignatureExpired)
 from opsy.db import db, TimeStampMixin, DictOut, BaseResource, NamedResource
 
 
@@ -42,8 +44,10 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
     email = db.Column(db.String(64), index=True)
     password_hash = db.Column(db.String(128))
     enabled = db.Column(db.Boolean, default=False)
+    settings = db.relationship('UserSetting')
     roles = db.relationship(
         'Role', secondary=role_mappings, backref='users')
+    # permissions =
 
     def __init__(self, name, enabled=0, full_name=None, email=None,
                  role_id=None, password=None, **kwargs):
@@ -62,16 +66,24 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
         return cls.get(filters=filters)
 
     @property
+    def is_active(self):
+        return self.enabled
+
+    @property
     def password(self):
         raise AttributeError('password is not a readable attribute.')
 
     @password.setter
     def password(self, password):
         self.password_hash = generate_password_hash(password)
-        db.session.commit()
+        self.save()
 
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
+
+    def get_setting_by_key(self, key):
+        return UserSetting.query.filter(UserSetting.key == key,
+                                        UserSetting.user_id == self.id).first()
 
     @property
     def dict_out(self):
@@ -87,6 +99,27 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
         }
 
 
+class UserSetting(BaseResource, TimeStampMixin, db.Model):
+
+    __tablename__ = 'user_settings'
+    query_class = DictOut
+
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id'))
+    key = db.Column(db.String(128))
+    value = db.Column(db.String(128))
+
+    @property
+    def dict_out(self):
+        return {
+            'id': self.id,
+            'user_id': self.user_id,
+            'key': self.key,
+            'value': self.value,
+            'created_at': self.created_at,
+            'updated_at': self.updated_at
+        }
+
+
 class Role(NamedResource, TimeStampMixin, db.Model):
 
     __tablename__ = 'roles'
@@ -97,13 +130,11 @@ class Role(NamedResource, TimeStampMixin, db.Model):
 
     def add_user(self, user):
         self.users.append(user)
-        db.session.add(self)
-        db.session.commit()
+        self.save()
 
     def remove_user(self, user):
         self.users.remove(user)
-        db.session.add(self)
-        db.session.commit()
+        self.save()
 
     def add_permission(self, permission_name):
         if permission_name in [x.permission_name for x in self.permissions]:
@@ -111,8 +142,7 @@ class Role(NamedResource, TimeStampMixin, db.Model):
                 permission_name, self.name))
         permission_obj = PermissionMapping(
             role_id=self.id, permission_name=permission_name)
-        db.session.add(permission_obj)
-        db.session.commit()
+        permission_obj.save()
         return permission_obj
 
     def remove_permission(self, permission_name):

@@ -3,7 +3,6 @@ import uuid
 from datetime import datetime
 import aiohttp
 import opsy
-from opsy.utils import get_filters_list
 from opsy.db import db, TimeStampMixin, DictOut, NamedResource, BaseResource
 from opsy.plugins.monitoring.dashboard import Dashboard
 from opsy.plugins.monitoring.backends import async_task
@@ -24,16 +23,15 @@ class BaseCache(BaseResource):
     }
 
     @classmethod
-    def get(cls, filters=None, dashboard=None):
-        obj_query = cls.query
-        if dashboard:
-            dashboard = Dashboard.get_by_name(dashboard)
-            dash_filters_list = dashboard.get_filters_list(cls)  # FIXME: throws a 500 if no dashboard exists
-            obj_query = obj_query.filter(*dash_filters_list)
-        if filters:
-            filters_list = get_filters_list(filters)
-            return obj_query.filter(*filters_list)
-        return obj_query
+    def get(cls, dashboard=None, **kwargs):
+        query = cls.query
+        try:
+            if dashboard:
+                dashboard = Dashboard.get_by_name(dashboard, error_on_none=True)
+                query = query.filter(*dashboard.get_filters_list(cls))
+        except ValueError:
+            pass
+        return super().get(query=query, **kwargs)
 
 
 class BaseEntity(BaseCache):
@@ -114,13 +112,8 @@ class Client(BaseEntity, db.Model):
     )
 
     def __init__(self, zone, extra):
-        self.id = str(uuid.uuid3(uuid.UUID(self.zone_id), self.name))
-
-    @classmethod
-    def filter(cls, zones=None, clients=None, dashboard=None):
-        filters = ((zones, cls.zone_name),
-                   (clients, cls.name))
-        return cls.get(filters=filters, dashboard=dashboard)
+        self.id = str(uuid.uuid3(  # pylint: disable=invalid-name
+            uuid.UUID(self.zone_id), self.name))
 
     @classmethod
     def get_filters_maps(cls):
@@ -187,13 +180,8 @@ class Check(BaseEntity, db.Model):
     )
 
     def __init__(self, zone, extra):
-        self.id = str(uuid.uuid3(uuid.UUID(self.zone_id), self.name))
-
-    @classmethod
-    def filter(cls, zones=None, checks=None, dashboard=None):
-        filters = ((zones, cls.zone_name),
-                   (checks, cls.name))
-        return cls.get(filters=filters, dashboard=dashboard)
+        self.id = str(uuid.uuid3(  # pylint: disable=invalid-name
+            uuid.UUID(self.zone_id), self.name))
 
     @classmethod
     def get_filters_maps(cls):
@@ -260,14 +248,8 @@ class Result(BaseEntity, db.Model):
     )
 
     def __init__(self, zone, extra):
-        self.id = str(uuid.uuid3(uuid.UUID(self.zone_id), self.client_name + self.check_name))
-
-    @classmethod
-    def filter(cls, zones=None, clients=None, checks=None, dashboard=None):
-        filters = ((zones, cls.zone_name),
-                   (clients, cls.client_name),
-                   (checks, cls.check_name))
-        return cls.get(filters=filters, dashboard=dashboard)
+        self.id = str(uuid.uuid3(  # pylint: disable=invalid-name
+            uuid.UUID(self.zone_id), self.client_name + self.check_name))
 
     @classmethod
     def get_filters_maps(cls):
@@ -364,16 +346,12 @@ class Event(BaseEntity, db.Model):
     )
 
     def __init__(self, zone, extra):
-        self.id = str(uuid.uuid3(uuid.UUID(self.zone_id), self.client_name + self.check_name))
+        self.id = str(uuid.uuid3(  # pylint: disable=invalid-name
+            uuid.UUID(self.zone_id), self.client_name + self.check_name))
 
     @classmethod
-    def filter(cls, zones=None, clients=None, checks=None, statuses=None,
-               hide_silenced=None, dashboard=None):
-        filters = ((zones, cls.zone_name),
-                   (clients, cls.client_name),
-                   (checks, cls.check_name),
-                   (statuses, cls.status))
-        events = cls.get(filters=filters, dashboard=dashboard)
+    def get(cls, hide_silenced=None, **kwargs):
+        events = super().get(**kwargs)
         if hide_silenced:
             hide_silenced = hide_silenced.split(',')
             if 'checks' in hide_silenced:
@@ -438,16 +416,8 @@ class Silence(BaseEntity, db.Model):
     )
 
     def __init__(self, zone, extra):
-        self.id = str(uuid.uuid3(uuid.UUID(self.zone_id), self.silence_type + self.client_name + self.check_name))
-
-    @classmethod
-    def filter(cls, zones=None, clients=None, checks=None, types=None,
-               dashboard=None):
-        filters = ((zones, cls.zone_name),
-                   (clients, cls.client_name),
-                   (checks, cls.check_name),
-                   (types, Silence.silence_type))
-        return cls.get(filters=filters, dashboard=dashboard)
+        self.id = str(uuid.uuid3(  # pylint: disable=invalid-name
+            uuid.UUID(self.zone_id), self.silence_type + self.client_name + self.check_name))
 
     @classmethod
     def get_filters_maps(cls):
@@ -534,11 +504,6 @@ class Zone(BaseCache, NamedResource, TimeStampMixin, db.Model):
         except NoMatches:
             raise BackendNotFound('Unable to load backend "%s"' % backend)
         return super().create(name, obj_class=backend_class, **kwargs)
-
-    @classmethod
-    def filter(cls, zones=None, dashboard=None):
-        filters = ((zones, cls.name),)
-        return cls.get(filters=filters, dashboard=dashboard)
 
     @classmethod
     def get_filters_maps(cls):

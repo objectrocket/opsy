@@ -45,27 +45,34 @@ class BaseResource(object):
         return obj.save()
 
     @classmethod
-    def get(cls, filters=None):
-        if filters:
-            filters_list = get_filters_list(filters)
-            return cls.query.filter(*filters_list)
-        else:
-            return cls.query
+    def get(cls, query=None, **kwargs):
+        if not query:
+            query = cls.query
+        if not kwargs:
+            return query
+        filters = []
+        for key, value in kwargs.items():
+            if isinstance(value, str):
+                filters.extend(get_filters_list([(value, getattr(cls, key))]))
+            else:
+                filters.append(getattr(cls, key) == value)
+        return query.filter(*filters)
 
     @classmethod
-    def get_by_id(cls, obj_id):
+    def get_by_id(cls, obj_id, error_on_none=False):
         obj = cls.query.filter(cls.id == obj_id).first()
-        if not obj:
-            raise KeyError('No %s found with id "%s"' % (cls.__name__, obj_id))
+        if error_on_none and not obj:
+            raise ValueError('No %s found with id "%s"' % (cls.__name__,
+                                                           obj_id))
         return obj
 
     @classmethod
     def delete_by_id(cls, obj_id):
-        return cls.get_by_id(obj_id).delete()
+        return cls.get_by_id(obj_id, error_on_none=True).delete()
 
     @classmethod
     def update_by_id(cls, obj_id, **kwargs):
-        return cls.get_by_id(obj_id).update(**kwargs)
+        return cls.get_by_id(obj_id, error_on_none=True).update(**kwargs)
 
     @property
     def dict_out(self):
@@ -120,7 +127,7 @@ class NamedResource(BaseResource):
     @classmethod
     def create(cls, name, obj_class=None, *args, **kwargs):
         try:
-            cls.get_by_name(name)
+            cls.get_by_name(name, error_on_none=True)
             raise DuplicateName('%s already exists with name "%s".' % (
                 cls.__name__, name))
         except ValueError:
@@ -132,39 +139,43 @@ class NamedResource(BaseResource):
         return obj.save()
 
     @classmethod
-    def get_by_name(cls, obj_name):
+    def get_by_name(cls, obj_name, error_on_none=False):
         obj = cls.query.filter(cls.name == obj_name).first()
-        if not obj:
+        if error_on_none and not obj:
             raise ValueError('No %s found with name "%s".' % (cls.__name__,
                                                               obj_name))
         return obj
 
     @classmethod
     def delete_by_name(cls, obj_name):
-        return cls.get_by_name(obj_name).delete()
+        return cls.get_by_name(obj_name, error_on_none=True).delete()
 
     @classmethod
     def update_by_name(cls, obj_name, **kwargs):
-        return cls.get_by_name(obj_name).update(**kwargs)
+        return cls.get_by_name(obj_name, error_on_none=True).update(**kwargs)
 
     @classmethod
-    def get_by_id_or_name(cls, obj_id_or_name):
+    def get_by_id_or_name(cls, obj_id_or_name, error_on_none=False):
         obj_by_id = cls.query.filter(cls.id == obj_id_or_name).first()
         if obj_by_id:
             return obj_by_id
         obj_by_name = cls.query.filter(cls.name == obj_id_or_name).first()
         if obj_by_name:
             return obj_by_name
+        if not error_on_none:
+            return None
         raise ValueError('No %s found with id or name "%s".' % (cls.__name__,
                                                                 obj_id_or_name))
 
     @classmethod
     def delete_by_id_or_name(cls, obj_id_or_name):
-        return cls.get_by_id_or_name(obj_id_or_name).delete()
+        return cls.get_by_id_or_name(obj_id_or_name,
+                                     error_on_none=True).delete()
 
     @classmethod
     def update_by_id_or_name(cls, obj_id_or_name, **kwargs):
-        return cls.get_by_id_or_name(obj_id_or_name).update(**kwargs)
+        return cls.get_by_id_or_name(obj_id_or_name,
+                                     error_on_none=True).update(**kwargs)
 
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.name)

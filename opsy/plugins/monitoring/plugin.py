@@ -30,54 +30,54 @@ class MonitoringPlugin(BaseOpsyPlugin):
         app.register_blueprint(
             monitoring_api, url_prefix='/api/plugins/monitoring')
 
-    # def register_link_structure(self, app):
+    def register_link_structure(self, app):  # pylint: disable=R0201
 
-    #     def get_link(view, name, link_id, show_dashboards=False):
-    #         with app.app_context():
-    #             dashboards = Dashboard.get()
-    #         if show_dashboards:
-    #             dropdown_links = [
-    #                 {
-    #                     'name': 'All %s' % name,
-    #                     'id': 'all_%s' % link_id,
-    #                     'content': view,
-    #                     'get_vars': None,
-    #                     'type': 'link'
-    #                 },
-    #                 {'type': 'divider'},
-    #                 {'type': 'header', 'name': 'Dashboards'}
-    #             ]
-    #             dropdown_links.extend([
-    #                 {
-    #                     'name': dashboard.name,
-    #                     'id': dashboard.name,
-    #                     'content': view,
-    #                     'get_vars': 'dashboard=%s' % dashboard.name,
-    #                     'type': 'link'
-    #                 } for dashboard in dashboards])
-    #             link = {
-    #                 'name': name,
-    #                 'id': link_id,
-    #                 'content': dropdown_links,
-    #                 'type': 'dropdown'
-    #             }
-    #         else:
-    #             link = {
-    #                 'name': name,
-    #                 'id': link_id,
-    #                 'content': view,
-    #                 'get_vars': None,
-    #                 'type': 'link'
-    #             }
-    #         return link
+        def get_link(view, name, link_id, show_dashboards=False):
+            with app.app_context():
+                dashboards = Dashboard.get()
+            if show_dashboards:
+                dropdown_links = [
+                    {
+                        'name': 'All %s' % name,
+                        'id': 'all_%s' % link_id,
+                        'content': view,
+                        'get_vars': None,
+                        'type': 'link'
+                    },
+                    {'type': 'divider'},
+                    {'type': 'header', 'name': 'Dashboards'}
+                ]
+                dropdown_links.extend([
+                    {
+                        'name': dashboard.name,
+                        'id': dashboard.name,
+                        'content': view,
+                        'get_vars': 'dashboard=%s' % dashboard.name,
+                        'type': 'link'
+                    } for dashboard in dashboards])
+                link = {
+                    'name': name,
+                    'id': link_id,
+                    'content': dropdown_links,
+                    'type': 'dropdown'
+                }
+            else:
+                link = {
+                    'name': name,
+                    'id': link_id,
+                    'content': view,
+                    'get_vars': None,
+                    'type': 'link'
+                }
+            return link
 
-    #     links = [
-    #         get_link('monitoring_main.events',
-    #                  'Events', 'events', show_dashboards=True),
-    #         get_link('monitoring_main.checks', 'Checks', 'checks'),
-    #         get_link('monitoring_main.clients', 'Clients', 'clients')
-    #     ]
-    #     app.plugin_links.extend(links)
+        links = [
+            get_link('monitoring_main.events',
+                     'Events', 'events', show_dashboards=True),
+            get_link('monitoring_main.checks', 'Checks', 'checks'),
+            get_link('monitoring_main.clients', 'Clients', 'clients')
+        ]
+        app.plugin_links.extend(links)
 
     def register_scheduler_jobs(self, app, run_once=False):
         with app.app_context():

@@ -29,5 +29,5 @@ script:
   # Python validations
   - find . -name \*.py -exec pep8 {} +
   # Ignoring missing docstrings for now
-  - find . -name \*.py -exec pep257 {} +
+  # - find . -name \*.py -exec pep257 {} +
   - pylint opsy
