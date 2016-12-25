@@ -23,7 +23,7 @@ def configure_extensions(app):
             return None
         from opsy.auth.models import User
         user = User.get_by_token(current_app, session_token)
-        if user.get_session_token(current_app) == session_token:
+        if user and user.get_session_token(current_app) == session_token:
             return user
 
     @login_manager.request_loader
@@ -33,7 +33,7 @@ def configure_extensions(app):
             return None
         from opsy.auth.models import User
         user = User.get_by_token(current_app, auth_token)
-        if user.get_auth_token(current_app).get('token') == auth_token:
+        if user and user.get_auth_token(current_app).get('token') == auth_token:
             return user
         return None
 
