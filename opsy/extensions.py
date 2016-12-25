@@ -1,5 +1,63 @@
-from flask_login import LoginManager
-from flask_principal import Principal
+from flask import current_app
+from flask_jsglue import JSGlue
+from flask_login import LoginManager, current_user
+from flask_principal import Principal, Identity, identity_loaded, UserNeed, \
+                            ActionNeed, AnonymousIdentity
+from flask_sqlalchemy import SQLAlchemy
 
+db = SQLAlchemy()  # pylint: disable=invalid-name
+jsglue = JSGlue()  # pylint: disable=invalid-name
 login_manager = LoginManager()  # pylint: disable=invalid-name
 principal = Principal()  # pylint: disable=invalid-name
+
+
+def configure_extensions(app):
+    db.init_app(app)
+    jsglue.init_app(app)
+    login_manager.init_app(app)
+    principal.init_app(app)
+
+    @login_manager.user_loader
+    def load_user(session_token):  # pylint: disable=unused-variable
+        if not session_token:
+            return None
+        from opsy.auth.models import User
+        user = User.get_by_token(current_app, session_token)
+        if user.get_session_token(current_app) == session_token:
+            return user
+
+    @login_manager.request_loader
+    def load_user_from_request(request):  # pylint: disable=unused-variable
+        auth_token = request.headers.get('x-auth-token')
+        if not auth_token:
+            return None
+        from opsy.auth.models import User
+        user = User.get_by_token(current_app, auth_token)
+        if user.get_auth_token(current_app).get('token') == auth_token:
+            return user
+        return None
+
+    @principal.identity_loader
+    def read_identity_from_flask_login():  # pylint: disable=unused-variable
+        if current_user.is_authenticated and current_user.is_active:
+            return Identity(current_user.id)
+        return AnonymousIdentity()
+
+    @identity_loaded.connect_via(app)  # pylint: disable=no-member
+    def on_identity_loaded(sender, identity):  # pylint: disable=unused-variable
+        from opsy.auth.access import needs
+        identity.user = current_user
+        all_needs = {}
+        for catalog in app.needs_catalog.values():
+            if catalog is None:
+                continue
+            for name, need in catalog.items():
+                all_needs[name] = need
+        if hasattr(current_user, 'id'):
+            identity.provides.add(UserNeed(current_user.id))
+        if current_user.is_authenticated and current_user.is_active:
+            identity.provides.add(ActionNeed('logged_in'))
+        if hasattr(current_user, 'permissions'):
+            for permission in current_user.permissions:
+                if all_needs.get(permission.name):
+                    identity.provides.add(all_needs.get(permission.name))

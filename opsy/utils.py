@@ -78,12 +78,12 @@ def load_config(app, config_file):
     app.opsy_config = get_config_section_or_fail(app, 'opsy')
 
 
-def print_property_table(properties, ignore_fields=None):
+def print_property_table(properties, ignore_attrs=None):
     table = PrettyTable(['Property', 'Value'])
     table.align['Property'] = 'l'
     table.align['Value'] = 'l'
     for key, value in sorted(properties):
-        if ignore_fields and key in ignore_fields:
+        if ignore_attrs and key in ignore_attrs:
             continue
         table.add_row([key, value])
     print(table)

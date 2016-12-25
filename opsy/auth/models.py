@@ -1,53 +1,84 @@
 from datetime import datetime
+from time import time
+from prettytable import PrettyTable
+from flask import current_app
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-# from itsdangerous import (TimedJSONWebSignatureSerializer
-#                           as Serializer, BadSignature, SignatureExpired)
-from opsy.db import db, TimeStampMixin, DictOut, BaseResource, NamedResource
+from itsdangerous import (TimedJSONWebSignatureSerializer
+                          as Serializer, BadSignature, SignatureExpired)
+from opsy.models import TimeStampMixin, BaseResource, NamedResource, OpsyQuery
+from opsy.extensions import db
+from opsy.exceptions import DuplicateError
 
 
 role_mappings = db.Table(  # pylint: disable=invalid-name
     'role_mappings',
     db.Model.metadata,
-    db.Column('role_id', db.String(36), db.ForeignKey('roles.id')),
-    db.Column('user_id', db.String(36), db.ForeignKey('users.id')),
+    db.Column('role_id', db.String(36), db.ForeignKey('roles.id',
+                                                      ondelete='CASCADE')),
+    db.Column('user_id', db.String(36), db.ForeignKey('users.id',
+                                                      ondelete='CASCADE')),
     db.Column('created_at', db.DateTime, default=datetime.utcnow()),
     db.Column('updated_at', db.DateTime, default=datetime.utcnow(),
               onupdate=datetime.utcnow()))
 
 
-class PermissionMapping(BaseResource, TimeStampMixin, db.Model):
+class Permission(BaseResource, TimeStampMixin, db.Model):
 
-    __tablename__ = 'permission_mappings'
-    query_class = DictOut
+    __tablename__ = 'permissions'
 
-    role_id = db.Column(db.String(36), db.ForeignKey('roles.id'))
-    permission_name = db.Column(db.String(128))
+    role_id = db.Column(db.String(36), db.ForeignKey('roles.id',
+                                                     ondelete='CASCADE'))
+    name = db.Column(db.String(128))
+
+    __table_args__ = (
+        db.UniqueConstraint('role_id', 'name'),
+    )
 
     @property
     def dict_out(self):
         return {
             'id': self.id,
             'role_id': self.role_id,
-            'permission_name': self.permission_name,
+            'name': self.name,
             'created_at': self.created_at,
             'updated_at': self.updated_at
         }
+
+    def __repr__(self):
+        return '<%s %s>' % (self.__class__.__name__, self.name)
 
 
 class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
 
     __tablename__ = 'users'
-    query_class = DictOut
 
+    backend = db.Column(db.String(20))
     full_name = db.Column(db.String(64))
     email = db.Column(db.String(64), index=True)
     password_hash = db.Column(db.String(128))
+    session_token = db.Column(db.String(220))
+    auth_token = db.Column(db.String(220))
     enabled = db.Column(db.Boolean, default=False)
-    settings = db.relationship('UserSetting')
-    roles = db.relationship(
-        'Role', secondary=role_mappings, backref='users')
-    # permissions =
+    settings = db.relationship('UserSetting', cascade='all, delete-orphan',
+                               backref='user', lazy='dynamic',
+                               query_class=OpsyQuery, )
+    roles = db.relationship('Role', secondary=role_mappings, backref='users')
+    permissions = db.relationship('Permission',
+                                  secondary='join(User, role_mappings, '
+                                  'User.id == role_mappings.c.user_id).join'
+                                  '(Role, role_mappings.c.role_id == Role.id)',
+                                  primaryjoin='Role.id == Permission.role_id')
+
+    __mapper_args__ = {
+        'polymorphic_on': backend,
+        'polymorphic_identity': 'internal'
+    }
+
+    __table_args__ = (
+        db.UniqueConstraint('session_token', name='sess_uc'),
+        db.UniqueConstraint('auth_token', name='auth_uc')
+    )
 
     def __init__(self, name, enabled=0, full_name=None, email=None,
                  role_id=None, password=None, **kwargs):
@@ -59,11 +90,71 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
         if password:
             self.password = password
 
+    def get_id(self):
+        return self.get_session_token(current_app)
+
+    def get_auth_token(self, app, expiration=86400, force_renew=False):
+        return self._get_token(app, 'auth', expiration=expiration,
+                               force_renew=force_renew)
+
+    def get_session_token(self, app, expiration=604800, force_renew=False):
+        return self._get_token(app, 'session', expiration=expiration,
+                               force_renew=force_renew)['token']
+
+    def _get_token(self, app, token_type, expiration=86400, force_renew=False):
+        if token_type == 'auth':
+            data = self._decode_token(app, self.auth_token)
+            token = self.auth_token
+        elif token_type == 'session':
+            data = self._decode_token(app, self.session_token)
+            token = self.session_token
+        else:
+            return None
+        if not force_renew and data:
+            expires_at = int(data['expires_at'])
+        else:
+            seri = Serializer(
+                app.config.get('SECRET_KEY'), expires_in=expiration)
+            expires_at = int(time() + expiration)
+            token = seri.dumps({'id': self.id,
+                                'expires_at': expires_at}).decode('ascii')
+            if token_type == 'auth':
+                self.auth_token = token
+            else:
+                self.session_token = token
+            self.save()
+        return {'token': token,
+                'expires_at': datetime.utcfromtimestamp(expires_at)}
+
     @classmethod
-    def filter(cls, names=None, emails=None):
-        filters = ((names, cls.name),
-                   (emails, cls.email))
-        return cls.get(filters=filters)
+    def get_by_token(cls, app, token):
+        data = cls._decode_token(app, token)
+        if not data:
+            return None
+        return cls.get(id=data['id']).first()
+
+    @staticmethod
+    def _decode_token(app, token):
+        if not token:
+            return None
+        seri = Serializer(app.config.get('SECRET_KEY'))
+        try:
+            data = seri.loads(token)
+        except SignatureExpired:
+            return None  # valid token, but expired
+        except BadSignature:
+            return None  # invalid token
+        return data
+
+    def pretty_print(self, all_attrs=False, ignore_attrs=None):
+        super().pretty_print(all_attrs=False, ignore_attrs=None)
+        print('\nSettings:')
+        columns = ['id', 'key', 'value', 'created_at', 'updated_at']
+        table = PrettyTable(columns)
+        for setting in self.settings.all():  # pylint: disable=no-member
+            setting_dict = setting.get_dict(all_attrs=True)
+            table.add_row([setting_dict.get(x) for x in columns])
+        print(table)
 
     @property
     def is_active(self):
@@ -76,14 +167,31 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
     @password.setter
     def password(self, password):
         self.password_hash = generate_password_hash(password)
+        self.session_token = None
+        self.auth_token = None
         self.save()
 
     def verify_password(self, password):
         return check_password_hash(self.password_hash, password)
 
-    def get_setting_by_key(self, key):
-        return UserSetting.query.filter(UserSetting.key == key,
-                                        UserSetting.user_id == self.id).first()
+    def add_setting(self, key, value):
+        if self.get_setting_by_key(key):
+            raise DuplicateError('Setting already exists with key "%s".' % key)
+        return UserSetting.create(user_id=self.id, key=key, value=value).save()
+
+    def remove_setting(self, key):
+        return self.get_setting_by_key(key, error_on_none=True).delete()
+
+    def modify_setting(self, key, value):
+        return self.get_setting_by_key(key, error_on_none=True).update(
+            value=value)
+
+    def get_setting(self, key, error_on_none=False):
+        setting = UserSetting.query.filter(UserSetting.user_id == self.id,
+                                           UserSetting.key == key).first()
+        if not setting and error_on_none:
+            raise ValueError('No setting found with key "%s".' % key)
+        return setting
 
     @property
     def dict_out(self):
@@ -93,6 +201,7 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
             'created_at': self.created_at,
             'updated_at': self.updated_at,
             'roles': [x.name for x in self.roles],
+            'permissions': [x.name for x in self.permissions],
             'email': self.email,
             'enabled': self.enabled,
             'full_name': self.full_name
@@ -102,11 +211,15 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
 class UserSetting(BaseResource, TimeStampMixin, db.Model):
 
     __tablename__ = 'user_settings'
-    query_class = DictOut
 
-    user_id = db.Column(db.String(36), db.ForeignKey('users.id'))
+    user_id = db.Column(db.String(36), db.ForeignKey('users.id',
+                                                     ondelete='CASCADE'))
     key = db.Column(db.String(128))
     value = db.Column(db.String(128))
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'key'),
+    )
 
     @property
     def dict_out(self):
@@ -123,35 +236,42 @@ class UserSetting(BaseResource, TimeStampMixin, db.Model):
 class Role(NamedResource, TimeStampMixin, db.Model):
 
     __tablename__ = 'roles'
-    query_class = DictOut
 
     description = db.Column(db.String(128))
-    permissions = db.relationship('PermissionMapping')
+    permissions = db.relationship('Permission', backref='role',
+                                  cascade='all, delete-orphan',
+                                  single_parent=True)
 
     def add_user(self, user):
+        if user in self.users:
+            raise ValueError('User "%s" already added to role "%s".' % (
+                user.name, self.name))
         self.users.append(user)
         self.save()
 
     def remove_user(self, user):
+        if user not in self.users:
+            raise ValueError('User "%s" not in role "%s".' % (
+                user.name, self.name))
         self.users.remove(user)
         self.save()
 
     def add_permission(self, permission_name):
-        if permission_name in [x.permission_name for x in self.permissions]:
+        if permission_name in [x.name for x in self.permissions]:
             raise ValueError('Permission "%s" already added to role "%s".' % (
                 permission_name, self.name))
-        permission_obj = PermissionMapping(
-            role_id=self.id, permission_name=permission_name)
+        permission_obj = Permission(
+            role_id=self.id, name=permission_name)
         permission_obj.save()
         return permission_obj
 
     def remove_permission(self, permission_name):
-        if permission_name not in [x.permission_name for x in self.permissions]:
+        if permission_name not in [x.name for x in self.permissions]:
             raise ValueError('Permission "%s" not in role "%s".' % (
                 permission_name, self.name))
-        PermissionMapping.query.filter(
-            PermissionMapping.role_id == self.id,
-            PermissionMapping.permission_name == permission_name).delete()
+        Permission.query.filter(
+            Permission.role_id == self.id,
+            Permission.name == permission_name).delete()
         db.session.commit()
 
     @property
@@ -162,6 +282,6 @@ class Role(NamedResource, TimeStampMixin, db.Model):
             'created_at': self.created_at,
             'updated_at': self.updated_at,
             'description': self.description,
-            'permissions': [x.permission_name for x in self.permissions],
+            'permissions': [x.name for x in self.permissions],
             'users': [x.name for x in self.users]
         }

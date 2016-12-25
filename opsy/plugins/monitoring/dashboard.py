@@ -1,19 +1,21 @@
-from opsy.db import db, TimeStampMixin, DictOut, BaseResource, NamedResource
+from prettytable import PrettyTable
+from opsy.models import TimeStampMixin, OpsyQuery, BaseResource, NamedResource
+from opsy.extensions import db
 from opsy.utils import parse_include_excludes
-from opsy.plugins.monitoring.exceptions import DuplicateFilterEntity
+from opsy.exceptions import DuplicateError
 
 
 class Dashboard(NamedResource, TimeStampMixin, db.Model):
 
     __tablename__ = 'monitoring_dashboards'
 
-    query_class = DictOut
+    query_class = OpsyQuery
 
     description = db.Column(db.String(256))
     enabled = db.Column('enabled', db.Boolean(), default=0)
 
     filters = db.relationship('DashboardFilter', backref='dashboard',
-                              lazy='dynamic', query_class=DictOut)
+                              lazy='dynamic', query_class=OpsyQuery)
 
     @classmethod
     def create(cls, name, description=None, enabled=0, zone_filters=None,
@@ -27,6 +29,16 @@ class Dashboard(NamedResource, TimeStampMixin, db.Model):
         if check_filters:
             dashboard.create_filter('check', check_filters)  # pylint: disable=no-member
         return dashboard
+
+    def pretty_print(self, all_attrs=False, ignore_attrs=None):
+        super().pretty_print(all_attrs=all_attrs, ignore_attrs=ignore_attrs)
+        print('\nFilters:')
+        columns = ['id', 'entity', 'filters', 'created_at', 'updated_at']
+        table = PrettyTable(columns)
+        for filter_object in self.get_filters():
+            filter_object_dict = filter_object.get_dict(all_attrs=True)
+            table.add_row([filter_object_dict.get(x) for x in columns])
+        print(table)
 
     def update(self, **kwargs):
         if kwargs.get('zone_filters'):
@@ -48,18 +60,12 @@ class Dashboard(NamedResource, TimeStampMixin, db.Model):
         obj = DashboardFilter.query.filter(
             DashboardFilter.dashboard_id == self.id,
             DashboardFilter.entity == entity_name).first()
-        if not obj:
-            raise ValueError('No filter found for dashboard "%s" with entity '
-                             '"%s".' % (self.name, entity_name))
         return obj
 
     def create_filter(self, entity_name, filters):
-        try:
-            self.get_filter_by_entity(entity_name)
-            raise DuplicateFilterEntity('Filter already exists for entity'
-                                        ' "%s".' % (entity_name))
-        except ValueError:
-            pass
+        if self.get_filter_by_entity(entity_name):
+            raise DuplicateError('Filter already exists for entity "%s".'
+                                 % (entity_name))
         return DashboardFilter(self.id, entity_name, filters).save()
 
     def delete_filter(self, entity_name):
@@ -107,7 +113,7 @@ class DashboardFilter(BaseResource, TimeStampMixin, db.Model):
 
     __tablename__ = 'monitoring_dashboards_filters'
 
-    query_class = DictOut
+    query_class = OpsyQuery
 
     dashboard_id = db.Column(db.String(36))
     entity = db.Column(db.String(16))

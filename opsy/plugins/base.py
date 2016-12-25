@@ -9,6 +9,20 @@ class BaseOpsyPlugin(object):
     def __init__(self, app):
         pass
 
+    @abc.abstractproperty
+    def name(self):
+        """This should just return the name of the plugin.
+
+        :rtype: String
+        """
+
+    @abc.abstractproperty
+    def needs(self):
+        """This should provide a dict of all the needs for this plugin.
+
+        :rtype: Dict
+        """
+
     def _parse_config(self, app):
         """Perform any config parsing necessary for the plugin.
 

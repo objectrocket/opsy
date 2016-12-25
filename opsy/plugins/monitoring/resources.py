@@ -3,6 +3,7 @@ from flask_restful import Resource, reqparse
 from opsy.plugins.monitoring.backends.base import Client, Check, Result, \
     Event, Silence, Zone
 from opsy.plugins.monitoring.dashboard import Dashboard
+from opsy.plugins.monitoring.access import permissions
 
 
 class ZonesAPI(Resource):
@@ -15,7 +16,7 @@ class ZonesAPI(Resource):
 
     def get(self):
         args = self.reqparse.parse_args()
-        zones = Zone.get(name=args['zone'],
+        zones = Zone.get(prune_none_values=True, name=args['zone'],
                          dashboard=args['dashboard']).all_dict_out()
         return jsonify({'zones': zones})
 
@@ -28,6 +29,7 @@ class ZoneAPI(Resource):
 
 
 class EventsAPI(Resource):
+    method_decorators = [permissions.get('view_events').require(403)]
 
     def __init__(self):
         self.reqparse = reqparse.RequestParser()
@@ -43,8 +45,8 @@ class EventsAPI(Resource):
 
     def get(self):
         args = self.reqparse.parse_args()
-
         events_query = Event.get(
+            prune_none_values=True,
             zone_name=args['zone'], client_name=args['client'],
             check_name=args['check'], status=args['status'],
             hide_silenced=args['hide_silenced'], dashboard=args['dashboard'])
@@ -68,6 +70,7 @@ class ChecksAPI(Resource):
     def get(self):
         args = self.reqparse.parse_args()
         checks = Check.get(
+            prune_none_values=True,
             zone_name=args['zone'], dashboard=args['dashboard'],
             name=args['check']).all_dict_out(extra=args['extra'])
         return jsonify({'checks': checks})
@@ -103,6 +106,7 @@ class SilencesAPI(Resource):
     def get(self):
         args = self.reqparse.parse_args()
         silences = Silence.get(
+            prune_none_values=True,
             zone_name=args['zone'], client_name=args['client'],
             check_name=args['check'], silence_type=args['type'],
             dashboard=args['dashboard']).all_dict_out(extra=args['extra'])
@@ -122,6 +126,7 @@ class ClientsAPI(Resource):
     def get(self):
         args = self.reqparse.parse_args()
         clients = Client.get(
+            prune_none_values=True,
             zone_name=args['zone'], name=args['client'],
             dashboard=args['dashboard']).all_dict_out(extra=args['extra'])
         return jsonify({'clients': clients})
@@ -215,8 +220,8 @@ class ClientSilencesAPI(Resource):
     def get(self, zone_name, client_name):
         args = self.reqparse.parse_args()
         silences = Silence.get(
-            zone_name=zone_name,
-            client_name=client_name,
+            prune_none_values=True,
+            zone_name=zone_name, client_name=client_name,
             silence_type=args['type']).all_dict_out(extra=args['extra'])
         return jsonify({'silences': silences})
 
@@ -246,12 +251,13 @@ class DashboardsAPI(Resource):
 
     def get(self):
         args = self.reqparse.parse_args()
-        dashboard_list = Dashboard.get(name=args['name']).all_dict_out()
+        dashboard_list = Dashboard.get(prune_none_values=True,
+                                       name=args['name']).all_dict_out()
         return jsonify({'dashboards': dashboard_list})
 
 
 class DashboardAPI(Resource):
 
     def get(self, dashboard_name):  # pylint: disable=no-self-use
-        dashboard_list = Dashboard.get_by_name(dashboard_name).dict_out
+        dashboard_list = Dashboard.get(name=dashboard_name).dict_out
         return jsonify({'dashboard': dashboard_list})

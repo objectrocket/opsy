@@ -5,14 +5,14 @@ from datetime import datetime
 from flask import current_app
 from sqlalchemy.exc import OperationalError
 from opsy.app import create_app
-from opsy.db import db
+from opsy.extensions import db
 from opsy.plugins.monitoring.backends.base import Zone
 from opsy.plugins.monitoring.exceptions import PollFailure
 
 
 def update_cache(zone_id, config_file):
     with create_app(config_file).app_context():
-        zone = Zone.get_by_id(zone_id)
+        zone = Zone.get(id=zone_id)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         tasks = zone.get_update_tasks(current_app)

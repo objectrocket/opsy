@@ -3,22 +3,24 @@ from logging.handlers import WatchedFileHandler
 from logging import StreamHandler
 import sys
 from flask import Flask
-from flask_jsglue import JSGlue
 from apscheduler.schedulers.blocking import BlockingScheduler
 from opsy.main import core_main
-from opsy.auth.models import User
-from opsy.db import db
-from opsy.extensions import login_manager
+from opsy.api import core_api
+from opsy.extensions import configure_extensions
 from opsy.utils import OpsyJSONEncoder, load_plugins, load_config
 from opsy.config import SCHEDULER_GRACE_TIME, LOG_FILE
+from opsy.auth.access import needs
 
 
 def create_app(config_file):
     app = Flask(__name__)
     load_config(app, config_file)
     create_logging(app)
+    app.needs_catalog = {'core': needs}
+    for plugin in load_plugins(app):
+        plugin.register_blueprints(app)
+        app.needs_catalog[plugin.name] = plugin.needs
     configure_extensions(app)
-    app.register_blueprint(core_main)
     app.json_encoder = OpsyJSONEncoder
     app.plugin_links = [{
         'name': 'About',
@@ -27,9 +29,8 @@ def create_app(config_file):
         'get_vars': None,
         'type': 'link'
     }]
-
-    for plugin in load_plugins(app):
-        plugin.register_blueprints(app)
+    app.register_blueprint(core_main)
+    app.register_blueprint(core_api)
 
     @app.before_first_request
     def load_plugin_links():  # pylint: disable=unused-variable
@@ -40,30 +41,6 @@ def create_app(config_file):
     def inject_links():  # pylint: disable=unused-variable
         return dict(link_structures=app.plugin_links)
     return app
-
-
-def configure_extensions(app):
-    JSGlue(app)
-
-    # flask_sqlalchemy
-    db.init_app(app)
-
-    # flask-login
-    # login_manager.login_view = 'frontend.login'
-    # login_manager.refresh_view = 'frontend.reauth'
-    #
-    @login_manager.user_loader
-    def load_user(user_id):  # pylint: disable=unused-variable
-        return User.get_by_id(user_id)
-
-    login_manager.init_app(app)
-    #
-    # # flask-principal (must be configed after flask-login!!!)
-    # principal.init_app(app)
-    #
-    # @identity_loaded.connect_via(app)
-    # def on_identity_loaded(sender, identity):
-    #     pass
 
 
 def create_logging(app):

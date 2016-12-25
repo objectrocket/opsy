@@ -1,13 +1,11 @@
 import uuid
 from datetime import datetime
-from flask_sqlalchemy import BaseQuery, SQLAlchemy
-from flask import abort
-from flask import json
-from opsy.utils import get_filters_list
-from opsy.exceptions import DuplicateName
-
-
-db = SQLAlchemy()  # pylint: disable=invalid-name
+from flask_sqlalchemy import BaseQuery
+from flask import abort, json
+from prettytable import PrettyTable
+from opsy.extensions import db
+from opsy.utils import get_filters_list, print_property_table
+from opsy.exceptions import DuplicateError
 
 
 class TimeStampMixin(object):
@@ -16,7 +14,7 @@ class TimeStampMixin(object):
                            onupdate=datetime.utcnow())
 
 
-class DictOut(BaseQuery):
+class OpsyQuery(BaseQuery):
 
     def all_dict_out(self, **kwargs):
         return [x.get_dict(**kwargs) for x in self]
@@ -27,10 +25,19 @@ class DictOut(BaseQuery):
             abort(404)
         return dict_list
 
+    def pretty_list(self, columns=None):
+        if not columns:
+            columns = self.column_descriptions[0]['entity'].__table__.columns.keys()
+        table = PrettyTable(columns)
+        for obj in self:
+            obj_dict = obj.get_dict(all_attrs=True)
+            table.add_row([obj_dict.get(x) for x in columns])
+        print(table)
+
 
 class BaseResource(object):
 
-    query_class = DictOut
+    query_class = OpsyQuery
 
     id = db.Column(db.String(36),  # pylint: disable=invalid-name
                    default=lambda: str(uuid.uuid4()), primary_key=True)
@@ -45,11 +52,13 @@ class BaseResource(object):
         return obj.save()
 
     @classmethod
-    def get(cls, query=None, **kwargs):
+    def get(cls, query=None, prune_none_values=False, **kwargs):
         if not query:
             query = cls.query
         if not kwargs:
             return query
+        if prune_none_values:
+            kwargs = {k: v for k, v in kwargs.items() if v is not None}
         filters = []
         for key, value in kwargs.items():
             if isinstance(value, str):
@@ -59,30 +68,38 @@ class BaseResource(object):
         return query.filter(*filters)
 
     @classmethod
-    def get_by_id(cls, obj_id, error_on_none=False):
-        obj = cls.query.filter(cls.id == obj_id).first()
-        if error_on_none and not obj:
-            raise ValueError('No %s found with id "%s"' % (cls.__name__,
-                                                           obj_id))
+    def get_or_fail(cls, **kwargs):
+        obj = cls.get(**kwargs)
+        if obj.count() == 0:
+            raise ValueError('No %s found with specified parameters.' %
+                             cls.__name__)
         return obj
 
     @classmethod
     def delete_by_id(cls, obj_id):
-        return cls.get_by_id(obj_id, error_on_none=True).delete()
+        return cls.get_or_fail(id=obj_id).first().delete()
 
     @classmethod
-    def update_by_id(cls, obj_id, **kwargs):
-        return cls.get_by_id(obj_id, error_on_none=True).update(**kwargs)
+    def update_by_id(cls, obj_id, prune_none_values=True, **kwargs):
+        return cls.get_or_fail(id=obj_id).first().update(
+            prune_none_values=prune_none_values, **kwargs)
 
     @property
     def dict_out(self):
-        return {}
+        return {key: getattr(self, key)
+                for key in self.__table__.columns.keys()}  # pylint: disable=no-member
 
-    def update(self, commit=True, **kwargs):
+    def pretty_print(self, all_attrs=False, ignore_attrs=None):
+        properties = [(key, value) for key, value in self.get_dict(  # pylint: disable=no-member
+            all_attrs=all_attrs).items()]
+        print_property_table(properties, ignore_attrs=ignore_attrs)
+
+    def update(self, commit=True, prune_none_values=True, **kwargs):
         kwargs.pop('id', None)
         for key, value in kwargs.items():
-            if value is not None:
-                setattr(self, key, value)
+            if value is None and prune_none_values is True:
+                continue
+            setattr(self, key, value)
         return commit and self.save() or self
 
     def save(self, commit=True):
@@ -126,12 +143,9 @@ class NamedResource(BaseResource):
 
     @classmethod
     def create(cls, name, obj_class=None, *args, **kwargs):
-        try:
-            cls.get_by_name(name, error_on_none=True)
-            raise DuplicateName('%s already exists with name "%s".' % (
+        if cls.get(name=name).first():
+            raise DuplicateError('%s already exists with name "%s".' % (
                 cls.__name__, name))
-        except ValueError:
-            pass
         if obj_class:
             obj = obj_class(name, *args, **kwargs)
         else:
@@ -139,33 +153,22 @@ class NamedResource(BaseResource):
         return obj.save()
 
     @classmethod
-    def get_by_name(cls, obj_name, error_on_none=False):
-        obj = cls.query.filter(cls.name == obj_name).first()
-        if error_on_none and not obj:
-            raise ValueError('No %s found with name "%s".' % (cls.__name__,
-                                                              obj_name))
-        return obj
-
-    @classmethod
     def delete_by_name(cls, obj_name):
-        return cls.get_by_name(obj_name, error_on_none=True).delete()
+        return cls.get_or_fail(name=obj_name).first().delete()
 
     @classmethod
-    def update_by_name(cls, obj_name, **kwargs):
-        return cls.get_by_name(obj_name, error_on_none=True).update(**kwargs)
+    def update_by_name(cls, obj_name, prune_none_values=True, **kwargs):
+        return cls.get_or_fail(name=obj_name).first().update(
+            prune_none_values=prune_none_values, **kwargs)
 
     @classmethod
     def get_by_id_or_name(cls, obj_id_or_name, error_on_none=False):
-        obj_by_id = cls.query.filter(cls.id == obj_id_or_name).first()
-        if obj_by_id:
-            return obj_by_id
-        obj_by_name = cls.query.filter(cls.name == obj_id_or_name).first()
-        if obj_by_name:
-            return obj_by_name
-        if not error_on_none:
-            return None
-        raise ValueError('No %s found with id or name "%s".' % (cls.__name__,
-                                                                obj_id_or_name))
+        obj = cls.query.filter(db.or_(
+            cls.name == obj_id_or_name, cls.id == obj_id_or_name)).first()
+        if not obj and error_on_none:
+            raise ValueError('No %s found with name or id "%s".' %
+                             (cls.__name__, obj_id_or_name))
+        return obj
 
     @classmethod
     def delete_by_id_or_name(cls, obj_id_or_name):

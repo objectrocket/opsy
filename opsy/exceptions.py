@@ -18,7 +18,7 @@ class NoConfigSection(OpsyError):
     pass
 
 
-class DuplicateName(OpsyError):
-    """Resource with this name already exists."""
+class DuplicateError(OpsyError):
+    """Resource with this attribute already exists."""
 
     pass

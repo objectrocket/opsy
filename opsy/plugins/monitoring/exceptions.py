@@ -11,7 +11,3 @@ class PollFailure(OpsyMonitoringError):
 
 class BackendNotFound(OpsyMonitoringError):
     """Unable to load specified backend."""
-
-
-class DuplicateFilterEntity(OpsyMonitoringError):
-    """Duplicate dashboard filter entity."""

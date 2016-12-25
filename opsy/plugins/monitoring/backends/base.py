@@ -2,8 +2,10 @@ import asyncio
 import uuid
 from datetime import datetime
 import aiohttp
+from flask import abort
 import opsy
-from opsy.db import db, TimeStampMixin, DictOut, NamedResource, BaseResource
+from opsy.models import TimeStampMixin, OpsyQuery, NamedResource, BaseResource
+from opsy.extensions import db
 from opsy.plugins.monitoring.dashboard import Dashboard
 from opsy.plugins.monitoring.backends import async_task
 from opsy.plugins.monitoring.exceptions import PollFailure, BackendNotFound
@@ -27,10 +29,10 @@ class BaseCache(BaseResource):
         query = cls.query
         try:
             if dashboard:
-                dashboard = Dashboard.get_by_name(dashboard, error_on_none=True)
+                dashboard = Dashboard.get_or_fail(name=dashboard)
                 query = query.filter(*dashboard.get_filters_list(cls))
         except ValueError:
-            pass
+            abort(500, 'Dashboard %s does not exist' % dashboard)
         return super().get(query=query, **kwargs)
 
 
@@ -39,7 +41,7 @@ class BaseEntity(BaseCache):
     entity = None
     zone_id = db.Column(db.String(36))
     zone_name = db.Column(db.String(64))
-    query_class = DictOut
+    query_class = OpsyQuery
     last_poll_time = db.Column(db.DateTime, default=datetime.utcnow())
     extra = db.Column(db.Text)
 
@@ -65,7 +67,7 @@ class Client(BaseEntity, db.Model):
     entity = 'clients'
     __tablename__ = 'monitoring_clients'
 
-    class ClientQuery(DictOut):
+    class ClientQuery(OpsyQuery):
 
         def all_dict_out(self, extra=False, **kwargs):
             clients_silences = self.outerjoin(Silence, db.and_(
@@ -90,17 +92,17 @@ class Client(BaseEntity, db.Model):
     address = db.Column(db.String(128))
 
     events = db.relationship('Event', backref='client', lazy='dynamic',
-                             query_class=DictOut, primaryjoin="and_("
+                             query_class=OpsyQuery, primaryjoin="and_("
                              "Client.zone_id==foreign(Event.zone_id), "
                              "Client.name==foreign(Event.client_name))")
 
     results = db.relationship('Result', backref='client', lazy='dynamic',
-                              query_class=DictOut, primaryjoin="and_("
+                              query_class=OpsyQuery, primaryjoin="and_("
                               "Client.zone_id==foreign(Result.zone_id), "
                               "Client.name==foreign(Result.client_name))")
 
     silences = db.relationship('Silence', backref='client', lazy='dynamic',
-                               query_class=DictOut, primaryjoin="and_("
+                               query_class=OpsyQuery, primaryjoin="and_("
                                "Client.zone_id == foreign("
                                "Silence.zone_id), "
                                "Client.name == foreign(Silence.client_name))")
@@ -163,12 +165,12 @@ class Check(BaseEntity, db.Model):
     command = db.Column(db.Text)
 
     results = db.relationship('Result', backref='check', lazy='dynamic',
-                              query_class=DictOut,
+                              query_class=OpsyQuery,
                               primaryjoin="and_("
                               "Check.zone_id==foreign(Result.zone_id), "
                               "Check.name==foreign(Result.check_name))")
     events = db.relationship('Event', backref='check', lazy='dynamic',
-                             query_class=DictOut,
+                             query_class=OpsyQuery,
                              primaryjoin="and_("
                              "Check.zone_id==foreign(Event.zone_id), "
                              "Check.name==foreign(Event.check_name))")
@@ -210,7 +212,7 @@ class Result(BaseEntity, db.Model):
     entity = 'results'
     __tablename__ = 'monitoring_results'
 
-    class ResultQuery(DictOut):
+    class ResultQuery(OpsyQuery):
 
         def all_dict_out(self, extra=False, **kwargs):
             clients_silences = self.outerjoin(Silence, db.and_(
@@ -282,7 +284,7 @@ class Event(BaseEntity, db.Model):
     entity = 'events'
     __tablename__ = 'monitoring_events'
 
-    class EventQuery(DictOut):
+    class EventQuery(OpsyQuery):
 
         def all_dict_out(self, extra=False, **kwargs):
             clients_silences = self.outerjoin(Silence, db.and_(
@@ -328,7 +330,7 @@ class Event(BaseEntity, db.Model):
     output = db.Column(db.Text)
 
     silences = db.relationship('Silence', backref='events', lazy='dynamic',
-                               query_class=DictOut,
+                               query_class=OpsyQuery,
                                primaryjoin="and_("
                                "Event.zone_id==foreign(Silence.zone_id),"
                                "Event.client_name==foreign("
@@ -465,15 +467,15 @@ class Zone(BaseCache, NamedResource, TimeStampMixin, db.Model):
     verify_ssl = db.Column(db.Boolean())
 
     clients = db.relationship('Client', backref='zone', lazy='dynamic',
-                              query_class=DictOut)
+                              query_class=OpsyQuery)
     checks = db.relationship('Check', backref='zone', lazy='dynamic',
-                             query_class=DictOut)
+                             query_class=OpsyQuery)
     events = db.relationship('Event', backref='zone', lazy='dynamic',
-                             query_class=DictOut)
+                             query_class=OpsyQuery)
     results = db.relationship('Result', backref='zone', lazy='dynamic',
-                              query_class=DictOut)
+                              query_class=OpsyQuery)
     silences = db.relationship('Silence', backref='zone', lazy='dynamic',
-                               query_class=DictOut)
+                               query_class=OpsyQuery)
 
     def __init__(self, name, enabled=0, host=None, path=None, protocol='http',
                  port=80, timeout=30, interval=30, username=None, password=None,
