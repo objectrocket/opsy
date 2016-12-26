@@ -34,8 +34,8 @@ class Login(Resource):
             identity_changed.send(
                 current_app._get_current_object(),  # pylint: disable=W0212
                 identity=Identity(user.id))
-            return jsonify(user.get_auth_token(current_app,
-                                               force_renew=force_renew))
+            return jsonify(user.get_session_token(current_app,
+                                                  force_renew=force_renew))
         else:
             abort(401)
 

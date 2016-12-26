@@ -3,6 +3,7 @@ from datetime import datetime, timedelta
 import click
 from flask import current_app
 from stevedore import extension
+from opsy.config import ConfigOption
 from opsy.exceptions import DuplicateError
 from opsy.utils import print_notice, print_error
 from opsy.plugins.base import BaseOpsyPlugin
@@ -26,6 +27,9 @@ class MonitoringPlugin(BaseOpsyPlugin):
                                    invoke_on_load=False)
 
     name = 'monitoring'
+    config_options = [
+        ConfigOption('uchiwa_url', str, False, None)
+    ]
     needs = needs
 
     def register_blueprints(self, app):

@@ -18,6 +18,12 @@ class NoConfigSection(OpsyError):
     pass
 
 
+class MissingConfigOption(OpsyError):
+    """Missing a required option in the config file."""
+
+    pass
+
+
 class DuplicateError(OpsyError):
     """Resource with this attribute already exists."""
 

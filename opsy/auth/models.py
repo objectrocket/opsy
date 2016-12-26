@@ -57,8 +57,7 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
     full_name = db.Column(db.String(64))
     email = db.Column(db.String(64), index=True)
     password_hash = db.Column(db.String(128))
-    session_token = db.Column(db.String(220))
-    auth_token = db.Column(db.String(220))
+    session_token = db.Column(db.String(255))
     enabled = db.Column(db.Boolean, default=False)
     settings = db.relationship('UserSetting', cascade='all, delete-orphan',
                                backref='user', lazy='dynamic',
@@ -77,7 +76,6 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
 
     __table_args__ = (
         db.UniqueConstraint('session_token', name='sess_uc'),
-        db.UniqueConstraint('auth_token', name='auth_uc')
     )
 
     def __init__(self, name, enabled=0, full_name=None, email=None,
@@ -93,37 +91,21 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
     def get_id(self):
         return self.get_session_token(current_app)
 
-    def get_auth_token(self, app, expiration=86400, force_renew=False):
-        return self._get_token(app, 'auth', expiration=expiration,
-                               force_renew=force_renew)
-
-    def get_session_token(self, app, expiration=604800, force_renew=False):
-        return self._get_token(app, 'session', expiration=expiration,
-                               force_renew=force_renew)['token']
-
-    def _get_token(self, app, token_type, expiration=86400, force_renew=False):
-        if token_type == 'auth':
-            data = self._decode_token(app, self.auth_token)
-            token = self.auth_token
-        elif token_type == 'session':
-            data = self._decode_token(app, self.session_token)
-            token = self.session_token
-        else:
-            return None
-        if not force_renew and data:
+    def get_session_token(self, app, force_renew=False):
+        ttl = app.config.opsy['session_token_ttl']
+        data = self._decode_token(app, self.session_token)
+        if data and int(data['expires_at']) > time() + ttl:
+            force_renew = True  # renew the token, the ttl has been reduced
+        if data and not force_renew:
             expires_at = int(data['expires_at'])
         else:
             seri = Serializer(
-                app.config.get('SECRET_KEY'), expires_in=expiration)
-            expires_at = int(time() + expiration)
-            token = seri.dumps({'id': self.id,
-                                'expires_at': expires_at}).decode('ascii')
-            if token_type == 'auth':
-                self.auth_token = token
-            else:
-                self.session_token = token
+                app.config['SECRET_KEY'], expires_in=ttl)
+            expires_at = int(time() + ttl)
+            self.session_token = seri.dumps(
+                {'id': self.id, 'expires_at': expires_at}).decode('ascii')
             self.save()
-        return {'token': token,
+        return {'token': self.session_token,
                 'expires_at': datetime.utcfromtimestamp(expires_at)}
 
     @classmethod
@@ -137,7 +119,7 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
     def _decode_token(app, token):
         if not token:
             return None
-        seri = Serializer(app.config.get('SECRET_KEY'))
+        seri = Serializer(app.config['SECRET_KEY'])
         try:
             data = seri.loads(token)
         except SignatureExpired:
@@ -168,7 +150,6 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
     def password(self, password):
         self.password_hash = generate_password_hash(password)
         self.session_token = None
-        self.auth_token = None
         self.save()
 
     def verify_password(self, password):

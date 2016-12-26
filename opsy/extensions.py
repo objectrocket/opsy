@@ -1,10 +1,12 @@
 from flask import current_app
+from flask_iniconfig import INIConfig
 from flask_jsglue import JSGlue
 from flask_login import LoginManager, current_user
 from flask_principal import Principal, Identity, identity_loaded, UserNeed, \
                             ActionNeed, AnonymousIdentity
 from flask_sqlalchemy import SQLAlchemy
 
+iniconfig = INIConfig()  # pylint: disable=invalid-name
 db = SQLAlchemy()  # pylint: disable=invalid-name
 jsglue = JSGlue()  # pylint: disable=invalid-name
 login_manager = LoginManager()  # pylint: disable=invalid-name
@@ -23,17 +25,17 @@ def configure_extensions(app):
             return None
         from opsy.auth.models import User
         user = User.get_by_token(current_app, session_token)
-        if user and user.get_session_token(current_app) == session_token:
+        if user and user.get_session_token(current_app).get('token') == session_token:
             return user
 
     @login_manager.request_loader
     def load_user_from_request(request):  # pylint: disable=unused-variable
-        auth_token = request.headers.get('x-auth-token')
-        if not auth_token:
+        session_token = request.headers.get('x-auth-token')
+        if not session_token:
             return None
         from opsy.auth.models import User
-        user = User.get_by_token(current_app, auth_token)
-        if user and user.get_auth_token(current_app).get('token') == auth_token:
+        user = User.get_by_token(current_app, session_token)
+        if user and user.get_session_token(current_app).get('token') == session_token:
             return user
         return None
 

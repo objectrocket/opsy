@@ -7,8 +7,8 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from opsy.main import core_main
 from opsy.api import core_api
 from opsy.extensions import configure_extensions
-from opsy.utils import OpsyJSONEncoder, load_plugins, load_config
-from opsy.config import SCHEDULER_GRACE_TIME, LOG_FILE
+from opsy.utils import OpsyJSONEncoder, load_plugins
+from opsy.config import load_config, validate_config
 from opsy.auth.access import needs
 
 
@@ -16,11 +16,14 @@ def create_app(config_file):
     app = Flask(__name__)
     load_config(app, config_file)
     create_logging(app)
-    app.needs_catalog = {'core': needs}
-    for plugin in load_plugins(app):
-        plugin.register_blueprints(app)
-        app.needs_catalog[plugin.name] = plugin.needs
     configure_extensions(app)
+    app.needs_catalog = {'core': needs}
+    app.register_blueprint(core_main)
+    app.register_blueprint(core_api)
+    for plugin in load_plugins(app):
+        validate_config(app, plugin=plugin)
+        app.needs_catalog[plugin.name] = plugin.needs
+        plugin.register_blueprints(app)
     app.json_encoder = OpsyJSONEncoder
     app.plugin_links = [{
         'name': 'About',
@@ -29,8 +32,6 @@ def create_app(config_file):
         'get_vars': None,
         'type': 'link'
     }]
-    app.register_blueprint(core_main)
-    app.register_blueprint(core_api)
 
     @app.before_first_request
     def load_plugin_links():  # pylint: disable=unused-variable
@@ -46,7 +47,7 @@ def create_app(config_file):
 def create_logging(app):
     if not app.debug:
         log_handlers = [StreamHandler(sys.stdout)]
-        log_file = app.opsy_config.get('log_file', LOG_FILE)
+        log_file = app.config.opsy['log_file']
         if log_file:
             log_handlers.append(WatchedFileHandler(log_file))
         formatter = logging.Formatter(
@@ -60,8 +61,7 @@ def create_logging(app):
 def create_scheduler(app, scheduler_class=BlockingScheduler):
     app.jobs = []
     job_defaults = {
-        'misfire_grace_time': int(app.opsy_config.get('scheduler_grace_time',
-                                                      SCHEDULER_GRACE_TIME))
+        'misfire_grace_time': app.config.opsy['scheduler_grace_time']
     }
     scheduler = scheduler_class(job_defaults=job_defaults)
     for plugin in load_plugins(app):

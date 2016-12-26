@@ -17,6 +17,13 @@ class BaseOpsyPlugin(object):
         """
 
     @abc.abstractproperty
+    def config_options(self):
+        """This should return a list of all config options for the plugin.
+
+        :rtype: list
+        """
+
+    @abc.abstractproperty
     def needs(self):
         """This should provide a dict of all the needs for this plugin.
 

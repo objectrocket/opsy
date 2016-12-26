@@ -32,7 +32,7 @@ class BaseCache(BaseResource):
                 dashboard = Dashboard.get_or_fail(name=dashboard)
                 query = query.filter(*dashboard.get_filters_list(cls))
         except ValueError:
-            abort(500, 'Dashboard %s does not exist' % dashboard)
+            abort(400, 'Dashboard %s does not exist' % dashboard)
         return super().get(query=query, **kwargs)
 
 

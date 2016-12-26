@@ -10,7 +10,7 @@ monitoring_main = Blueprint('monitoring_main', __name__,  # pylint: disable=inva
 @monitoring_main.context_processor
 def inject_data():
     data = {
-        'uchiwa_url': current_app.config['monitoring']['uchiwa_url']
+        'uchiwa_url': current_app.config.monitoring['uchiwa_url']
     }
     return data
 
