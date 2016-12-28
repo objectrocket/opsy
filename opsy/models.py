@@ -3,6 +3,7 @@ from datetime import datetime
 from flask_sqlalchemy import BaseQuery
 from flask import abort, json
 from prettytable import PrettyTable
+from sqlalchemy.orm.base import _entity_descriptor
 from opsy.extensions import db
 from opsy.utils import get_filters_list, print_property_table
 from opsy.exceptions import DuplicateError
@@ -16,6 +17,31 @@ class TimeStampMixin(object):
 
 class OpsyQuery(BaseQuery):
 
+    def wtfilter_by(self, prune_none_values=False, **kwargs):
+        if prune_none_values:
+            kwargs = {k: v for k, v in kwargs.items() if v is not None}
+        filters = []
+        for key, value in kwargs.items():
+            descriptor = _entity_descriptor(self._joinpoint_zero(), key)
+            if isinstance(value, str):
+                descriptor = _entity_descriptor(self._joinpoint_zero(), key)
+                filters.extend(get_filters_list([(value, descriptor)]))
+            else:
+                filters.append(descriptor == value)
+        return self.filter(*filters)
+
+    def get_or_fail(self, ident):
+        obj = self.get(ident)
+        if obj is None:
+            raise ValueError
+        return obj
+
+    def first_or_fail(self):
+        obj = self.first()
+        if obj is None:
+            raise ValueError
+        return obj
+
     def all_dict_out(self, **kwargs):
         return [x.get_dict(**kwargs) for x in self]
 
@@ -27,7 +53,7 @@ class OpsyQuery(BaseQuery):
 
     def pretty_list(self, columns=None):
         if not columns:
-            columns = self.column_descriptions[0]['entity'].__table__.columns.keys()
+            columns = self._joinpoint_zero().class_.__table__.columns.keys()
         table = PrettyTable(columns)
         for obj in self:
             obj_dict = obj.get_dict(all_attrs=True)
@@ -52,36 +78,12 @@ class BaseResource(object):
         return obj.save()
 
     @classmethod
-    def get(cls, query=None, prune_none_values=False, **kwargs):
-        if not query:
-            query = cls.query
-        if not kwargs:
-            return query
-        if prune_none_values:
-            kwargs = {k: v for k, v in kwargs.items() if v is not None}
-        filters = []
-        for key, value in kwargs.items():
-            if isinstance(value, str):
-                filters.extend(get_filters_list([(value, getattr(cls, key))]))
-            else:
-                filters.append(getattr(cls, key) == value)
-        return query.filter(*filters)
-
-    @classmethod
-    def get_or_fail(cls, **kwargs):
-        obj = cls.get(**kwargs)
-        if obj.count() == 0:
-            raise ValueError('No %s found with specified parameters.' %
-                             cls.__name__)
-        return obj
-
-    @classmethod
     def delete_by_id(cls, obj_id):
-        return cls.get_or_fail(id=obj_id).first().delete()
+        return cls.query.get(obj_id).first_or_fail().delete()
 
     @classmethod
     def update_by_id(cls, obj_id, prune_none_values=True, **kwargs):
-        return cls.get_or_fail(id=obj_id).first().update(
+        return cls.query.get(obj_id).first_or_fail().update(
             prune_none_values=prune_none_values, **kwargs)
 
     @property
@@ -143,7 +145,7 @@ class NamedResource(BaseResource):
 
     @classmethod
     def create(cls, name, obj_class=None, *args, **kwargs):
-        if cls.get(name=name).first():
+        if cls.query.filter_by(name=name).first():
             raise DuplicateError('%s already exists with name "%s".' % (
                 cls.__name__, name))
         if obj_class:
@@ -154,11 +156,11 @@ class NamedResource(BaseResource):
 
     @classmethod
     def delete_by_name(cls, obj_name):
-        return cls.get_or_fail(name=obj_name).first().delete()
+        return cls.query.filter_by(name=obj_name).first_or_fail().delete()
 
     @classmethod
     def update_by_name(cls, obj_name, prune_none_values=True, **kwargs):
-        return cls.get_or_fail(name=obj_name).first().update(
+        return cls.query.filter_by(name=obj_name).first_or_fail().update(
             prune_none_values=prune_none_values, **kwargs)
 
     @classmethod

@@ -20,7 +20,9 @@ CONFIG_OPTIONS = [
     ConfigOption('enabled_plugins', list, False, None),
     ConfigOption('scheduler_grace_time', int, False, 10),
     ConfigOption('log_file', str, False, None),
-    ConfigOption('session_token_ttl', int, False, 86400)
+    ConfigOption('session_token_ttl', int, False, 86400),
+    ConfigOption('base_permissions', list, False, None),
+    ConfigOption('logged_in_permissions', list, False, None)
 ]
 
 

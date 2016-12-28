@@ -14,7 +14,24 @@ from stevedore import driver
 from stevedore.exception import NoMatches
 
 
+class CacheQuery(OpsyQuery):
+
+    def wtfilter_by(self, dashboard=None, **kwargs):
+        filters = []
+        if dashboard:
+            try:
+                dashboard = Dashboard.query.filter_by(
+                    name=dashboard).first_or_fail()
+                filters = dashboard.get_filters_list(
+                    self._joinpoint_zero().class_)
+            except ValueError:
+                abort(400, 'Dashboard %s does not exist' % dashboard)
+        return super().wtfilter_by(**kwargs).filter(*filters)
+
+
 class BaseCache(BaseResource):
+
+    query_class = CacheQuery
 
     backend = db.Column(db.String(20))
     last_poll_time = db.Column(db.DateTime, default=None)
@@ -23,17 +40,6 @@ class BaseCache(BaseResource):
         'polymorphic_on': backend,
         'polymorphic_identity': 'base'
     }
-
-    @classmethod
-    def get(cls, dashboard=None, **kwargs):
-        query = cls.query
-        try:
-            if dashboard:
-                dashboard = Dashboard.get_or_fail(name=dashboard)
-                query = query.filter(*dashboard.get_filters_list(cls))
-        except ValueError:
-            abort(400, 'Dashboard %s does not exist' % dashboard)
-        return super().get(query=query, **kwargs)
 
 
 class BaseEntity(BaseCache):
@@ -67,7 +73,7 @@ class Client(BaseEntity, db.Model):
     entity = 'clients'
     __tablename__ = 'monitoring_clients'
 
-    class ClientQuery(OpsyQuery):
+    class ClientQuery(CacheQuery):
 
         def all_dict_out(self, extra=False, **kwargs):
             clients_silences = self.outerjoin(Silence, db.and_(
@@ -212,7 +218,7 @@ class Result(BaseEntity, db.Model):
     entity = 'results'
     __tablename__ = 'monitoring_results'
 
-    class ResultQuery(OpsyQuery):
+    class ResultQuery(CacheQuery):
 
         def all_dict_out(self, extra=False, **kwargs):
             clients_silences = self.outerjoin(Silence, db.and_(
@@ -284,7 +290,23 @@ class Event(BaseEntity, db.Model):
     entity = 'events'
     __tablename__ = 'monitoring_events'
 
-    class EventQuery(OpsyQuery):
+    class EventQuery(CacheQuery):
+
+        def wtfilter_by(self, hide_silenced=None, **kwargs):
+            filters = []
+            if hide_silenced:
+                hide_silenced = hide_silenced.split(',')
+                if 'checks' in hide_silenced:
+                    filters.append(db.not_(Event.silences.any(
+                        client_name=Event.client_name,
+                        check_name=Event.check_name)))
+                if 'clients' in hide_silenced:
+                    filters.append(db.not_(Client.silences.any(
+                        client_name=Event.client_name, silence_type='client')))
+                if 'occurrences' in hide_silenced:
+                    filters.append(db.not_(
+                        Event.occurrences < Event.occurrences_threshold))
+            return super().wtfilter_by(**kwargs).filter(*filters)
 
         def all_dict_out(self, extra=False, **kwargs):
             clients_silences = self.outerjoin(Silence, db.and_(
@@ -350,23 +372,6 @@ class Event(BaseEntity, db.Model):
     def __init__(self, zone, extra):
         self.id = str(uuid.uuid3(  # pylint: disable=invalid-name
             uuid.UUID(self.zone_id), self.client_name + self.check_name))
-
-    @classmethod
-    def get(cls, hide_silenced=None, **kwargs):
-        events = super().get(**kwargs)
-        if hide_silenced:
-            hide_silenced = hide_silenced.split(',')
-            if 'checks' in hide_silenced:
-                events = events.filter(db.not_(Event.silences.any(
-                    client_name=Event.client_name,
-                    check_name=Event.check_name)))
-            if 'clients' in hide_silenced:
-                events = events.filter(db.not_(Client.silences.any(
-                    client_name=Event.client_name, silence_type='client')))
-            if 'occurrences' in hide_silenced:
-                events = events.filter(db.not_(
-                    Event.occurrences < Event.occurrences_threshold))
-        return events
 
     @classmethod
     def get_filters_maps(cls):

@@ -62,12 +62,14 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
     settings = db.relationship('UserSetting', cascade='all, delete-orphan',
                                backref='user', lazy='dynamic',
                                query_class=OpsyQuery, )
-    roles = db.relationship('Role', secondary=role_mappings, backref='users')
-    permissions = db.relationship('Permission',
-                                  secondary='join(User, role_mappings, '
-                                  'User.id == role_mappings.c.user_id).join'
-                                  '(Role, role_mappings.c.role_id == Role.id)',
-                                  primaryjoin='Role.id == Permission.role_id')
+    roles = db.relationship('Role', secondary=role_mappings,
+                            lazy='dynamic', backref='users')
+    permissions = db.relationship('Permission', backref='users',
+                                  lazy='dynamic',
+                                  secondary='join(Permission, Role, '
+                                  'Permission.role_id == Role.id).join('
+                                  'role_mappings, '
+                                  'Role.id == role_mappings.c.role_id)')
 
     __mapper_args__ = {
         'polymorphic_on': backend,
@@ -89,7 +91,7 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
             self.password = password
 
     def get_id(self):
-        return self.get_session_token(current_app)
+        return self.get_session_token(current_app).get('token')
 
     def get_session_token(self, app, force_renew=False):
         ttl = app.config.opsy['session_token_ttl']
@@ -113,7 +115,7 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
         data = cls._decode_token(app, token)
         if not data:
             return None
-        return cls.get(id=data['id']).first()
+        return cls.query.get(data['id'])
 
     @staticmethod
     def _decode_token(app, token):
@@ -156,15 +158,17 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
         return check_password_hash(self.password_hash, password)
 
     def add_setting(self, key, value):
-        if self.get_setting_by_key(key):
+        if not key:
+            raise ValueError('Setting must have a key.')
+        if self.get_setting(key):
             raise DuplicateError('Setting already exists with key "%s".' % key)
         return UserSetting.create(user_id=self.id, key=key, value=value).save()
 
     def remove_setting(self, key):
-        return self.get_setting_by_key(key, error_on_none=True).delete()
+        return self.get_setting(key, error_on_none=True).delete()
 
     def modify_setting(self, key, value):
-        return self.get_setting_by_key(key, error_on_none=True).update(
+        return self.get_setting(key, error_on_none=True).update(
             value=value)
 
     def get_setting(self, key, error_on_none=False):
@@ -182,7 +186,7 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
             'created_at': self.created_at,
             'updated_at': self.updated_at,
             'roles': [x.name for x in self.roles],
-            'permissions': [x.name for x in self.permissions],
+            'permissions': list(set([x.name for x in self.permissions])),
             'email': self.email,
             'enabled': self.enabled,
             'full_name': self.full_name

@@ -41,7 +41,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
 
         def get_link(view, name, link_id, show_dashboards=False):
             with app.app_context():
-                dashboards = Dashboard.get()
+                dashboards = Dashboard.query.all()
             if show_dashboards:
                 dropdown_links = [
                     {
@@ -158,7 +158,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
             """List all zones."""
             columns = ['id', 'name', 'backend', 'status', 'status_message',
                        'enabled', 'created_at', 'updated_at']
-            Zone.get().pretty_list(columns)
+            Zone.query.pretty_list(columns)
 
         @zone_cli.command('show')
         @click.argument('zone_id_or_name', type=click.STRING)
@@ -232,7 +232,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
             """List all dashboards."""
             columns = ['id', 'name', 'description', 'enabled', 'created_at',
                        'updated_at']
-            Dashboard.get().pretty_list(columns)
+            Dashboard.query.pretty_list(columns)
 
         @dashboard_cli.command('show')
         @click.argument('dashboard_id_or_name', type=click.STRING)

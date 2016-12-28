@@ -46,7 +46,7 @@ def configure_extensions(app):
         return AnonymousIdentity()
 
     @identity_loaded.connect_via(app)  # pylint: disable=no-member
-    def on_identity_loaded(sender, identity):  # pylint: disable=unused-variable
+    def on_identity_loaded(sender, identity):  # pylint: disable=unused-variable,R0912
         from opsy.auth.access import needs
         identity.user = current_user
         all_needs = {}
@@ -55,11 +55,21 @@ def configure_extensions(app):
                 continue
             for name, need in catalog.items():
                 all_needs[name] = need
-        if hasattr(current_user, 'id'):
-            identity.provides.add(UserNeed(current_user.id))
+        if app.config.opsy['base_permissions']:
+            for permission_name in app.config.opsy['base_permissions']:
+                if all_needs.get(permission_name):
+                    identity.provides.add(all_needs.get(permission_name))
         if current_user.is_authenticated and current_user.is_active:
+            if hasattr(current_user, 'id'):
+                identity.provides.add(UserNeed(current_user.id))
             identity.provides.add(ActionNeed('logged_in'))
-        if hasattr(current_user, 'permissions'):
-            for permission in current_user.permissions:
-                if all_needs.get(permission.name):
-                    identity.provides.add(all_needs.get(permission.name))
+            if app.config.opsy['logged_in_permissions']:
+                for permission_name in app.config.opsy['logged_in_permissions']:
+                    if all_needs.get(permission_name):
+                        identity.provides.add(all_needs.get(permission_name))
+            if hasattr(current_user, 'permissions'):
+                permissions = list(set([x.name for x in  # Dedup
+                                        current_user.permissions]))
+                for permission in permissions:
+                    if all_needs.get(permission):
+                        identity.provides.add(all_needs.get(permission))

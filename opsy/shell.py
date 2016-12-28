@@ -83,7 +83,7 @@ def permission_list():
     columns = ['name', 'description']
     print('\ncore app:')
     table = PrettyTable(columns, sortby='name')
-    table.align['name'] = 'r'
+    table.align['name'] = 'l'
     table.align['description'] = 'l'
     for name, need in current_app.needs_catalog.get('core').items():
         table.add_row([name, need.doc])
@@ -92,7 +92,7 @@ def permission_list():
     for plugin in sorted(needs_catalog.keys()):
         print('\n%s plugin:' % plugin)
         table = PrettyTable(columns, sortby='name')
-        table.align['name'] = 'r'
+        table.align['name'] = 'l'
         table.align['description'] = 'l'
         for name, need in needs_catalog.get(plugin).items():
             table.add_row([name, need.doc])
@@ -144,7 +144,7 @@ def user_list():
     """List all users."""
     columns = ['id', 'name', 'full_name', 'email', 'enabled', 'created_at',
                'updated_at', 'roles']
-    User.get().pretty_list(columns)
+    User.query.pretty_list(columns)
 
 
 @user_cli.command('show')
@@ -260,7 +260,7 @@ def role_create(role_name, **kwargs):
 def role_list():
     """List all roles."""
     columns = ['id', 'name', 'description', 'created_at', 'updated_at']
-    Role.get().pretty_list(columns)
+    Role.query.pretty_list(columns)
 
 
 @role_cli.command('show')
@@ -304,14 +304,16 @@ def role_modify(role_id_or_name, **kwargs):
 
 @role_cli.command('add-user')
 @click.argument('role_id_or_name', type=click.STRING)
-@click.argument('user_id_or_name', type=click.STRING)
+@click.argument('user_ids_or_names', type=click.STRING, nargs=-1)
 # pylint: disable=unused-variable
-def role_add_user(role_id_or_name, user_id_or_name):
-    """Add a user to a role."""
+def role_add_user(role_id_or_name, user_ids_or_names):
+    """Add a users to a role."""
     try:
-        user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
         role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
-        role.add_user(user)
+        for user_id_or_name in user_ids_or_names:
+            user = User.get_by_id_or_name(user_id_or_name,
+                                          error_on_none=True)
+            role.add_user(user)
     except ValueError as error:
         print_error(error)
     role.pretty_print()
@@ -319,14 +321,16 @@ def role_add_user(role_id_or_name, user_id_or_name):
 
 @role_cli.command('remove-user')
 @click.argument('role_id_or_name', type=click.STRING)
-@click.argument('user_id_or_name', type=click.STRING)
+@click.argument('user_ids_or_names', type=click.STRING, nargs=-1)
 # pylint: disable=unused-variable
-def role_remove_user(role_id_or_name, user_id_or_name):
-    """Remove a user from a role."""
+def role_remove_user(role_id_or_name, user_ids_or_names):
+    """Remove a users from a role."""
     try:
-        user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
         role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
-        role.remove_user(user)
+        for user_id_or_name in user_ids_or_names:
+            user = User.get_by_id_or_name(user_id_or_name,
+                                          error_on_none=True)
+            role.remove_user(user)
     except ValueError as error:
         print_error(error)
     role.pretty_print()
@@ -334,13 +338,14 @@ def role_remove_user(role_id_or_name, user_id_or_name):
 
 @role_cli.command('add-permission')
 @click.argument('role_id_or_name', type=click.STRING)
-@click.argument('permission_name', type=click.STRING)
+@click.argument('permission_names', type=click.STRING, nargs=-1)
 # pylint: disable=unused-variable
-def role_add_permission(role_id_or_name, permission_name):
-    """Add a permission to a role."""
+def role_add_permission(role_id_or_name, permission_names):
+    """Add a permissions to a role."""
     try:
         role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
-        role.add_permission(permission_name)
+        for permission_name in permission_names:
+            role.add_permission(permission_name)
     except ValueError as error:
         print_error(error)
     role.pretty_print()
@@ -348,13 +353,14 @@ def role_add_permission(role_id_or_name, permission_name):
 
 @role_cli.command('remove-permission')
 @click.argument('role_id_or_name', type=click.STRING)
-@click.argument('permission_name', type=click.STRING)
+@click.argument('permission_names', type=click.STRING, nargs=-1)
 # pylint: disable=unused-variable
-def role_remove_permission(role_id_or_name, permission_name):
-    """Remove a permission from a role."""
+def role_remove_permission(role_id_or_name, permission_names):
+    """Remove a permissions from a role."""
     try:
         role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
-        role.remove_permission(permission_name)
+        for permission_name in permission_name:
+            role.remove_permission(permission_name)
     except ValueError as error:
         print_error(error)
     role.pretty_print()
