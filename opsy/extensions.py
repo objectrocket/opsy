@@ -3,7 +3,7 @@ from flask_iniconfig import INIConfig
 from flask_jsglue import JSGlue
 from flask_login import LoginManager, current_user
 from flask_principal import Principal, Identity, identity_loaded, UserNeed, \
-                            ActionNeed, AnonymousIdentity
+    ActionNeed, AnonymousIdentity
 from flask_sqlalchemy import SQLAlchemy
 
 iniconfig = INIConfig()  # pylint: disable=invalid-name
@@ -47,7 +47,6 @@ def configure_extensions(app):
 
     @identity_loaded.connect_via(app)  # pylint: disable=no-member
     def on_identity_loaded(sender, identity):  # pylint: disable=unused-variable,R0912
-        from opsy.auth.access import needs
         identity.user = current_user
         all_needs = {}
         for catalog in app.needs_catalog.values():

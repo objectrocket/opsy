@@ -93,7 +93,7 @@ class BaseResource(object):
 
     def pretty_print(self, all_attrs=False, ignore_attrs=None):
         properties = [(key, value) for key, value in self.get_dict(  # pylint: disable=no-member
-            all_attrs=all_attrs).items()]
+            all_attrs=all_attrs).items()]  # pylint: disable=no-member
         print_property_table(properties, ignore_attrs=ignore_attrs)
 
     def update(self, commit=True, prune_none_values=True, **kwargs):
