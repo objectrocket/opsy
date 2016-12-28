@@ -6,6 +6,14 @@ from opsy.exceptions import NoConfigFile, NoConfigSection, MissingConfigOption
 
 MappedFlaskConfigOption = namedtuple(  # pylint: disable=invalid-name
     'ConfigOption', ['flask_mapping', 'name', 'type', 'required', 'default'])
+'''
+flask_mapping: map this config option to this global level flask config.
+name: the name of the config option.
+type: expected type from the config file.
+required: will complain if true and the option is missing from the config.
+default: the default value to set this to if it is missing from the config.
+'''
+
 ConfigOption = partial(  # pylint: disable=invalid-name
     MappedFlaskConfigOption, None)
 
@@ -22,7 +30,8 @@ CONFIG_OPTIONS = [
     ConfigOption('log_file', str, False, None),
     ConfigOption('session_token_ttl', int, False, 86400),
     ConfigOption('base_permissions', list, False, None),
-    ConfigOption('logged_in_permissions', list, False, None)
+    ConfigOption('logged_in_permissions', list, False, None),
+    ConfigOption('enable_ldap', bool, False, False),
 ]
 
 

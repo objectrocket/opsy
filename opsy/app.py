@@ -17,6 +17,7 @@ def create_app(config_file):
     load_config(app, config_file)
     create_logging(app)
     configure_extensions(app)
+    app.jobs = []  # FIXME: Need to handle scheduled jobs better.
     app.needs_catalog = {'core': needs}
     app.register_blueprint(core_main)
     app.register_blueprint(core_api)
@@ -59,7 +60,6 @@ def create_logging(app):
 
 
 def create_scheduler(app, scheduler_class=BlockingScheduler):
-    app.jobs = []
     job_defaults = {
         'misfire_grace_time': app.config.opsy['scheduler_grace_time']
     }

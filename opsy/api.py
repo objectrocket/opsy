@@ -1,7 +1,6 @@
 from flask import abort, current_app, flash, redirect, request, Blueprint, jsonify, url_for
 from flask_restful import Api, Resource, reqparse
-from flask_login import login_user, logout_user, current_user
-from flask_principal import identity_changed, Identity, AnonymousIdentity
+from flask_login import current_user
 from opsy.auth.access import permissions
 from opsy.auth.models import User
 from opsy.exceptions import DuplicateError
@@ -24,16 +23,13 @@ class Login(Resource):
     def get(self):  # pylint: disable=no-self-use
         if not permissions.get('logged_in').can():
             abort(401)
-        return "Hello %s" % current_user.name
+        return jsonify(current_user.get_session_token(current_app))
 
     def post(self):
         args = self.reqparse.parse_args()
         user = User.query.wtfilter_by(name=args['username']).first()
-        if user and user.verify_password(args['password']) and user.is_active:
-            login_user(user, remember=args['remember_me'])
-            identity_changed.send(
-                current_app._get_current_object(),  # pylint: disable=W0212
-                identity=Identity(user.id))
+        if user and user.login(current_app, args['password'],
+                               remember=args['remember_me']):
             if request.is_json:
                 return jsonify(user.get_session_token(
                     current_app, force_renew=args['force_renew']))
@@ -43,16 +39,13 @@ class Login(Resource):
             abort(401, 'Username or password incorrect.')
         else:
             flash('Username or password incorrect.')
-            return redirect(url_for('core_main.login'))
+            return redirect(url_for('core_main.about'))
 
 
 class Logout(Resource):
 
     def get(self):  # pylint: disable=no-self-use
-        logout_user()
-        identity_changed.send(
-            current_app._get_current_object(),  # pylint: disable=W0212
-            identity=AnonymousIdentity())
+        current_user.logout(current_app)
         return redirect(url_for('core_main.about'))
 
 
@@ -67,6 +60,7 @@ class UsersAPI(Resource):
         super().__init__()
 
     def post(self):
+        self.reqparse.replace_argument('name', required=True)
         args = self.reqparse.parse_args()
         if not permissions.get('users_create').can():
             abort(403)
@@ -92,16 +86,27 @@ class UserAPI(Resource):
             return jsonify({'users': [user.get_dict()]})
         abort(403)
 
+    def delete(self, user_name):  # pylint: disable=no-self-use
+        if not permissions.get('users_delete').can():
+            abort(403)
+        user = User.query.wtfilter_by(name=user_name).first()
+        if not user:
+            abort(404)
+        user.delete()
+        return ('', 202)
+
 
 class UserSettingsAPI(Resource):
 
     def __init__(self):
         self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('key', required=True, location='json')
-        self.reqparse.add_argument('value', required=True, location='json')
+        self.reqparse.add_argument('key')
+        self.reqparse.add_argument('value')
         super().__init__()
 
     def post(self, user_name):
+        self.reqparse.replace_argument('key', required=True)
+        self.reqparse.replace_argument('value', required=True)
         args = self.reqparse.parse_args()
         user = User.query.wtfilter_by(name=user_name).first()
         if not (user and permissions.get('user_update')(user.id).can()):
