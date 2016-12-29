@@ -244,6 +244,7 @@ def role_cli():
 
 @role_cli.command('create')
 @click.argument('role_name', type=click.STRING)
+@click.option('--ldap_group', type=click.STRING)
 @click.option('--description', type=click.STRING)
 # pylint: disable=unused-variable
 def role_create(role_name, **kwargs):
@@ -290,6 +291,7 @@ def role_delete(role_id_or_name):
 @role_cli.command('modify')
 @click.argument('role_id_or_name', type=click.STRING)
 @click.option('--description', type=click.STRING)
+@click.option('--ldap_group', type=click.STRING)
 @click.option('--name', type=click.STRING)
 # pylint: disable=unused-variable
 def role_modify(role_id_or_name, **kwargs):

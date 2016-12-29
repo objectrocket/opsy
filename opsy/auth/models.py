@@ -93,15 +93,23 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
             result = ldap_manager.authenticate(username, password)
             if not result.status == AuthenticationResponseStatus.success:
                 return False
+            full_name_attr = app.config.opsy['ldap_user_full_name_attr']
+            email_attr = app.config.opsy['ldap_user_email_attr']
+            group_name_attr = app.config.opsy['ldap_group_name_attr']
+            email = result.user_info[email_attr]
+            full_name = result.user_info[full_name_attr]
             user = cls.query.wtfilter_by(name=result.user_id).first()
             if not user:
-                user = cls.create(username)
-            groups = [x['cn'] for x in result.user_groups]
+                user = cls.create(username, email=email, full_name=full_name)
+            else:
+                user.update(email=email, full_name=full_name)
+            groups = [x[group_name_attr] for x in result.user_groups]
+            for role in user.roles:
+                if role.ldap_group:
+                    user.roles.remove(role)
             for role in Role.query.filter(Role.ldap_group.in_(groups)).all():
-                try:
-                    role.add_user(user)
-                except ValueError:
-                    pass
+                user.roles.append(role)
+            user.save()
         else:
             user = cls.query.wtfilter_by(name=username).first()
             if not user.verify_password(password):
@@ -119,7 +127,7 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
         if app.config.opsy['enable_ldap']:
             for role in self.roles:
                 if role.ldap_group:
-                    role.remove_user(self)
+                    self.roles.remove(role)
         self.save()
         logout_user()
         identity_changed.send(
