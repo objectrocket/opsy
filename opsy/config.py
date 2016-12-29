@@ -32,7 +32,7 @@ CONFIG_OPTIONS = [
     ConfigOption('base_permissions', list, False, None),
     ConfigOption('logged_in_permissions', list, False, None),
     ConfigOption('enable_ldap', bool, False, False),
-    ConfigOption('ldap_user_fullname_attr', str, False, 'displayName'),
+    ConfigOption('ldap_user_full_name_attr', str, False, 'displayName'),
     ConfigOption('ldap_user_email_attr', str, False, 'mail'),
     ConfigOption('ldap_group_name_attr', str, False, 'cn')
 ]
