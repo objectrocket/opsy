@@ -7,6 +7,7 @@ Flask-JSGlue==0.3
 Flask-RESTful==0.3.5
 Flask-Login==0.4.0
 Flask-Principal==0.4.0
+flask-ldap3-login==0.9.12
 uWSGI==2.0.13.1
 pbr==1.10.0
 python-dateutil==2.5.3

@@ -2,7 +2,7 @@ from flask import abort, current_app, flash, redirect, request, Blueprint, jsoni
 from flask_restful import Api, Resource, reqparse
 from flask_login import current_user
 from opsy.auth.access import permissions
-from opsy.auth.models import User
+from opsy.auth.models import User, Role
 from opsy.exceptions import DuplicateError
 
 
@@ -27,12 +27,11 @@ class Login(Resource):
 
     def post(self):
         args = self.reqparse.parse_args()
-        user = User.query.wtfilter_by(name=args['username']).first()
-        if user and user.login(current_app, args['password'],
-                               remember=args['remember_me']):
+        token = User.login(current_app, args['username'], args['password'],
+                           remember=args['remember_me'])
+        if token:
             if request.is_json:
-                return jsonify(user.get_session_token(
-                    current_app, force_renew=args['force_renew']))
+                return jsonify(token)
             else:
                 return redirect(url_for('core_main.about'))
         elif request.is_json:
@@ -49,6 +48,70 @@ class Logout(Resource):
         return redirect(url_for('core_main.about'))
 
 
+class RolesAPI(Resource):
+
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser()
+        self.reqparse.add_argument('name')
+        self.reqparse.add_argument('ldap_group')
+        self.reqparse.add_argument('description')
+        super().__init__()
+
+    def post(self):
+        self.reqparse.replace_argument('name', required=True)
+        args = self.reqparse.parse_args()
+        if not permissions.get('roles_create').can():
+            abort(403)
+        try:
+            role = Role.create(**args)
+        except (DuplicateError, ValueError) as error:
+            abort(400, str(error))
+        return jsonify({'roles': [role.get_dict()]})
+
+    def get(self):
+        args = self.reqparse.parse_args()
+        if not permissions.get('roles_read').can():
+            abort(403)
+        roles = Role.query.wtfilter_by(prune_none_values=True,
+                                       **args).all_dict_out()
+        return jsonify({'roles': roles})
+
+
+class RoleAPI(Resource):
+
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser()
+        super().__init__()
+
+    def get(self, role_name):  # pylint: disable=no-self-use
+        role = Role.query.wtfilter_by(name=role_name).first()
+        if role and permissions.get('roles_read').can():
+            return jsonify({'roles': [role.get_dict()]})
+        abort(403)
+
+    def patch(self, role_name):
+        if not permissions.get('roles_update').can():
+            abort(403)
+        self.reqparse.add_argument('name')
+        self.reqparse.add_argument('ldap_group')
+        self.reqparse.add_argument('description')
+        args = self.reqparse.parse_args()
+        role = Role.query.wtfilter_by(name=role_name).first()
+        if not role:
+            abort(404)
+        role.update(prune_none_values=True, **args)
+        return jsonify({'roles': [role.get_dict()]})
+
+    def delete(self, role_name):  # pylint: disable=no-self-use
+        if not permissions.get('roles_delete').can():
+            abort(403)
+        role = Role.query.wtfilter_by(name=role_name).first()
+        if not role:
+            abort(404)
+        role.delete()
+        return ('', 202)
+
+
 class UsersAPI(Resource):
 
     def __init__(self):
@@ -60,10 +123,10 @@ class UsersAPI(Resource):
         super().__init__()
 
     def post(self):
-        self.reqparse.replace_argument('name', required=True)
-        args = self.reqparse.parse_args()
         if not permissions.get('users_create').can():
             abort(403)
+        self.reqparse.replace_argument('name', required=True)
+        args = self.reqparse.parse_args()
         try:
             user = User.create(**args)
         except (DuplicateError, ValueError) as error:
@@ -71,20 +134,35 @@ class UsersAPI(Resource):
         return jsonify({'users': [user.get_dict()]})
 
     def get(self):
-        args = self.reqparse.parse_args()
         if not permissions.get('users_read').can():
             abort(403)
+        args = self.reqparse.parse_args()
         users = User.query.wtfilter_by(prune_none_values=True, **args).all_dict_out()
         return jsonify({'users': users})
 
 
 class UserAPI(Resource):
 
+    def __init__(self):
+        self.reqparse = reqparse.RequestParser()
+        super().__init__()
+
     def get(self, user_name):  # pylint: disable=no-self-use
         user = User.query.wtfilter_by(name=user_name).first()
         if user and permissions.get('user_read')(user.id).can():
             return jsonify({'users': [user.get_dict()]})
         abort(403)
+
+    def patch(self, user_name):
+        self.reqparse.add_argument('full_name')
+        self.reqparse.add_argument('email')
+        self.reqparse.add_argument('enabled')
+        args = self.reqparse.parse_args()
+        user = User.query.wtfilter_by(name=user_name).first()
+        if not (user and permissions.get('user_update')(user.id).can()):
+            abort(403)
+        user.update(prune_none_values=True, **args)
+        return jsonify({'users': [user.get_dict()]})
 
     def delete(self, user_name):  # pylint: disable=no-self-use
         if not permissions.get('users_delete').can():
@@ -131,7 +209,7 @@ class UserSettingAPI(Resource):
         self.reqparse.add_argument('value', required=True, location='json')
         super().__init__()
 
-    def post(self, user_name, setting_key):
+    def patch(self, user_name, setting_key):
         args = self.reqparse.parse_args()
         user = User.query.wtfilter_by(name=user_name).first()
         if not (user and permissions.get('user_update')(user.id).can()):
@@ -168,6 +246,12 @@ api.add_resource(
 api.add_resource(
     Logout, '/logout',
     endpoint='logout')
+api.add_resource(
+    RolesAPI, '/roles',
+    endpoint='roles')
+api.add_resource(
+    RoleAPI, '/roles/<role_name>',
+    endpoint='role')
 api.add_resource(
     UsersAPI, '/users',
     endpoint='users')

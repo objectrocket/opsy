@@ -97,17 +97,17 @@ class Client(BaseEntity, db.Model):
     version = db.Column(db.String(128))
     address = db.Column(db.String(128))
 
-    events = db.relationship('Event', backref='client', lazy='dynamic',
+    events = db.relationship('Event', backref='client', lazy='joined',
                              query_class=OpsyQuery, primaryjoin="and_("
                              "Client.zone_id==foreign(Event.zone_id), "
                              "Client.name==foreign(Event.client_name))")
 
-    results = db.relationship('Result', backref='client', lazy='dynamic',
+    results = db.relationship('Result', backref='client', lazy='joined',
                               query_class=OpsyQuery, primaryjoin="and_("
                               "Client.zone_id==foreign(Result.zone_id), "
                               "Client.name==foreign(Result.client_name))")
 
-    silences = db.relationship('Silence', backref='client', lazy='dynamic',
+    silences = db.relationship('Silence', backref='client', lazy='joined',
                                query_class=OpsyQuery, primaryjoin="and_("
                                "Client.zone_id == foreign("
                                "Silence.zone_id), "

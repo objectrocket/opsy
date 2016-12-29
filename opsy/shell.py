@@ -116,7 +116,7 @@ def user_create(user_name, **kwargs):
     """Create a user."""
     user_kwargs = {k: v for k, v in kwargs.items() if v is not None}
     try:
-        user = User.create(user_name, **user_kwargs).pretty_print()
+        User.create(user_name, **user_kwargs).pretty_print()
     except DuplicateError as error:
         print_error(error)
 

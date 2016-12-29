@@ -4,11 +4,12 @@ from prettytable import PrettyTable
 from flask import current_app
 from flask_login import UserMixin, login_user, logout_user
 from flask_principal import identity_changed, Identity, AnonymousIdentity
+from flask_ldap3_login import AuthenticationResponseStatus
 from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import (TimedJSONWebSignatureSerializer
                           as Serializer, BadSignature, SignatureExpired)
 from opsy.models import TimeStampMixin, BaseResource, NamedResource, OpsyQuery
-from opsy.extensions import db
+from opsy.extensions import db, ldap_manager
 from opsy.exceptions import DuplicateError
 
 
@@ -54,7 +55,6 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
 
     __tablename__ = 'users'
 
-    backend = db.Column(db.String(20))
     full_name = db.Column(db.String(64))
     email = db.Column(db.String(64), index=True)
     password_hash = db.Column(db.String(128))
@@ -73,32 +73,40 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
                                   'role_mappings, '
                                   'Role.id == role_mappings.c.role_id)')
 
-    __mapper_args__ = {
-        'polymorphic_on': backend,
-        'polymorphic_identity': 'internal'
-    }
-
     __table_args__ = (
         db.UniqueConstraint('session_token', name='sess_uc'),
     )
 
-    def __init__(self, name, enabled=0, full_name=None, email=None,
-                 backend='internal', password=None):
+    def __init__(self, name, enabled=1, full_name=None, email=None,
+                 password=None):
         self.name = name
         self.enabled = enabled
         self.full_name = full_name
         self.email = email
-        self.backend = backend
         if password:
             self.password = password
 
-    def login(self, app, password, remember=False, force=False, fresh=True):
-        if self.verify_password(password) and login_user(self,
-                                                         remember=remember):
+    @classmethod
+    def login(cls, app, username, password, remember=False, force=False,
+              fresh=True):
+        if app.config.opsy['enable_ldap']:
+            result = ldap_manager.authenticate(username, password)
+            if not result.status == AuthenticationResponseStatus.success:
+                return False
+            user = cls.query.wtfilter_by(name=result.user_id).first()
+            if not user:
+                user = cls.create(username)
+            # TODO: setup permissions
+            return user.get_session_token(app)
+        else:
+            user = cls.query.wtfilter_by(name=username).first()
+            if not user.verify_password(password):
+                return False
+        if login_user(user, remember=remember):
             identity_changed.send(
                 app._get_current_object(),  # pylint: disable=W0212
-                identity=Identity(self.id))
-            return True
+                identity=Identity(user.id))
+            return user.get_session_token(app)
         return False
 
     def logout(self, app):
@@ -215,46 +223,6 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
             'enabled': self.enabled,
             'full_name': self.full_name
         }
-
-
-class LDAPUser(User):
-
-    __mapper_args__ = {
-        'polymorphic_identity': 'ldap'
-    }
-
-    def __init__(self, name, enabled=0, full_name=None, email=None):
-        super().__init__(name, enabled=enabled, full_name=full_name,
-                         email=email, backend='ldap')
-
-    @property
-    def password(self):
-        raise AttributeError('Password is not a readable attribute.')
-
-    @password.setter
-    def password(self, password):
-        raise AttributeError('Unable to set password on LDAP users.')
-
-    def verify_password(self, password):
-        # ldap magic here
-        pass
-
-    def login(self, app, password, remember=False, force=False, fresh=True):
-        if self.verify_password(password) and login_user(self,
-                                                         remember=remember):
-            identity_changed.send(
-                app._get_current_object(),  # pylint: disable=W0212
-                identity=Identity(self.id))
-            return True
-        return False
-
-    def logout(self, app):
-        self.session_token = None
-        self.session_token_expires_at = None
-        logout_user()
-        identity_changed.send(
-            current_app._get_current_object(),  # pylint: disable=W0212
-            identity=AnonymousIdentity())
 
 
 class UserSetting(BaseResource, TimeStampMixin, db.Model):

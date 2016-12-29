@@ -1,6 +1,7 @@
 from flask import current_app
 from flask_iniconfig import INIConfig
 from flask_jsglue import JSGlue
+from flask_ldap3_login import LDAP3LoginManager
 from flask_login import LoginManager, current_user
 from flask_principal import Principal, Identity, identity_loaded, UserNeed, \
     ActionNeed, AnonymousIdentity
@@ -10,6 +11,7 @@ iniconfig = INIConfig()  # pylint: disable=invalid-name
 db = SQLAlchemy()  # pylint: disable=invalid-name
 jsglue = JSGlue()  # pylint: disable=invalid-name
 login_manager = LoginManager()  # pylint: disable=invalid-name
+ldap_manager = LDAP3LoginManager()  # pylint: disable=invalid-name
 principal = Principal()  # pylint: disable=invalid-name
 
 
@@ -17,6 +19,7 @@ def configure_extensions(app):
     db.init_app(app)
     jsglue.init_app(app)
     login_manager.init_app(app)
+    ldap_manager.init_app(app)
     principal.init_app(app)
 
     @login_manager.user_loader
