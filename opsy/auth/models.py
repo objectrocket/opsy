@@ -96,8 +96,12 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
             user = cls.query.wtfilter_by(name=result.user_id).first()
             if not user:
                 user = cls.create(username)
-            # TODO: setup permissions
-            return user.get_session_token(app)
+            groups = [x['cn'] for x in result.user_groups]
+            for role in Role.query.filter(Role.ldap_group.in_(groups)).all():
+                try:
+                    role.add_user(user)
+                except ValueError:
+                    pass
         else:
             user = cls.query.wtfilter_by(name=username).first()
             if not user.verify_password(password):
@@ -112,6 +116,11 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
     def logout(self, app):
         self.session_token = None
         self.session_token_expires_at = None
+        if app.config.opsy['enable_ldap']:
+            for role in self.roles:
+                if role.ldap_group:
+                    role.remove_user(self)
+        self.save()
         logout_user()
         identity_changed.send(
             current_app._get_current_object(),  # pylint: disable=W0212
