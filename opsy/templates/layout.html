@@ -69,7 +69,7 @@
             </ul>
             <ul class="nav navbar-nav navbar-right">
                 {% if current_user.is_authenticated %}
-                <li><p class="navbar-text">Signed in as {{ current_user.name }}.</p></li>
+                <li><p class="navbar-text">Hello {% if current_user.full_name %}{{ current_user.full_name }}{% else %}{{ current_user.name }}{% endif %}.</p></li>
                 <li><a href="{{ url_for('core_api.logout') }}">Logout</a></li>
                 {% else %}
                 <li class="dropdown">
