@@ -1,17 +1,15 @@
 from datetime import date
 import uuid
-import os.path
-from flask.json import JSONEncoder
+import sys
+from flask import json
 from flask._compat import text_type
-from flask_iniconfig import INIConfig
 from itsdangerous import json as _json
 from prettytable import PrettyTable
 from dateutil.tz import tzutc
 from stevedore import driver
-from opsy.exceptions import NoConfigFile, NoConfigSection
 
 
-class OpsyJSONEncoder(JSONEncoder):
+class OpsyJSONEncoder(json.JSONEncoder):
 
     def default(self, o):  # pylint: disable=method-hidden
         if isinstance(o, date):
@@ -49,38 +47,47 @@ def parse_include_excludes(items):
 
 
 def load_plugins(app):
-    opsy_config = get_config_section_or_fail(app, 'opsy')
-    plugins = opsy_config.get('enabled_plugins')
-    if plugins:
-        for plugin in plugins.split(','):
-            plugin_manager = driver.DriverManager(
-                namespace='opsy.plugin',
-                name=plugin,
-                invoke_args=(app,),
-                invoke_on_load=True)
-            yield plugin_manager.driver
+    if not app.config.opsy['enabled_plugins']:
+        return
+    for plugin in app.config.opsy['enabled_plugins']:
+        plugin_manager = driver.DriverManager(
+            namespace='opsy.plugin',
+            name=plugin,
+            invoke_args=(app,),
+            invoke_on_load=True)
+        yield plugin_manager.driver
 
 
-def get_config_section_or_fail(app, config_section):
-    if not app.config.get(config_section):
-        raise NoConfigSection('Config section "%s" does not exist' %
-                              config_section)
-    return app.config.get(config_section)
-
-
-def load_config(app, config_file):
-    if not os.path.exists(config_file):
-        raise NoConfigFile('Config file "%s" does not exist' % config_file)
-    app.config_file = config_file
-    INIConfig(app)
-    app.config.from_inifile(config_file)
-    app.opsy_config = get_config_section_or_fail(app, 'opsy')
-
-
-def print_property_table(properties):
+def print_property_table(properties, ignore_attrs=None):
     table = PrettyTable(['Property', 'Value'])
     table.align['Property'] = 'l'
     table.align['Value'] = 'l'
-    for key, value in properties:
+    for key, value in sorted(properties):
+        if ignore_attrs and key in ignore_attrs:
+            continue
         table.add_row([key, value])
     print(table)
+
+
+def gwrap(some_string):
+    """Returns green text."""
+    return "\033[92m%s\033[0m" % some_string
+
+
+def rwrap(some_string):
+    """Returns red text."""
+    return "\033[91m%s\033[0m" % some_string
+
+
+def print_error(error, title=None, exit_script=True):
+    if not title:
+        title = "Something broke"
+    print("[%s] %s" % (rwrap(title), error), file=sys.stderr)
+    if exit_script:
+        sys.exit(1)
+
+
+def print_notice(msg, title=None):
+    if not title:
+        title = "Notice"
+    print("[%s] %s" % (gwrap(title), msg))

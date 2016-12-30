@@ -1,7 +1,10 @@
 body {
   padding-top: 70px;
 }
-
+/* General sizing */
+ul.dropdown-lr {
+  width: 300px;
+}
 /* NOTIFICATION TRAY */
 #notification-icon {
     font-size: 1.5em;
@@ -29,7 +32,7 @@ body {
 }
 
 .notifications {
-    min-width:420px; 
+    min-width:420px;
 }
 
 .notifications-wrapper {
@@ -48,7 +51,7 @@ body {
 }
 
 .dropdown-menu.divider {
-    margin:5px 0;          
+    margin:5px 0;
 }
 
 .item-title {

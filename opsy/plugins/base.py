@@ -9,6 +9,27 @@ class BaseOpsyPlugin(object):
     def __init__(self, app):
         pass
 
+    @abc.abstractproperty
+    def name(self):
+        """This should just return the name of the plugin.
+
+        :rtype: String
+        """
+
+    @abc.abstractproperty
+    def config_options(self):
+        """This should return a list of all config options for the plugin.
+
+        :rtype: list
+        """
+
+    @abc.abstractproperty
+    def needs(self):
+        """This should provide a dict of all the needs for this plugin.
+
+        :rtype: Dict
+        """
+
     def _parse_config(self, app):
         """Perform any config parsing necessary for the plugin.
 
@@ -28,15 +49,15 @@ class BaseOpsyPlugin(object):
         :rtype: Flask
         """
 
-    # @abc.abstractmethod
-    # def register_link_structure(self, app):
-    #     """Register a link structure for the plugin.
+    @abc.abstractmethod
+    def register_link_structure(self, app):
+        """Register a link structure for the plugin.
 
-    #     :param app: Flask app object
-    #     :type app: Flask
-    #     :return: Dictionary
-    #     :rtype: Dict
-    #     """
+        :param app: Flask app object
+        :type app: Flask
+        :return: Dictionary
+        :rtype: Dict
+        """
 
     @abc.abstractmethod
     def register_scheduler_jobs(self, app, run_once=False):
