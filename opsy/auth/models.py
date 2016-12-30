@@ -58,7 +58,7 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
     full_name = db.Column(db.String(64))
     email = db.Column(db.String(64), index=True)
     password_hash = db.Column(db.String(128))
-    session_token = db.Column(db.String(255))
+    session_token = db.Column(db.String(255), index=True)
     session_token_expires_at = db.Column(db.DateTime)
     enabled = db.Column(db.Boolean, default=False)
     settings = db.relationship('UserSetting', cascade='all, delete-orphan',
@@ -140,46 +140,53 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
         return self.get_session_token(current_app).get('token')
 
     def get_session_token(self, app, force_renew=False):
-        ttl = app.config.opsy['session_token_ttl']
-        data = self._decode_token(app, self.session_token)
-        if self.session_token_expires_at:
-            expires_at_ts = self.session_token_expires_at.replace(
-                tzinfo=timezone.utc).timestamp()
-        if (not self.session_token_expires_at or
-                data and int(expires_at_ts) > time() + ttl):
-            # renew the token if a) the ttl has been reduced or b) we don't
-            # have an expires_at timestamp
-            force_renew = True
-        if force_renew or not data:
-            seri = Serializer(
-                app.config['SECRET_KEY'], expires_in=ttl)
-            self.session_token = seri.dumps({'id': self.id}).decode('ascii')
-            self.session_token_expires_at = datetime.utcfromtimestamp(
-                int(time() + ttl))
-            self.save()
-        return {'name': self.name,
+        if force_renew or not self.verify_token(app):
+            self.create_token(app)
+        return {'id': self.id,
+                'name': self.name,
                 'token': self.session_token,
                 'expires_at': self.session_token_expires_at}
 
     @classmethod
     def get_by_token(cls, app, token):
-        data = cls._decode_token(app, token)
-        if not data:
-            return None
-        return cls.query.get(data['id'])
-
-    @staticmethod
-    def _decode_token(app, token):
         if not token:
             return None
+        user = cls.query.filter(cls.session_token == token).first()
+        if user and user.verify_token(app):
+            return user
+        return None
+
+    def verify_token(self, app):  # pylint: disable=R0911
+        ttl = app.config.opsy['session_token_ttl']
         seri = Serializer(app.config['SECRET_KEY'])
         try:
-            data = seri.loads(token)
+            data, header = seri.loads(self.session_token, return_header=True)
+        except TypeError:
+            return False  # we don't currently have a token
         except SignatureExpired:
-            return None  # valid token, but expired
+            return False  # valid token, but expired
         except BadSignature:
-            return None  # invalid token
-        return data
+            return False  # invalid token
+        if int(self.session_token_expires_at.replace(
+                tzinfo=timezone.utc).timestamp()) > time() + ttl:
+            return False  # ttl in config has been reduced
+        # These next two shouldn't ever happen
+        if data.get('id') != self.id:
+            return False  # user id doesn't match token payload
+        if self.session_token_expires_at != datetime.utcfromtimestamp(
+                header.get('exp')):
+            return False  # expire times don't match
+        return True
+
+    def create_token(self, app):
+        ttl = app.config.opsy['session_token_ttl']
+        seri = Serializer(
+            app.config['SECRET_KEY'], expires_in=ttl)
+        self.session_token = seri.dumps({'id': self.id}).decode('ascii')
+        _, header = seri.loads(self.session_token, return_header=True)
+        self.session_token_expires_at = datetime.utcfromtimestamp(
+            header.get('exp'))
+        self.save()
 
     def pretty_print(self, all_attrs=False, ignore_attrs=None):
         super().pretty_print(all_attrs=False, ignore_attrs=None)
