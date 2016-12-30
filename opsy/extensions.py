@@ -19,7 +19,8 @@ def configure_extensions(app):
     db.init_app(app)
     jsglue.init_app(app)
     login_manager.init_app(app)
-    ldap_manager.init_app(app)
+    if app.config.opsy['enable_ldap']:
+        ldap_manager.init_app(app)
     principal.init_app(app)
 
     @login_manager.user_loader
