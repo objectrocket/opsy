@@ -112,6 +112,8 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
             user.save()
         else:
             user = cls.query.wtfilter_by(name=username).first()
+            if not user:
+                return False
             if not user.verify_password(password):
                 return False
         if login_user(user, remember=remember):
