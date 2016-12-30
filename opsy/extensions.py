@@ -25,23 +25,14 @@ def configure_extensions(app):
 
     @login_manager.user_loader
     def load_user(session_token):  # pylint: disable=unused-variable
-        if not session_token:
-            return None
         from opsy.auth.models import User
-        user = User.get_by_token(current_app, session_token)
-        if user and user.get_session_token(current_app).get('token') == session_token:
-            return user
+        return User.get_by_token(current_app, session_token)
 
     @login_manager.request_loader
     def load_user_from_request(request):  # pylint: disable=unused-variable
         session_token = request.headers.get('x-auth-token')
-        if not session_token:
-            return None
         from opsy.auth.models import User
-        user = User.get_by_token(current_app, session_token)
-        if user and user.get_session_token(current_app).get('token') == session_token:
-            return user
-        return None
+        return User.get_by_token(current_app, session_token)
 
     @principal.identity_loader
     def read_identity_from_flask_login():  # pylint: disable=unused-variable
