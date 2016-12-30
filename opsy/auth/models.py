@@ -156,7 +156,7 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
             return user
         return None
 
-    def verify_token(self, app):
+    def verify_token(self, app):  # pylint: disable=R0911
         ttl = app.config.opsy['session_token_ttl']
         seri = Serializer(app.config['SECRET_KEY'])
         try:
