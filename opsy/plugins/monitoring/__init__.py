@@ -88,8 +88,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
 
     def register_scheduler_jobs(self, app, run_once=False):
         with app.app_context():
-            zones = Zone.query.filter(Zone.enabled == 1).all()
-            for zone in zones:
+            for zone in Zone.query.filter(Zone.enabled == 1).all():
                 job_args = [update_cache]
                 job_kwargs = {'id': 'monitoring_poller_%s' % zone.name,
                               'next_run_time': datetime.now(),
