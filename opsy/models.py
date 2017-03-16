@@ -4,7 +4,7 @@ from flask_sqlalchemy import BaseQuery
 from flask import abort, json
 from prettytable import PrettyTable
 from sqlalchemy.orm.base import _entity_descriptor
-from opsy.extensions import db
+from opsy.flask_extensions import db
 from opsy.utils import get_filters_list, print_property_table
 from opsy.exceptions import DuplicateError
 

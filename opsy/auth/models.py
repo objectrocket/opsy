@@ -9,7 +9,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from itsdangerous import (TimedJSONWebSignatureSerializer
                           as Serializer, BadSignature, SignatureExpired)
 from opsy.models import TimeStampMixin, BaseResource, NamedResource, OpsyQuery
-from opsy.extensions import db, ldap_manager
+from opsy.flask_extensions import db, ldap_manager
 from opsy.exceptions import DuplicateError
 
 

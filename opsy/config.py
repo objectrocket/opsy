@@ -1,7 +1,7 @@
 import os.path
 from collections import namedtuple
 from functools import partial
-from opsy.extensions import iniconfig
+from opsy.flask_extensions import iniconfig
 from opsy.exceptions import NoConfigFile, NoConfigSection, MissingConfigOption
 
 MappedFlaskConfigOption = namedtuple(  # pylint: disable=invalid-name

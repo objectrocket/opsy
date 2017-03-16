@@ -6,7 +6,7 @@ from flask import Flask
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from opsy.main import core_main
 from opsy.api import core_api
-from opsy.extensions import configure_extensions
+from opsy.flask_extensions import configure_extensions
 from opsy.utils import OpsyJSONEncoder, load_plugins
 from opsy.config import load_config, validate_config
 from opsy.auth.access import needs

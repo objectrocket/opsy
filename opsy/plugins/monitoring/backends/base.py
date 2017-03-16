@@ -5,7 +5,7 @@ import aiohttp
 from flask import abort
 import opsy
 from opsy.models import TimeStampMixin, OpsyQuery, NamedResource, BaseResource
-from opsy.extensions import db
+from opsy.flask_extensions import db
 from opsy.plugins.monitoring.dashboard import Dashboard
 from opsy.plugins.monitoring.backends import async_task
 from opsy.plugins.monitoring.exceptions import PollFailure, BackendNotFound
