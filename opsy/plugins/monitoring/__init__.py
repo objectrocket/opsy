@@ -89,21 +89,20 @@ class MonitoringPlugin(BaseOpsyPlugin):
     def register_scheduler_jobs(self, app, run_once=False):
         with app.app_context():
             for zone in Zone.query.filter(Zone.enabled == 1).all():
-                next_run = datetime.now() + timedelta(
-                    0, random.uniform(0, zone.interval))
+                job_args = [update_cache]
+                job_kwargs = {'id': 'monitoring_poller_%s' % zone.name,
+                              'next_run_time': datetime.now(),
+                              'max_instances': 1,
+                              'args': [zone.id, app]}
                 if run_once:
-                    app.jobs.append([[update_cache],
-                                     {'id': 'monitoring_poller_%s' % zone.name,
-                                      'next_run_time': datetime.now(),
-                                      'max_instances': 1,
-                                      'args': [zone.id, app.config_file]}])
+                    job_kwargs['next_run_time'] = datetime.now()
                 else:
-                    app.jobs.append([[update_cache, 'interval'],
-                                     {'id': 'monitoring_poller_%s' % zone.name,
-                                      'next_run_time': next_run,
-                                      'max_instances': 1,
-                                      'seconds': zone.interval,
-                                      'args': [zone.id, app.config_file]}])
+                    next_run = datetime.now() + timedelta(
+                        0, random.uniform(0, zone.interval))
+                    job_args.append('interval')
+                    job_kwargs['next_run_time'] = next_run
+                    job_kwargs['seconds'] = zone.interval
+                app.jobs.append([job_args, job_kwargs])
 
     def register_cli_commands(self, cli):
 

@@ -199,7 +199,7 @@ class UserSettingsAPI(Resource):
         user = User.query.wtfilter_by(name=user_name).first()
         if not (user and permissions.get('user_read')(user.id).can()):
             abort(403)
-        return jsonify({'settings': user.settings.all_dict_out()})
+        return jsonify({'settings': [x.get_dict() for x in user.settings]})
 
 
 class UserSettingAPI(Resource):

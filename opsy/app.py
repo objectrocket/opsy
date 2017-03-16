@@ -3,7 +3,7 @@ from logging.handlers import WatchedFileHandler
 from logging import StreamHandler
 import sys
 from flask import Flask
-from apscheduler.schedulers.blocking import BlockingScheduler
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from opsy.main import core_main
 from opsy.api import core_api
 from opsy.extensions import configure_extensions
@@ -59,7 +59,7 @@ def create_logging(app):
         app.logger.setLevel(logging.INFO)
 
 
-def create_scheduler(app, scheduler_class=BlockingScheduler):
+def create_scheduler(app, scheduler_class=AsyncIOScheduler):
     job_defaults = {
         'misfire_grace_time': app.config.opsy['scheduler_grace_time']
     }
