@@ -423,8 +423,9 @@ class Silence(BaseEntity, db.Model):
     )
 
     def __init__(self, zone, extra):
+        check_name = self.check_name or ''
         self.id = str(uuid.uuid3(  # pylint: disable=invalid-name
-            uuid.UUID(self.zone_id), self.silence_type + self.client_name + self.check_name))
+            uuid.UUID(self.zone_id), self.silence_type + self.client_name + check_name))
 
     @classmethod
     def get_filters_maps(cls):
@@ -572,7 +573,13 @@ class Zone(BaseCache, NamedResource, TimeStampMixin, db.Model):
             'backend': self.backend,
             'status': self.status,
             'status_message': self.status_message,
-            'last_poll_time': self.last_poll_time
+            'last_poll_time': self.last_poll_time,
+            'host': self.host,
+            'path': self.path,
+            'protocol': self.protocol,
+            'port': self.port,
+            'timeout': self.timeout,
+            'interval': self.interval
         }
 
     def __repr__(self):

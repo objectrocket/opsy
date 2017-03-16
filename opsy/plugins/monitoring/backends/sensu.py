@@ -77,7 +77,7 @@ class SensuEvent(SensuBase, Event):
                 int(extra.get('timestamp')))
         except TypeError:
             self.updated_at = None
-        self.occurrences_threshold = extra['check'].get('occurrences')
+        self.occurrences_threshold = extra['check'].get('occurrences', 0)
         self.occurrences = extra['occurrences']
         status_map = ['ok', 'warning', 'critical']
         try:
