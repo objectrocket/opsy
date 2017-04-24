@@ -1,5 +1,6 @@
 import asyncio
 import uuid
+import json
 from collections import OrderedDict
 from datetime import datetime
 import aiohttp
@@ -50,12 +51,12 @@ class BaseEntity(BaseCache):
     zone_name = db.Column(db.String(64))
     query_class = OpsyQuery
     last_poll_time = db.Column(db.DateTime, default=datetime.utcnow())
-    extra = db.Column(db.Text)
+    extra = db.Column(db.JSON)
 
     @property
     def dict_extra_out(self):
         event_dict = self.dict_out
-        event_dict['extra'] = self.extra
+        event_dict['extra'] = json.loads(self.extra)
         return event_dict
 
     def get_dict(self, extra=False, **kwargs):
@@ -80,7 +81,7 @@ class Client(BaseEntity, db.Model):
             clients_silences = self.outerjoin(Silence, db.and_(
                 Client.zone_name == Silence.zone_name,
                 Client.name == Silence.client_name,
-                Silence.silence_type == 'client')).add_entity(Silence).all()
+                Silence.check_name is None)).add_entity(Silence).all()
             clients_json = []
             for client, silence in clients_silences:
                 if extra:
@@ -94,9 +95,8 @@ class Client(BaseEntity, db.Model):
     query_class = ClientQuery
 
     name = db.Column(db.String(128))
+    subscriptions = db.Column(db.JSON)
     updated_at = db.Column(db.DateTime)
-    version = db.Column(db.String(128))
-    address = db.Column(db.String(128))
 
     events = db.relationship('Event', backref='client', lazy='joined',
                              query_class=OpsyQuery, primaryjoin="and_("
@@ -141,7 +141,7 @@ class Client(BaseEntity, db.Model):
 
     @property
     def silenced(self):
-        return bool(self.silences.filter(Silence.silence_type == 'client').first())
+        return bool(self.silences.filter(Silence.check_name is None).first())
 
     @property
     def dict_out(self):
@@ -150,10 +150,9 @@ class Client(BaseEntity, db.Model):
             ('zone_name', self.zone_name),
             ('backend', self.backend),
             ('updated_at', self.updated_at),
-            ('version', self.version),
-            ('address', self.address),
             ('last_poll_time', self.last_poll_time),
-            ('name', self.name)
+            ('name', self.name),
+            ('subscriptions', self.subscriptions)
         ])
 
     def __repr__(self):
@@ -167,6 +166,7 @@ class Check(BaseEntity, db.Model):
     __tablename__ = 'monitoring_checks'
 
     name = db.Column(db.String(128))
+    subscribers = db.Column(db.JSON)
     occurrences_threshold = db.Column(db.BigInteger)
     interval = db.Column(db.BigInteger)
     command = db.Column(db.Text)
@@ -204,6 +204,7 @@ class Check(BaseEntity, db.Model):
             ('backend', self.backend),
             ('last_poll_time', self.last_poll_time),
             ('name', self.name),
+            ('subscribers', self.check_subscribers),
             ('occurrences_threshold', self.occurrences_threshold),
             ('interval', self.interval),
             ('command', self.command)
@@ -241,6 +242,7 @@ class Result(BaseEntity, db.Model):
 
     client_name = db.Column(db.String(128))
     check_name = db.Column(db.String(128))
+    check_subscribers = db.Column(db.JSON)
     occurrences_threshold = db.Column(db.BigInteger)
     status = db.Column(db.String(16))
     interval = db.Column(db.BigInteger)
@@ -274,6 +276,7 @@ class Result(BaseEntity, db.Model):
             ('last_poll_time', self.last_poll_time),
             ('client_name', self.client_name),
             ('check_name', self.check_name),
+            ('check_subscribers', self.check_subscribers),
             ('occurrences_threshold', self.occurrences_threshold),
             ('status', self.status),
             ('interval', self.interval),
@@ -343,7 +346,9 @@ class Event(BaseEntity, db.Model):
     query_class = EventQuery
 
     client_name = db.Column(db.String(128))
+    client_subscriptions = db.Column(db.JSON)
     check_name = db.Column(db.String(128))
+    check_subscribers = db.Column(db.JSON)
     updated_at = db.Column(db.DateTime)
     occurrences_threshold = db.Column(db.BigInteger)
     occurrences = db.Column(db.BigInteger)
@@ -387,7 +392,9 @@ class Event(BaseEntity, db.Model):
             ('zone_name', self.zone_name),
             ('last_poll_time', self.last_poll_time),
             ('client_name', self.client_name),
+            ('client_subscriptions', self.client_subscriptions),
             ('check_name', self.check_name),
+            ('check_subscribers', self.check_subscribers),
             ('updated_at', self.updated_at),
             ('occurrences_threshold', self.occurrences_threshold),
             ('occurrences', self.occurrences),
@@ -406,27 +413,27 @@ class Silence(BaseEntity, db.Model):
 
     entity = 'silences'
     __tablename__ = 'monitoring_silences'
-
     client_name = db.Column(db.String(128))
     check_name = db.Column(db.String(128))
-    silence_type = db.Column(db.String(16))
+    subscription = db.Column(db.String(128))
+    creator = db.Column(db.String(128))
+    reason = db.Column(db.Text)
     created_at = db.Column(db.DateTime)
     expire_at = db.Column(db.DateTime)
-    comment = db.Column(db.Text)
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_id'], ['monitoring_zones.id'],
                                 ondelete='CASCADE'),
         db.UniqueConstraint('zone_id', 'client_name', 'check_name',
-                            'silence_type', name='silence_uc'),
-        db.CheckConstraint(silence_type.in_(
-            ['client', 'check']))
+                            'subscription', name='silence_uc')
     )
 
     def __init__(self, zone, extra):
         check_name = self.check_name or ''
+        client_name = self.client_name or ''
+        subscription = self.subscription or ''
         self.id = str(uuid.uuid3(  # pylint: disable=invalid-name
-            uuid.UUID(self.zone_id), self.silence_type + self.client_name + check_name))
+            uuid.UUID(self.zone_id), subscription + client_name + check_name))
 
     @classmethod
     def get_filters_maps(cls):
@@ -442,10 +449,11 @@ class Silence(BaseEntity, db.Model):
             ('last_poll_time', self.last_poll_time),
             ('client_name', self.client_name),
             ('check_name', self.check_name),
-            ('silence_type', self.silence_type),
+            ('subscription', self.subscription),
+            ('creator', self.creator),
+            ('reason', self.reason),
             ('created_at', self.created_at),
-            ('expire_at', self.expire_at),
-            ('comment', self.comment)
+            ('expire_at', self.expire_at)
         ])
 
     def __repr__(self):
