@@ -1,4 +1,5 @@
 import uuid
+from collections import OrderedDict
 from datetime import datetime
 from flask_sqlalchemy import BaseQuery
 from flask import abort, json
@@ -88,8 +89,8 @@ class BaseResource(object):
 
     @property
     def dict_out(self):
-        return {key: getattr(self, key)
-                for key in self.__table__.columns.keys()}  # pylint: disable=no-member
+        return OrderedDict([(key, getattr(self, key))
+                            for key in self.__table__.columns.keys()])  # pylint: disable=no-member
 
     def pretty_print(self, all_attrs=False, ignore_attrs=None):
         properties = [(key, value) for key, value in self.get_dict(  # pylint: disable=no-member
@@ -118,8 +119,8 @@ class BaseResource(object):
                  all_attrs=False, **kwargs):
         dict_out = self.dict_out
         if all_attrs:
-            attr_dict = {x.key: getattr(self, x.key)
-                         for x in self.__table__.columns}  # pylint: disable=no-member
+            attr_dict = OrderedDict([(x.key, getattr(self, x.key))
+                                     for x in self.__table__.columns])  # pylint: disable=no-member
             dict_out.update(attr_dict)
         if jsonify:
             if pretty_print:

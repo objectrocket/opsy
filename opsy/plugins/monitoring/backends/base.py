@@ -1,5 +1,6 @@
 import asyncio
 import uuid
+from collections import OrderedDict
 from datetime import datetime
 import aiohttp
 from flask import abort
@@ -144,16 +145,16 @@ class Client(BaseEntity, db.Model):
 
     @property
     def dict_out(self):
-        return {
-            'id': self.id,
-            'zone_name': self.zone_name,
-            'backend': self.backend,
-            'updated_at': self.updated_at,
-            'version': self.version,
-            'address': self.address,
-            'last_poll_time': self.last_poll_time,
-            'name': self.name
-        }
+        return OrderedDict([
+            ('id', self.id),
+            ('zone_name', self.zone_name),
+            ('backend', self.backend),
+            ('updated_at', self.updated_at),
+            ('version', self.version),
+            ('address', self.address),
+            ('last_poll_time', self.last_poll_time),
+            ('name', self.name)
+        ])
 
     def __repr__(self):
         return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -197,16 +198,16 @@ class Check(BaseEntity, db.Model):
 
     @property
     def dict_out(self):
-        return {
-            'id': self.id,
-            'zone_name': self.zone_name,
-            'backend': self.backend,
-            'last_poll_time': self.last_poll_time,
-            'name': self.name,
-            'occurrences_threshold': self.occurrences_threshold,
-            'interval': self.interval,
-            'command': self.command
-        }
+        return OrderedDict([
+            ('id', self.id),
+            ('zone_name', self.zone_name),
+            ('backend', self.backend),
+            ('last_poll_time', self.last_poll_time),
+            ('name', self.name),
+            ('occurrences_threshold', self.occurrences_threshold),
+            ('interval', self.interval),
+            ('command', self.command)
+        ])
 
     def __repr__(self):
         return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -266,19 +267,19 @@ class Result(BaseEntity, db.Model):
 
     @property
     def dict_out(self):
-        return {
-            'id': self.id,
-            'zone_name': self.zone_name,
-            'backend': self.backend,
-            'last_poll_time': self.last_poll_time,
-            'client_name': self.client_name,
-            'check_name': self.check_name,
-            'occurrences_threshold': self.occurrences_threshold,
-            'status': self.status,
-            'interval': self.interval,
-            'command': self.command,
-            'output': self.output
-        }
+        return OrderedDict([
+            ('id', self.id),
+            ('zone_name', self.zone_name),
+            ('backend', self.backend),
+            ('last_poll_time', self.last_poll_time),
+            ('client_name', self.client_name),
+            ('check_name', self.check_name),
+            ('occurrences_threshold', self.occurrences_threshold),
+            ('status', self.status),
+            ('interval', self.interval),
+            ('command', self.command),
+            ('output', self.output)
+        ])
 
     def __repr__(self):
         return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -380,21 +381,21 @@ class Event(BaseEntity, db.Model):
 
     @property
     def dict_out(self):
-        return {
-            'id': self.id,
-            'backend': self.backend,
-            'zone_name': self.zone_name,
-            'last_poll_time': self.last_poll_time,
-            'client_name': self.client_name,
-            'check_name': self.check_name,
-            'updated_at': self.updated_at,
-            'occurrences_threshold': self.occurrences_threshold,
-            'occurrences': self.occurrences,
-            'status': self.status,
-            'interval': self.interval,
-            'command': self.command,
-            'output': self.output,
-        }
+        return OrderedDict([
+            ('id', self.id),
+            ('backend', self.backend),
+            ('zone_name', self.zone_name),
+            ('last_poll_time', self.last_poll_time),
+            ('client_name', self.client_name),
+            ('check_name', self.check_name),
+            ('updated_at', self.updated_at),
+            ('occurrences_threshold', self.occurrences_threshold),
+            ('occurrences', self.occurrences),
+            ('status', self.status),
+            ('interval', self.interval),
+            ('command', self.command),
+            ('output', self.output)
+        ])
 
     def __repr__(self):
         return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -434,18 +435,18 @@ class Silence(BaseEntity, db.Model):
 
     @property
     def dict_out(self):
-        return {
-            'id': self.id,
-            'zone_name': self.zone_name,
-            'backend': self.backend,
-            'last_poll_time': self.last_poll_time,
-            'client_name': self.client_name,
-            'check_name': self.check_name,
-            'silence_type': self.silence_type,
-            'created_at': self.created_at,
-            'expire_at': self.expire_at,
-            'comment': self.comment
-        }
+        return OrderedDict([
+            ('id', self.id),
+            ('zone_name', self.zone_name),
+            ('backend', self.backend),
+            ('last_poll_time', self.last_poll_time),
+            ('client_name', self.client_name),
+            ('check_name', self.check_name),
+            ('silence_type', self.silence_type),
+            ('created_at', self.created_at),
+            ('expire_at', self.expire_at),
+            ('comment', self.comment)
+        ])
 
     def __repr__(self):
         return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -567,20 +568,20 @@ class Zone(BaseCache, NamedResource, TimeStampMixin, db.Model):
 
     @property
     def dict_out(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'backend': self.backend,
-            'status': self.status,
-            'status_message': self.status_message,
-            'last_poll_time': self.last_poll_time,
-            'host': self.host,
-            'path': self.path,
-            'protocol': self.protocol,
-            'port': self.port,
-            'timeout': self.timeout,
-            'interval': self.interval
-        }
+        return OrderedDict([
+            ('id', self.id),
+            ('name', self.name),
+            ('backend', self.backend),
+            ('status', self.status),
+            ('status_message', self.status_message),
+            ('last_poll_time', self.last_poll_time),
+            ('host', self.host),
+            ('path', self.path),
+            ('protocol', self.protocol),
+            ('port', self.port),
+            ('timeout', self.timeout),
+            ('interval', self.interval)
+        ])
 
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.name)

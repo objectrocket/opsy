@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from datetime import datetime, timezone
 from time import time
 from prettytable import PrettyTable
@@ -39,13 +40,13 @@ class Permission(BaseResource, TimeStampMixin, db.Model):
 
     @property
     def dict_out(self):
-        return {
-            'id': self.id,
-            'role_id': self.role_id,
-            'name': self.name,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at
-        }
+        return OrderedDict([
+            ('id', self.id),
+            ('role_id', self.role_id),
+            ('name', self.name),
+            ('created_at', self.created_at),
+            ('updated_at', self.updated_at)
+        ])
 
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.name)
@@ -238,17 +239,17 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
 
     @property
     def dict_out(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at,
-            'roles': [x.name for x in self.roles],
-            'permissions': list(set([x.name for x in self.permissions])),  # dedup
-            'email': self.email,
-            'enabled': self.enabled,
-            'full_name': self.full_name
-        }
+        return OrderedDict([
+            ('id', self.id),
+            ('name', self.name),
+            ('created_at', self.created_at),
+            ('updated_at', self.updated_at),
+            ('roles', [x.name for x in self.roles]),
+            ('permissions', list(set([x.name for x in self.permissions]))),  # dedup
+            ('email', self.email),
+            ('enabled', self.enabled),
+            ('full_name', self.full_name)
+        ])
 
 
 class UserSetting(BaseResource, TimeStampMixin, db.Model):
@@ -266,14 +267,14 @@ class UserSetting(BaseResource, TimeStampMixin, db.Model):
 
     @property
     def dict_out(self):
-        return {
-            'id': self.id,
-            'user_id': self.user_id,
-            'key': self.key,
-            'value': self.value,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at
-        }
+        return OrderedDict([
+            ('id', self.id),
+            ('user_id', self.user_id),
+            ('key', self.key),
+            ('value', self.value),
+            ('created_at', self.created_at),
+            ('updated_at', self.updated_at)
+        ])
 
 
 class Role(NamedResource, TimeStampMixin, db.Model):
@@ -320,13 +321,13 @@ class Role(NamedResource, TimeStampMixin, db.Model):
 
     @property
     def dict_out(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'created_at': self.created_at,
-            'updated_at': self.updated_at,
-            'ldap_group': self.ldap_group,
-            'description': self.description,
-            'permissions': [x.name for x in self.permissions],
-            'users': [x.name for x in self.users]
-        }
+        return OrderedDict([
+            ('id', self.id),
+            ('name', self.name),
+            ('created_at', self.created_at),
+            ('updated_at', self.updated_at),
+            ('ldap_group', self.ldap_group),
+            ('description', self.description),
+            ('permissions', [x.name for x in self.permissions]),
+            ('users', [x.name for x in self.users])
+        ])

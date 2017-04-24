@@ -18,7 +18,8 @@ ConfigOption = partial(  # pylint: disable=invalid-name
     MappedFlaskConfigOption, None)
 
 DEFAULT_FLASK_CONFIG = {
-    'SQLALCHEMY_TRACK_MODIFICATIONS': False
+    'SQLALCHEMY_TRACK_MODIFICATIONS': False,
+    'JSON_SORT_KEYS': False
 }
 
 CONFIG_OPTIONS = [
