@@ -114,20 +114,13 @@ class SensuSilence(SensuBase, Silence):
         self.check_name = extra.get('check')
         self.creator = extra.get('creator')
         self.reason = extra.get('reason')
-        if extra['content'].get('timestamp'):
-            self.created_at = datetime.utcfromtimestamp(
-                int(extra['content']['timestamp']))
-        if extra['expire'] == -1:
+        if extra.get('expire') == -1:
             self.expire_at = None
         else:
             self.expire_at = datetime.utcfromtimestamp(
-                int(time() + int(extra['expire'])))
+                int(time() + int(extra.get('expire'))))
         self.extra = json.dumps(extra)
         super().__init__(zone, extra)
-
-    @classmethod
-    def filter_api_response(cls, response):
-        return [x for x in response if x['path'].startswith('silence/')]
 
 
 class SensuZone(SensuBase, HttpZoneMixin, Zone):  # pylint: disable=too-many-ancestors

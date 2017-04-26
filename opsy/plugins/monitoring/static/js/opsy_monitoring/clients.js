@@ -96,13 +96,14 @@ var clients = {
               uchiwaHref = UCHIWA_URL + '/#/client/' + row.zone_name + '/' +
                 row.client_name,
               returnData.push({
+                'silences': row.silences,
                 'zone': row.zone_name,
                 'name': '<a href="' + uchiwaHref + '"><img src="' +
                   STATICS_URL + 'img/backends/sensu.ico"></img></a> ' +
                   '<a href="/monitoring/clients/' + row.zone_name + '/' + row.name + '">' +
                   row.name + '</a>',
-                'address': row.address,
-                'version': row.version,
+                'backend': row.backend,
+                'subscriptions': row.subscriptions,
                 'timestamp': '<time class="timeago" datetime="' +
                   row.last_poll_time + 'Z">' + row.last_poll_time + 'Z</time>',
                 //jscs:enable requireCamelCaseOrUpperCaseIdentifiers
@@ -116,8 +117,8 @@ var clients = {
         'columns': [
           {data: 'zone'},
           {data: 'name'},
-          {data: 'address'},
-          {data: 'version'},
+          {data: 'backend'},
+          {data: 'subscriptions'},
           {data: 'timestamp',
           defaultContent: ''},
         ],
@@ -128,6 +129,9 @@ var clients = {
             $('td:last', nRow).html('<time class="timeago" datetime="' +
               d.toISOString() + '">' + d + '</time>');
           } catch (err) {
+          }
+          if (aData.silences[0] != null) {
+            $(nRow).addClass('status-silenced');
           }
         },
         'initComplete': function(foo) {

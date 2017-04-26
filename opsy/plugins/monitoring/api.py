@@ -1,9 +1,9 @@
 from flask import Blueprint
 from flask_restful import Api
 from opsy.plugins.monitoring.resources import ZonesAPI, ZoneAPI, EventsAPI, \
-    ChecksAPI, CheckAPI, SilencesAPI, ClientsAPI, ClientAPI, ClientEventsAPI, \
-    ClientEventAPI, ClientResultsAPI, ClientResultAPI, ClientSilencesAPI, \
-    ClientSilenceAPI, DashboardsAPI, DashboardAPI
+    ChecksAPI, CheckAPI, SilencesAPI, SilenceAPI, ClientsAPI, ClientAPI, \
+    ClientEventsAPI, ClientEventAPI, ClientResultsAPI, ClientResultAPI, \
+    DashboardsAPI, DashboardAPI
 
 
 monitoring_api = Blueprint('monitoring_api', __name__)  # pylint: disable=invalid-name
@@ -28,6 +28,9 @@ api.add_resource(
     SilencesAPI, '/silences',
     endpoint='silences')
 api.add_resource(
+    SilenceAPI, '/silences/<zone_name>/<silence_id>',
+    endpoint='silence')
+api.add_resource(
     ClientsAPI, '/clients',
     endpoint='clients')
 api.add_resource(
@@ -45,12 +48,6 @@ api.add_resource(
 api.add_resource(
     ClientResultAPI, '/clients/<zone_name>/<client_name>/results/<check_name>',
     endpoint='client_result')
-api.add_resource(
-    ClientSilencesAPI, '/clients/<zone_name>/<client_name>/silences',
-    endpoint='client_silences')
-api.add_resource(
-    ClientSilenceAPI, '/clients/<zone_name>/<client_name>/silences/<check_name>',
-    endpoint='client_silence')
 api.add_resource(
     DashboardsAPI, '/dashboards',
     endpoint='dashboards')

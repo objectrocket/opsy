@@ -31,7 +31,7 @@ var clientDetails = {
               uchiwaCheckHref = UCHIWA_URL + '/#/client/' + row.zone_name + '/' +
                 row.client_name + '?check=' + row.check_name,
               returnData.push({
-                'silenced': row.silenced,
+                'silences': row.silences,
                 'status': row.status.capitalize(),
                 'check_name': '<a href="' + uchiwaCheckHref + '"><img src="' +
                   STATICS_URL + 'img/backends/sensu.ico"></img></a>' +
@@ -55,7 +55,7 @@ var clientDetails = {
         ],
         'rowCallback': function(nRow, aData, iDisplayIndex, iDisplayIndexFull) {
           $('td:first', nRow).addClass(opsyMonitoring.statusclasses[aData.status]);
-          if (aData.silenced) {
+          if (aData.silences[0] != null) {
             $(nRow).addClass('status-silenced');
           }
         },

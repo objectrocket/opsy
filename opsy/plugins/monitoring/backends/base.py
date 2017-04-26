@@ -1,10 +1,9 @@
 import asyncio
 import uuid
-import json
 from collections import OrderedDict
 from datetime import datetime
 import aiohttp
-from flask import abort
+from flask import abort, url_for
 import opsy
 from opsy.models import TimeStampMixin, OpsyQuery, NamedResource, BaseResource
 from opsy.flask_extensions import db
@@ -51,19 +50,7 @@ class BaseEntity(BaseCache):
     zone_name = db.Column(db.String(64))
     query_class = OpsyQuery
     last_poll_time = db.Column(db.DateTime, default=datetime.utcnow())
-    extra = db.Column(db.JSON)
-
-    @property
-    def dict_extra_out(self):
-        event_dict = self.dict_out
-        event_dict['extra'] = json.loads(self.extra)
-        return event_dict
-
-    def get_dict(self, extra=False, **kwargs):
-        if extra:
-            return self.dict_extra_out
-        else:
-            return self.dict_out
+    raw_info = db.Column(db.JSON)
 
     @classmethod
     def filter_api_response(cls, response):
@@ -77,17 +64,14 @@ class Client(BaseEntity, db.Model):
 
     class ClientQuery(CacheQuery):
 
-        def all_dict_out(self, extra=False, **kwargs):
+        def all_dict_out(self, **kwargs):
             clients_silences = self.outerjoin(Silence, db.and_(
                 Client.zone_name == Silence.zone_name,
                 Client.name == Silence.client_name,
                 Silence.check_name is None)).add_entity(Silence).all()
             clients_json = []
             for client, silence in clients_silences:
-                if extra:
-                    client_json = client.dict_extra_out
-                else:
-                    client_json = client.dict_out
+                client_json = client.dict_out
                 client_json['silenced'] = bool(silence)
                 clients_json.append(client_json)
             return clients_json
@@ -110,8 +94,7 @@ class Client(BaseEntity, db.Model):
 
     silences = db.relationship('Silence', backref='client', lazy='joined',
                                query_class=OpsyQuery, primaryjoin="and_("
-                               "Client.zone_id == foreign("
-                               "Silence.zone_id), "
+                               "Client.zone_id == foreign(Silence.zone_id), "
                                "Client.name == foreign(Silence.client_name))")
 
     __table_args__ = (
@@ -120,9 +103,10 @@ class Client(BaseEntity, db.Model):
         db.UniqueConstraint('zone_id', 'name', name='client_uc'),
     )
 
-    def __init__(self, zone, extra):
+    def __init__(self, zone, raw_info):
         self.id = str(uuid.uuid3(  # pylint: disable=invalid-name
             uuid.UUID(self.zone_id), self.name))
+        self.raw_info = raw_info
 
     @classmethod
     def get_filters_maps(cls):
@@ -140,19 +124,26 @@ class Client(BaseEntity, db.Model):
             return 'warning'
 
     @property
-    def silenced(self):
-        return bool(self.silences.filter(Silence.check_name is None).first())
-
-    @property
     def dict_out(self):
+        links = [
+            OrderedDict([
+                ('rel', 'self'),
+                ('href', url_for('monitoring_api.client',
+                                 zone_name=self.zone_name,
+                                 client_name=self.name))
+            ])
+        ]
         return OrderedDict([
             ('id', self.id),
             ('zone_name', self.zone_name),
+            ('zone_id', self.zone_id),
             ('backend', self.backend),
             ('updated_at', self.updated_at),
             ('last_poll_time', self.last_poll_time),
             ('name', self.name),
-            ('subscriptions', self.subscriptions)
+            ('subscriptions', self.subscriptions),
+            ('silences', [x.get_dict() for x in self.silences]),
+            ('links', links)
         ])
 
     def __repr__(self):
@@ -188,9 +179,10 @@ class Check(BaseEntity, db.Model):
         db.UniqueConstraint('zone_id', 'name', name='check_uc'),
     )
 
-    def __init__(self, zone, extra):
+    def __init__(self, zone, raw_info):
         self.id = str(uuid.uuid3(  # pylint: disable=invalid-name
             uuid.UUID(self.zone_id), self.name))
+        self.raw_info = raw_info
 
     @classmethod
     def get_filters_maps(cls):
@@ -201,10 +193,11 @@ class Check(BaseEntity, db.Model):
         return OrderedDict([
             ('id', self.id),
             ('zone_name', self.zone_name),
+            ('zone_id', self.zone_id),
             ('backend', self.backend),
             ('last_poll_time', self.last_poll_time),
             ('name', self.name),
-            ('subscribers', self.check_subscribers),
+            ('subscribers', self.subscribers),
             ('occurrences_threshold', self.occurrences_threshold),
             ('interval', self.interval),
             ('command', self.command)
@@ -220,26 +213,6 @@ class Result(BaseEntity, db.Model):
     entity = 'results'
     __tablename__ = 'monitoring_results'
 
-    class ResultQuery(CacheQuery):
-
-        def all_dict_out(self, extra=False, **kwargs):
-            clients_silences = self.outerjoin(Silence, db.and_(
-                Result.zone_name == Silence.zone_name,
-                Result.client_name == Silence.client_name,
-                Result.check_name == Silence.check_name)).add_entity(
-                    Silence).all()
-            events_json = []
-            for event, silence in clients_silences:
-                if extra:
-                    event_json = event.dict_extra_out
-                else:
-                    event_json = event.dict_out
-                event_json['silenced'] = bool(silence)
-                events_json.append(event_json)
-            return events_json
-
-    query_class = ResultQuery
-
     client_name = db.Column(db.String(128))
     check_name = db.Column(db.String(128))
     check_subscribers = db.Column(db.JSON)
@@ -248,6 +221,43 @@ class Result(BaseEntity, db.Model):
     interval = db.Column(db.BigInteger)
     command = db.Column(db.Text)
     output = db.Column(db.Text)
+
+    silences = db.relationship(
+        'Silence', backref='results', lazy='joined', primaryjoin='''and_(
+        Result.zone_name == foreign(Silence.zone_name),
+        or_(
+            and_(  # This check on this client is silenced
+                Result.client_name == foreign(Silence.client_name),
+                Result.check_name == foreign(Silence.check_name),
+                foreign(Silence.subscription) == None
+                ),
+            and_(  # This client is silenced
+                Result.client_name == foreign(Silence.client_name),
+                foreign(Silence.check_name) == None,
+                foreign(Silence.subscription) == None
+                ),
+            and_(  # This check is silenced
+                Result.check_name == foreign(Silence.check_name),
+                foreign(Silence.client_name) == None,
+                foreign(Silence.subscription) == None
+                ),
+            and_(  # This check on this subscription is silenced
+                Result.check_name == Silence.check_name,
+                foreign(Silence.client_name) == None,
+                func.json_contains(
+                    Result.check_subscribers,
+                    func.concat('"', foreign(Silence.subscription), '"')
+                    )
+                ),
+            and_(  # This subscription is silenced
+                foreign(Silence.check_name) == None,
+                foreign(Silence.client_name) == None,
+                func.json_contains(
+                    Result.check_subscribers,
+                    func.concat('"', foreign(Silence.subscription), '"')
+                    )
+                )
+        ))''')
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_id'], ['monitoring_zones.id'],
@@ -258,9 +268,10 @@ class Result(BaseEntity, db.Model):
             ['ok', 'warning', 'critical', 'unknown']))
     )
 
-    def __init__(self, zone, extra):
+    def __init__(self, zone, raw_info):
         self.id = str(uuid.uuid3(  # pylint: disable=invalid-name
             uuid.UUID(self.zone_id), self.client_name + self.check_name))
+        self.raw_info = raw_info
 
     @classmethod
     def get_filters_maps(cls):
@@ -269,9 +280,19 @@ class Result(BaseEntity, db.Model):
 
     @property
     def dict_out(self):
+        links = [
+            OrderedDict([
+                ('rel', 'self'),
+                ('href', url_for('monitoring_api.client_result',
+                                 zone_name=self.zone_name,
+                                 client_name=self.client_name,
+                                 check_name=self.check_name))
+            ])
+        ]
         return OrderedDict([
             ('id', self.id),
             ('zone_name', self.zone_name),
+            ('zone_id', self.zone_id),
             ('backend', self.backend),
             ('last_poll_time', self.last_poll_time),
             ('client_name', self.client_name),
@@ -281,7 +302,9 @@ class Result(BaseEntity, db.Model):
             ('status', self.status),
             ('interval', self.interval),
             ('command', self.command),
-            ('output', self.output)
+            ('output', self.output),
+            ('silences', [x.get_dict() for x in self.silences]),
+            ('links', links)
         ])
 
     def __repr__(self):
@@ -296,8 +319,15 @@ class Event(BaseEntity, db.Model):
 
     class EventQuery(CacheQuery):
 
-        def wtfilter_by(self, hide_silenced=None, **kwargs):
+        def wtfilter_by(self, hide_silenced=None, client_subscriptions=None,
+                        check_subscribers=None, **kwargs):
             filters = []
+            if client_subscriptions:
+                filters.append(
+                    Event.client_subscriptions.contains(client_subscriptions))
+            if check_subscribers:
+                filters.append(
+                    Event.check_subscribers.contains(check_subscribers))
             if hide_silenced:
                 hide_silenced = hide_silenced.split(',')
                 if 'checks' in hide_silenced:
@@ -306,33 +336,11 @@ class Event(BaseEntity, db.Model):
                         check_name=Event.check_name)))
                 if 'clients' in hide_silenced:
                     filters.append(db.not_(Client.silences.any(
-                        client_name=Event.client_name, silence_type='client')))
+                        client_name=Event.client_name)))
                 if 'occurrences' in hide_silenced:
                     filters.append(db.not_(
                         Event.occurrences < Event.occurrences_threshold))
             return super().wtfilter_by(**kwargs).filter(*filters)
-
-        def all_dict_out(self, extra=False, **kwargs):
-            clients_silences = self.outerjoin(Silence, db.and_(
-                Event.zone_name == Silence.zone_name,
-                db.or_(
-                    db.and_(
-                        Event.client_name == Silence.client_name,
-                        Silence.check_name == Event.check_name,
-                        Silence.silence_type == 'check'),
-                    db.and_(
-                        Event.client_name == Silence.client_name,
-                        Silence.silence_type == 'client')
-                ))).add_entity(Silence).all()
-            events_json = []
-            for event, silence in clients_silences:
-                if extra:
-                    event_json = event.dict_extra_out
-                else:
-                    event_json = event.dict_out
-                event_json['silenced'] = bool(silence)
-                events_json.append(event_json)
-            return events_json
 
         def count_checks(self):
             check_count = {x: y for x, y in self.with_entities(
@@ -357,14 +365,36 @@ class Event(BaseEntity, db.Model):
     interval = db.Column(db.BigInteger)
     output = db.Column(db.Text)
 
-    silences = db.relationship('Silence', backref='events', lazy='dynamic',
-                               query_class=OpsyQuery,
-                               primaryjoin="and_("
-                               "Event.zone_id==foreign(Silence.zone_id),"
-                               "Event.client_name==foreign("
-                               "Silence.client_name), "
-                               "Event.check_name==foreign("
-                               "Silence.check_name))")
+    silences = db.relationship(
+        'Silence', backref='events', lazy='joined', primaryjoin='''and_(
+        Event.zone_name == foreign(Silence.zone_name),
+        or_(
+            and_(  # This check on this client is silenced
+                Event.client_name == foreign(Silence.client_name),
+                Event.check_name == foreign(Silence.check_name),
+                foreign(Silence.subscription) == None
+                ),
+            and_(  # This client is silenced
+                Event.client_name == foreign(Silence.client_name),
+                foreign(Silence.check_name) == None,
+                foreign(Silence.subscription) == None
+                ),
+            and_(  # This check is silenced
+                Event.check_name == foreign(Silence.check_name),
+                foreign(Silence.client_name) == None,
+                foreign(Silence.subscription) == None
+                ),
+            and_(  # This check on this subscription is silenced
+                Event.check_name == Silence.check_name,
+                foreign(Silence.client_name) == None,
+                Event.check_subscribers.contains(foreign(Silence.subscription))
+                ),
+            and_(  # This subscription is silenced
+                foreign(Silence.check_name) == None,
+                foreign(Silence.client_name) == None,
+                Event.check_subscribers.contains(foreign(Silence.subscription))
+                )
+        ))''')
 
     __table_args__ = (
         db.ForeignKeyConstraint(['zone_id'], ['monitoring_zones.id'],
@@ -375,9 +405,10 @@ class Event(BaseEntity, db.Model):
             ['ok', 'warning', 'critical', 'unknown']))
     )
 
-    def __init__(self, zone, extra):
+    def __init__(self, zone, raw_info):
         self.id = str(uuid.uuid3(  # pylint: disable=invalid-name
             uuid.UUID(self.zone_id), self.client_name + self.check_name))
+        self.raw_info = raw_info
 
     @classmethod
     def get_filters_maps(cls):
@@ -386,10 +417,20 @@ class Event(BaseEntity, db.Model):
 
     @property
     def dict_out(self):
+        links = [
+            OrderedDict([
+                ('rel', 'self'),
+                ('href', url_for('monitoring_api.client_event',
+                                 zone_name=self.zone_name,
+                                 client_name=self.client_name,
+                                 check_name=self.check_name))
+            ])
+        ]
         return OrderedDict([
             ('id', self.id),
             ('backend', self.backend),
             ('zone_name', self.zone_name),
+            ('zone_id', self.zone_id),
             ('last_poll_time', self.last_poll_time),
             ('client_name', self.client_name),
             ('client_subscriptions', self.client_subscriptions),
@@ -401,7 +442,9 @@ class Event(BaseEntity, db.Model):
             ('status', self.status),
             ('interval', self.interval),
             ('command', self.command),
-            ('output', self.output)
+            ('output', self.output),
+            ('silences', [x.get_dict() for x in self.silences]),
+            ('links', links)
         ])
 
     def __repr__(self):
@@ -428,12 +471,13 @@ class Silence(BaseEntity, db.Model):
                             'subscription', name='silence_uc')
     )
 
-    def __init__(self, zone, extra):
+    def __init__(self, zone, raw_info):
         check_name = self.check_name or ''
         client_name = self.client_name or ''
         subscription = self.subscription or ''
         self.id = str(uuid.uuid3(  # pylint: disable=invalid-name
             uuid.UUID(self.zone_id), subscription + client_name + check_name))
+        self.raw_info = raw_info
 
     @classmethod
     def get_filters_maps(cls):
@@ -442,9 +486,19 @@ class Silence(BaseEntity, db.Model):
 
     @property
     def dict_out(self):
+        # links = [
+        #     OrderedDict([
+        #         ('rel', 'self'),
+        #         ('href', url_for('monitoring_api.client_event',
+        #                          zone_name=self.zone_name,
+        #                          client_name=self.client_name,
+        #                          check_name=self.check_name))
+        #     ])
+        # ]
         return OrderedDict([
             ('id', self.id),
             ('zone_name', self.zone_name),
+            ('zone_id', self.zone_id),
             ('backend', self.backend),
             ('last_poll_time', self.last_poll_time),
             ('client_name', self.client_name),

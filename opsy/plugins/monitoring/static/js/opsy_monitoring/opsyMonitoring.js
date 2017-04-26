@@ -44,6 +44,9 @@ var opsyMonitoring = {
         opsy.log('autolinking ' + item);
         value = autolinker.link(value);
       }
+      if(typeof(value) === 'object'){
+          value = JSON.stringify(value,null,2);
+      };
       html.push('<tr><td>' + item + '</td><td>' + value + '</td></tr>');
     });
     return html.join('\n');
