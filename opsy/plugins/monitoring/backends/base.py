@@ -120,8 +120,7 @@ class Client(BaseEntity, db.Model):
         elif any([True if (x.status == 'critical') else False
                   for x in results]):
             return 'critical'
-        else:
-            return 'warning'
+        return 'warning'
 
     @property
     def dict_out(self):

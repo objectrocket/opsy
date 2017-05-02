@@ -121,7 +121,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
             for args, kwargs in current_app.jobs:
                 scheduler.add_job(*args, **kwargs)
             scheduler.start()
-            while len(scheduler.get_jobs()) > 0:
+            while scheduler.get_jobs() > 0:
                 continue
             scheduler.shutdown(wait=True)
 

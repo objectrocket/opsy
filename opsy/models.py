@@ -103,7 +103,7 @@ class BaseResource(object):
             if value is None and prune_none_values is True:
                 continue
             setattr(self, key, value)
-        return commit and self.save() or self
+        return self.save() if commit else self
 
     def save(self, commit=True):
         db.session.add(self)
@@ -125,8 +125,7 @@ class BaseResource(object):
         if jsonify:
             if pretty_print:
                 return json.dumps(dict_out, indent=4)
-            else:
-                return json.dumps(dict_out)
+            return json.dumps(dict_out)
         if serialize:
             dict_out = json.loads(json.dumps(dict_out))
         return dict_out

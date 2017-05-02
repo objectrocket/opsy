@@ -32,8 +32,7 @@ class Login(Resource):
         if token:
             if request.is_json:
                 return jsonify(token)
-            else:
-                return redirect(url_for('core_main.about'))
+            return redirect(url_for('core_main.about'))
         elif request.is_json:
             abort(401, 'Username or password incorrect.')
         else:
