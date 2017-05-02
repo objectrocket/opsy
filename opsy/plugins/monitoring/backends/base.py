@@ -331,9 +331,11 @@ class Event(BaseEntity, db.Model):
             if hide_silenced:
                 hide_silenced = hide_silenced.split(',')
                 if 'checks' in hide_silenced:
-                    filters.append(db.not_(Event.silences.any(
-                        client_name=Event.client_name,
-                        check_name=Event.check_name)))
+                    filters.append(db.not_(db.or_(
+                        Event.silences.any(check_name=Event.check_name),
+                        Event.silences.any(client_name=Event.client_name),
+                        Event.check_subscribers.contains(
+                            Silence.subscription))))
                 if 'clients' in hide_silenced:
                     filters.append(db.not_(Client.silences.any(
                         client_name=Event.client_name)))

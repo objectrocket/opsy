@@ -116,8 +116,8 @@ var clients = {
           '<"col-sm-2"f>><"row"<"col-sm-12"tr>><"row"<"col-sm-5"i><"col-sm-7"p>>',
         'columns': [
           {data: 'zone'},
-          {data: 'name'},
           {data: 'backend'},
+          {data: 'name'},
           {data: 'subscriptions'},
           {data: 'timestamp',
           defaultContent: ''},

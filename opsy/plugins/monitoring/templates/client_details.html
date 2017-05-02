@@ -11,6 +11,12 @@
           <div id="clientdetails" class="col-md-4 well">
             <h4 id="clientdetailsname"></h4>
             <table id="clientdetailstable" class="jsontable">
+              <thead>
+                <th class="item">Item</th>
+                <th class="output">Output</th>
+              </thead>
+              <tbody>
+              </tbody>
             </table>
           </div>
           <div id="clientchecks" class="col-md-8 well">
@@ -37,7 +43,7 @@
       ZONE = "{{zone}}";
       CLIENT = "{{client}}";
       $(document).ready(function() {
-        clientDetails.datatables.init();
+        clientDetails.init();
       });
     </script>
 {% endblock %}
