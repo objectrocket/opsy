@@ -240,6 +240,7 @@ class UserSettingAPI(Resource):
             abort(404, str(error))
         return ('', 202)
 
+
 api.add_resource(
     Login, '/login',
     endpoint='login')
