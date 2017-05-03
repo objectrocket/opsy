@@ -4,7 +4,7 @@ import click
 from flask import current_app
 from flask.cli import FlaskGroup, run_command
 from prettytable import PrettyTable
-from opsy.extensions import db
+from opsy.flask_extensions import db
 from opsy.app import create_app, create_scheduler
 from opsy.exceptions import DuplicateError
 from opsy.utils import load_plugins, print_error, print_notice

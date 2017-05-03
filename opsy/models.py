@@ -1,10 +1,11 @@
 import uuid
+from collections import OrderedDict
 from datetime import datetime
 from flask_sqlalchemy import BaseQuery
 from flask import abort, json
 from prettytable import PrettyTable
 from sqlalchemy.orm.base import _entity_descriptor
-from opsy.extensions import db
+from opsy.flask_extensions import db
 from opsy.utils import get_filters_list, print_property_table
 from opsy.exceptions import DuplicateError
 
@@ -88,8 +89,8 @@ class BaseResource(object):
 
     @property
     def dict_out(self):
-        return {key: getattr(self, key)
-                for key in self.__table__.columns.keys()}  # pylint: disable=no-member
+        return OrderedDict([(key, getattr(self, key))
+                            for key in self.__table__.columns.keys()])  # pylint: disable=no-member
 
     def pretty_print(self, all_attrs=False, ignore_attrs=None):
         properties = [(key, value) for key, value in self.get_dict(  # pylint: disable=no-member
@@ -102,7 +103,7 @@ class BaseResource(object):
             if value is None and prune_none_values is True:
                 continue
             setattr(self, key, value)
-        return commit and self.save() or self
+        return self.save() if commit else self
 
     def save(self, commit=True):
         db.session.add(self)
@@ -118,14 +119,13 @@ class BaseResource(object):
                  all_attrs=False, **kwargs):
         dict_out = self.dict_out
         if all_attrs:
-            attr_dict = {x.key: getattr(self, x.key)
-                         for x in self.__table__.columns}  # pylint: disable=no-member
+            attr_dict = OrderedDict([(x.key, getattr(self, x.key))
+                                     for x in self.__table__.columns])  # pylint: disable=no-member
             dict_out.update(attr_dict)
         if jsonify:
             if pretty_print:
                 return json.dumps(dict_out, indent=4)
-            else:
-                return json.dumps(dict_out)
+            return json.dumps(dict_out)
         if serialize:
             dict_out = json.loads(json.dumps(dict_out))
         return dict_out

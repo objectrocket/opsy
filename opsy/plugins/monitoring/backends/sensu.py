@@ -18,13 +18,12 @@ class SensuClient(SensuBase, Client):
         self.zone_id = zone.id
         self.zone_name = zone.name
         self.name = extra['name']
+        self.subscriptions = extra.get('subscriptions', [])
         try:
             self.updated_at = datetime.utcfromtimestamp(
                 int(extra.get('timestamp')))
         except TypeError:
             self.updated_at = None
-        self.version = extra.get('version')
-        self.address = extra.get('address')
         self.extra = json.dumps(extra)
         super().__init__(zone, extra)
 
@@ -36,6 +35,7 @@ class SensuCheck(SensuBase, Check):
         self.zone_id = zone.id
         self.zone_name = zone.name
         self.name = extra['name']
+        self.subscribers = extra.get('subscribers', [])
         self.occurrences_threshold = extra.get('occurrences')
         self.interval = extra.get('interval')
         self.command = extra.get('command')
@@ -51,6 +51,7 @@ class SensuResult(SensuBase, Result):
         self.zone_name = zone.name
         self.client_name = extra['client']
         self.check_name = extra['check']['name']
+        self.check_subscribers = extra['check'].get('subscribers', [])
         status_map = ['ok', 'warning', 'critical']
         try:
             self.status = status_map[extra['check'].get('status')]
@@ -86,42 +87,40 @@ class SensuEvent(SensuBase, Event):
             self.status = 'unknown'
         self.command = extra['check'].get('command')
         self.output = extra['check'].get('output')
+        self.client_subscriptions = extra['client'].get('subscriptions', [])
+        self.check_subscribers = extra['check'].get('subscribers', [])
         self.interval = extra['check'].get('interval')
         self.extra = json.dumps(extra)
         super().__init__(zone, extra)
 
 
 class SensuSilence(SensuBase, Silence):
-    uri = 'stashes'
+    uri = 'silenced'
 
     def __init__(self, zone, extra):
         self.zone_id = zone.id
         self.zone_name = zone.name
-        path_list = extra['path'].split('/')
-        self.client_name = path_list[1]
-        try:
-            self.check_name = path_list[2]
-        except IndexError:
-            self.check_name = None
-        if self.check_name:
-            self.silence_type = 'check'
+        raw_subscription = extra.get('subscription')
+        if raw_subscription:
+            if raw_subscription.startswith('client:'):
+                self.client_name = raw_subscription.replace('client:', '')
+                self.subscription = None
+            else:
+                self.client_name = None
+                self.subscription = raw_subscription
         else:
-            self.silence_type = 'client'
-        self.comment = json.dumps(extra['content'])
-        if extra['content'].get('timestamp'):
-            self.created_at = datetime.utcfromtimestamp(
-                int(extra['content']['timestamp']))
-        if extra['expire'] == -1:
+            self.client_name = None
+            self.subscription = None
+        self.check_name = extra.get('check')
+        self.creator = extra.get('creator')
+        self.reason = extra.get('reason')
+        if extra.get('expire') == -1:
             self.expire_at = None
         else:
             self.expire_at = datetime.utcfromtimestamp(
-                int(time() + int(extra['expire'])))
+                int(time() + int(extra.get('expire'))))
         self.extra = json.dumps(extra)
         super().__init__(zone, extra)
-
-    @classmethod
-    def filter_api_response(cls, response):
-        return [x for x in response if x['path'].startswith('silence/')]
 
 
 class SensuZone(SensuBase, HttpZoneMixin, Zone):  # pylint: disable=too-many-ancestors

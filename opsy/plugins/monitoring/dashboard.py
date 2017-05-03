@@ -1,6 +1,6 @@
 from prettytable import PrettyTable
 from opsy.models import TimeStampMixin, OpsyQuery, BaseResource, NamedResource
-from opsy.extensions import db
+from opsy.flask_extensions import db
 from opsy.utils import parse_include_excludes
 from opsy.exceptions import DuplicateError
 

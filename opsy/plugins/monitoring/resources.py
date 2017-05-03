@@ -37,7 +37,6 @@ class EventsAPI(Resource):
 
     def __init__(self):
         self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('extra', type=bool, default=False)
         self.reqparse.add_argument('dashboard')
         self.reqparse.add_argument('count_checks', type=bool)
         self.reqparse.add_argument('hide_silenced')
@@ -59,7 +58,7 @@ class EventsAPI(Resource):
         if args['count_checks']:
             events = events_query.count_checks()
         else:
-            events = events_query.all_dict_out(extra=args['extra'])
+            events = events_query.all_dict_out()
         return jsonify({'events': events})
 
 
@@ -67,7 +66,6 @@ class ChecksAPI(Resource):
 
     def __init__(self):
         self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('extra', type=bool, default=False)
         self.reqparse.add_argument('dashboard')
         self.reqparse.add_argument('zone')
         self.reqparse.add_argument('check')
@@ -80,24 +78,18 @@ class ChecksAPI(Resource):
         checks = Check.query.wtfilter_by(
             prune_none_values=True,
             zone_name=args['zone'], dashboard=args['dashboard'],
-            name=args['check']).all_dict_out(extra=args['extra'])
+            name=args['check']).all_dict_out()
         return jsonify({'checks': checks})
 
 
 class CheckAPI(Resource):
 
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('extra', type=bool, default=False)
-        super().__init__()
-
     def get(self, zone_name, check_name):
         if not permissions.get('checks_read').can():
             abort(403)
-        args = self.reqparse.parse_args()
         checks = Check.query.wtfilter_by(
-            zone_name=args['zone'],
-            name=args['check']).all_dict_out_or_404(extra=args['extra'])
+            zone_name=zone_name,
+            name=check_name).all_dict_out_or_404()
         return jsonify({'checks': checks})
 
 
@@ -105,12 +97,11 @@ class SilencesAPI(Resource):
 
     def __init__(self):
         self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('extra', type=bool, default=False)
         self.reqparse.add_argument('dashboard')
         self.reqparse.add_argument('zone')
         self.reqparse.add_argument('client')
         self.reqparse.add_argument('check')
-        self.reqparse.add_argument('type', choices=['check', 'client'])
+        self.reqparse.add_argument('subscription')
         super().__init__()
 
     def get(self):
@@ -120,8 +111,19 @@ class SilencesAPI(Resource):
         silences = Silence.query.wtfilter_by(
             prune_none_values=True,
             zone_name=args['zone'], client_name=args['client'],
-            check_name=args['check'], silence_type=args['type'],
-            dashboard=args['dashboard']).all_dict_out(extra=args['extra'])
+            check_name=args['check'], subscription=args['subscription'],
+            dashboard=args['dashboard']).all_dict_out()
+        return jsonify({'silences': silences})
+
+
+class SilenceAPI(Resource):
+
+    def get(self, zone_name, silence_id):
+        if not permissions.get('silences_read').can():
+            abort(403)
+        silences = Silence.query.wtfilter_by(
+            zone_name=zone_name,
+            id=silence_id).all_dict_out_or_404(all_attrs=True)
         return jsonify({'silences': silences})
 
 
@@ -129,7 +131,6 @@ class ClientsAPI(Resource):
 
     def __init__(self):
         self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('extra', type=bool, default=False)
         self.reqparse.add_argument('dashboard')
         self.reqparse.add_argument('zone')
         self.reqparse.add_argument('client')
@@ -142,132 +143,65 @@ class ClientsAPI(Resource):
         clients = Client.query.wtfilter_by(
             prune_none_values=True,
             zone_name=args['zone'], name=args['client'],
-            dashboard=args['dashboard']).all_dict_out(extra=args['extra'])
+            dashboard=args['dashboard']).all_dict_out()
         return jsonify({'clients': clients})
 
 
 class ClientAPI(Resource):
 
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('extra', type=bool, default=False)
-        super().__init__()
-
     def get(self, zone_name, client_name):
         if not permissions.get('clients_read').can():
             abort(403)
-        args = self.reqparse.parse_args()
         clients = Client.query.wtfilter_by(
             zone_name=zone_name,
-            name=client_name).all_dict_out_or_404(extra=args['extra'])
+            name=client_name).all_dict_out_or_404(all_attrs=True)
         return jsonify({'clients': clients})
 
 
 class ClientEventsAPI(Resource):
 
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('extra', type=bool, default=False)
-        super().__init__()
-
     def get(self, zone_name, client_name):
         if not permissions.get('clients_read').can():
             abort(403)
-        args = self.reqparse.parse_args()
         event_list = Event.query.wtfilter_by(
             zone_name=zone_name,
-            client_name=client_name).all_dict_out(extra=args['extra'])
+            client_name=client_name).all_dict_out()
         return jsonify({'events': event_list})
 
 
 class ClientEventAPI(Resource):
 
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('extra', type=bool, default=False)
-        super().__init__()
-
     def get(self, zone_name, client_name, check_name):
         if not permissions.get('clients_read').can():
             abort(403)
-        args = self.reqparse.parse_args()
         events = Event.query.wtfilter_by(
             zone_name=zone_name,
             client_name=client_name,
-            check_name=check_name).all_dict_out_or_404(extra=args['extra'])
+            check_name=check_name).all_dict_out_or_404(all_attrs=True)
         return jsonify({'events': events})
 
 
 class ClientResultsAPI(Resource):
 
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('extra', type=bool, default=False)
-        super().__init__()
-
     def get(self, zone_name, client_name):
         if not permissions.get('clients_read').can():
             abort(403)
-        args = self.reqparse.parse_args()
         results = Result.query.wtfilter_by(
             zone_name=zone_name,
-            client_name=client_name).all_dict_out(extra=args['extra'])
+            client_name=client_name).all_dict_out()
         return jsonify({'results': results})
 
 
 class ClientResultAPI(Resource):
 
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('extra', type=bool, default=False)
-        super().__init__()
-
     def get(self, zone_name, client_name, check_name):
         if not permissions.get('clients_read').can():
             abort(403)
-        args = self.reqparse.parse_args()
         results = Result.query.wtfilter_by(
             zone_name=zone_name,
             client_name=client_name,
-            check_name=check_name).all_dict_out_or_404(extra=args['extra'])
+            check_name=check_name).all_dict_out_or_404(all_attrs=True)
         return jsonify({'results': results})
-
-
-class ClientSilencesAPI(Resource):
-
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('extra', type=bool, default=False)
-        self.reqparse.add_argument('type', choices=['check', 'client'])
-        super().__init__()
-
-    def get(self, zone_name, client_name):
-        if not permissions.get('clients_read').can():
-            abort(403)
-        args = self.reqparse.parse_args()
-        silences = Silence.query.wtfilter_by(
-            prune_none_values=True,
-            zone_name=zone_name, client_name=client_name,
-            silence_type=args['type']).all_dict_out(extra=args['extra'])
-        return jsonify({'silences': silences})
-
-
-class ClientSilenceAPI(Resource):
-
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('extra', type=bool, default=False)
-        super().__init__()
-
-    def get(self, zone_name, client_name, check_name):
-        if not permissions.get('clients_read').can():
-            abort(403)
-        args = self.reqparse.parse_args()
-        silences = Silence.query.wtfilter_by(
-            zone_name=zone_name,
-            client_name=client_name,
-            check_name=check_name).all_dict_out_or_404(extra=args['extra'])
-        return jsonify({'silences': silences})
 
 
 class DashboardsAPI(Resource):

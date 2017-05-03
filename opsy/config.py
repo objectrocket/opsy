@@ -1,7 +1,7 @@
 import os.path
 from collections import namedtuple
 from functools import partial
-from opsy.extensions import iniconfig
+from opsy.flask_extensions import iniconfig
 from opsy.exceptions import NoConfigFile, NoConfigSection, MissingConfigOption
 
 MappedFlaskConfigOption = namedtuple(  # pylint: disable=invalid-name
@@ -18,7 +18,8 @@ ConfigOption = partial(  # pylint: disable=invalid-name
     MappedFlaskConfigOption, None)
 
 DEFAULT_FLASK_CONFIG = {
-    'SQLALCHEMY_TRACK_MODIFICATIONS': False
+    'SQLALCHEMY_TRACK_MODIFICATIONS': False,
+    'JSON_SORT_KEYS': False
 }
 
 CONFIG_OPTIONS = [

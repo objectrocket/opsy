@@ -3,7 +3,7 @@ import random
 import time
 from datetime import datetime
 from sqlalchemy.exc import OperationalError
-from opsy.extensions import db
+from opsy.flask_extensions import db
 from opsy.plugins.monitoring.backends.base import Zone
 from opsy.plugins.monitoring.exceptions import PollFailure
 
