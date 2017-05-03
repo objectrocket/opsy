@@ -3,7 +3,7 @@ import uuid
 from collections import OrderedDict
 from datetime import datetime
 import aiohttp
-from flask import abort, url_for
+from flask import abort
 import opsy
 from opsy.models import TimeStampMixin, OpsyQuery, NamedResource, BaseResource
 from opsy.flask_extensions import db
@@ -124,14 +124,6 @@ class Client(BaseEntity, db.Model):
 
     @property
     def dict_out(self):
-        links = [
-            OrderedDict([
-                ('rel', 'self'),
-                ('href', url_for('monitoring_api.client',
-                                 zone_name=self.zone_name,
-                                 client_name=self.name))
-            ])
-        ]
         return OrderedDict([
             ('id', self.id),
             ('zone_name', self.zone_name),
@@ -141,8 +133,7 @@ class Client(BaseEntity, db.Model):
             ('last_poll_time', self.last_poll_time),
             ('name', self.name),
             ('subscriptions', self.subscriptions),
-            ('silences', [x.get_dict() for x in self.silences]),
-            ('links', links)
+            ('silences', [x.get_dict() for x in self.silences])
         ])
 
     def __repr__(self):
@@ -279,15 +270,6 @@ class Result(BaseEntity, db.Model):
 
     @property
     def dict_out(self):
-        links = [
-            OrderedDict([
-                ('rel', 'self'),
-                ('href', url_for('monitoring_api.client_result',
-                                 zone_name=self.zone_name,
-                                 client_name=self.client_name,
-                                 check_name=self.check_name))
-            ])
-        ]
         return OrderedDict([
             ('id', self.id),
             ('zone_name', self.zone_name),
@@ -302,8 +284,7 @@ class Result(BaseEntity, db.Model):
             ('interval', self.interval),
             ('command', self.command),
             ('output', self.output),
-            ('silences', [x.get_dict() for x in self.silences]),
-            ('links', links)
+            ('silences', [x.get_dict() for x in self.silences])
         ])
 
     def __repr__(self):
@@ -418,15 +399,6 @@ class Event(BaseEntity, db.Model):
 
     @property
     def dict_out(self):
-        links = [
-            OrderedDict([
-                ('rel', 'self'),
-                ('href', url_for('monitoring_api.client_event',
-                                 zone_name=self.zone_name,
-                                 client_name=self.client_name,
-                                 check_name=self.check_name))
-            ])
-        ]
         return OrderedDict([
             ('id', self.id),
             ('backend', self.backend),
@@ -444,8 +416,7 @@ class Event(BaseEntity, db.Model):
             ('interval', self.interval),
             ('command', self.command),
             ('output', self.output),
-            ('silences', [x.get_dict() for x in self.silences]),
-            ('links', links)
+            ('silences', [x.get_dict() for x in self.silences])
         ])
 
     def __repr__(self):
@@ -487,15 +458,6 @@ class Silence(BaseEntity, db.Model):
 
     @property
     def dict_out(self):
-        # links = [
-        #     OrderedDict([
-        #         ('rel', 'self'),
-        #         ('href', url_for('monitoring_api.client_event',
-        #                          zone_name=self.zone_name,
-        #                          client_name=self.client_name,
-        #                          check_name=self.check_name))
-        #     ])
-        # ]
         return OrderedDict([
             ('id', self.id),
             ('zone_name', self.zone_name),
