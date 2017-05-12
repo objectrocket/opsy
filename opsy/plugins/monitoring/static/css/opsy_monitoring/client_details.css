@@ -8,15 +8,3 @@ th#check {
 th#lastcheck {
     width: 15%;
 }
-th.item {
-    width: 12em;
-}
-tr > td:first-child {
-    vertical-align: top;
-    white-space: nowrap;
-}
-
-table td {
-    word-wrap: break-word;
-    white-space: pre-wrap;
-}

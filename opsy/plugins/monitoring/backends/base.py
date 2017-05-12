@@ -1,7 +1,6 @@
 import asyncio
 import uuid
 from collections import OrderedDict
-from datetime import datetime
 import aiohttp
 from flask import abort
 import opsy
@@ -35,7 +34,6 @@ class BaseCache(BaseResource):
     query_class = CacheQuery
 
     backend = db.Column(db.String(20))
-    last_poll_time = db.Column(db.DateTime, default=None)
 
     __mapper_args__ = {
         'polymorphic_on': backend,
@@ -49,12 +47,7 @@ class BaseEntity(BaseCache):
     zone_id = db.Column(db.String(36))
     zone_name = db.Column(db.String(64))
     query_class = OpsyQuery
-    last_poll_time = db.Column(db.DateTime, default=datetime.utcnow())
     raw_info = db.Column(db.JSON)
-
-    @classmethod
-    def filter_api_response(cls, response):
-        return response
 
 
 class Client(BaseEntity, db.Model):
@@ -130,7 +123,7 @@ class Client(BaseEntity, db.Model):
             ('zone_id', self.zone_id),
             ('backend', self.backend),
             ('updated_at', self.updated_at),
-            ('last_poll_time', self.last_poll_time),
+            ('last_poll_time', self.zone.last_poll_time),
             ('name', self.name),
             ('subscriptions', self.subscriptions),
             ('silences', [x.get_dict() for x in self.silences])
@@ -185,7 +178,7 @@ class Check(BaseEntity, db.Model):
             ('zone_name', self.zone_name),
             ('zone_id', self.zone_id),
             ('backend', self.backend),
-            ('last_poll_time', self.last_poll_time),
+            ('last_poll_time', self.zone.last_poll_time),
             ('name', self.name),
             ('subscribers', self.subscribers),
             ('occurrences_threshold', self.occurrences_threshold),
@@ -206,6 +199,7 @@ class Result(BaseEntity, db.Model):
     client_name = db.Column(db.String(128))
     check_name = db.Column(db.String(128))
     check_subscribers = db.Column(db.JSON)
+    updated_at = db.Column(db.DateTime)
     occurrences_threshold = db.Column(db.BigInteger)
     status = db.Column(db.String(16))
     interval = db.Column(db.BigInteger)
@@ -275,10 +269,11 @@ class Result(BaseEntity, db.Model):
             ('zone_name', self.zone_name),
             ('zone_id', self.zone_id),
             ('backend', self.backend),
-            ('last_poll_time', self.last_poll_time),
+            ('last_poll_time', self.zone.last_poll_time),
             ('client_name', self.client_name),
             ('check_name', self.check_name),
             ('check_subscribers', self.check_subscribers),
+            ('updated_at', self.updated_at),
             ('occurrences_threshold', self.occurrences_threshold),
             ('status', self.status),
             ('interval', self.interval),
@@ -404,7 +399,7 @@ class Event(BaseEntity, db.Model):
             ('backend', self.backend),
             ('zone_name', self.zone_name),
             ('zone_id', self.zone_id),
-            ('last_poll_time', self.last_poll_time),
+            ('last_poll_time', self.zone.last_poll_time),
             ('client_name', self.client_name),
             ('client_subscriptions', self.client_subscriptions),
             ('check_name', self.check_name),
@@ -463,7 +458,7 @@ class Silence(BaseEntity, db.Model):
             ('zone_name', self.zone_name),
             ('zone_id', self.zone_id),
             ('backend', self.backend),
-            ('last_poll_time', self.last_poll_time),
+            ('last_poll_time', self.zone.last_poll_time),
             ('client_name', self.client_name),
             ('check_name', self.check_name),
             ('subscription', self.subscription),
@@ -487,6 +482,7 @@ class Zone(BaseCache, NamedResource, TimeStampMixin, db.Model):
 
     _enabled = db.Column('enabled', db.Boolean(), default=0)
     _status = db.Column('status', db.String(64))
+    last_poll_time = db.Column(db.DateTime, default=None)
     status_message = db.Column(db.String(64))
     host = db.Column(db.String(64))
     path = db.Column(db.String(64))
@@ -655,8 +651,7 @@ class HttpZoneMixin(object):
         try:
             with self._create_session() as session:
                 app.logger.debug('Making request to %s' % url)
-                response = yield from self.get(session, url)
-                results = model.filter_api_response(response)
+                results = yield from self.get(session, url)
         except aiohttp.errors.ClientError as exc:
             message = 'Error updating %s cache for %s: %s' % (
                 model.entity, self.name, exc)

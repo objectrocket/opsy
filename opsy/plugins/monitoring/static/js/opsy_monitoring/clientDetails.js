@@ -58,7 +58,7 @@ var clientDetails = {
                   '">' + row.check_name + '</a>',
                 'check_output': row.output,
                 'timestamp': '<time class="timeago" datetime="' +
-                  row.last_poll_time + 'Z">' + row.last_poll_time + 'Z</time>',
+                  row.updated_at + 'Z">' + row.updated_at + 'Z</time>',
                 //jscs:enable requireCamelCaseOrUpperCaseIdentifiers
               });
             }
