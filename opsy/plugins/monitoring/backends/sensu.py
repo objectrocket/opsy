@@ -51,6 +51,11 @@ class SensuResult(SensuBase, Result):
         self.zone_name = zone.name
         self.client_name = extra['client']
         self.check_name = extra['check']['name']
+        try:
+            self.updated_at = datetime.utcfromtimestamp(
+                int(extra['check'].get('issued')))
+        except TypeError:
+            self.updated_at = None
         self.check_subscribers = extra['check'].get('subscribers', [])
         status_map = ['ok', 'warning', 'critical']
         try:
