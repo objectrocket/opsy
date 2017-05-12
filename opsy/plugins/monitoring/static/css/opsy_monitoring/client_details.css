@@ -8,3 +8,7 @@ th#check {
 th#lastcheck {
     width: 15%;
 }
+table#clientdetailstable td {
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
