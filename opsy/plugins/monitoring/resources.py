@@ -39,7 +39,7 @@ class EventsAPI(Resource):
         self.reqparse = reqparse.RequestParser()
         self.reqparse.add_argument('dashboard')
         self.reqparse.add_argument('count_checks', type=bool)
-        self.reqparse.add_argument('hide_silenced')
+        self.reqparse.add_argument('hide')
         self.reqparse.add_argument('zone')
         self.reqparse.add_argument('client')
         self.reqparse.add_argument('check')
@@ -54,7 +54,7 @@ class EventsAPI(Resource):
             prune_none_values=True,
             zone_name=args['zone'], client_name=args['client'],
             check_name=args['check'], status=args['status'],
-            hide_silenced=args['hide_silenced'], dashboard=args['dashboard'])
+            hide=args['hide'], dashboard=args['dashboard'])
         if args['count_checks']:
             events = events_query.count_checks()
         else:
