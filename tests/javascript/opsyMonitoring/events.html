@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>events.js unit tests - QUnit</title>
- 
+
   <link rel="stylesheet" href="https://code.jquery.com/qunit/qunit-2.0.1.css">
   <script src="https://code.jquery.com/qunit/qunit-2.0.1.js"></script>
   <script src="/opsy/static/js/jquery/jquery.js"></script>
@@ -48,12 +48,12 @@
       opsy.task.remove('update-events');
       assert.equal(document.title, "1 Critical, 1 Warning | Events | Opsy", "set title for number of crits and warns");
       assert.equal(document.eventstable.rows().data().length, 4, "There are 4 events in the table");
-      assert.equal(events.datatables.updateUrl('http://foo.com'), 'http://foo.com?status=&zone=&check=&hide_silenced=', 'updateURL properly generates a non-dashboard URL');
+      assert.equal(events.datatables.updateUrl('http://foo.com'), 'http://foo.com?status=&zone=&check=&hide=', 'updateURL properly generates a non-dashboard URL');
       $.QueryString.dashboard = 'admin';
-      assert.equal(events.datatables.updateUrl('http://foo.com'), 'http://foo.com?status=&zone=&check=&hide_silenced=&dashboard=admin', 'updateURL properly generates a dashboard URL');
+      assert.equal(events.datatables.updateUrl('http://foo.com'), 'http://foo.com?status=&zone=&check=&hide=&dashboard=admin', 'updateURL properly generates a dashboard URL');
       $('#status-filter option[value="Critical"]').prop('selected', true)
       $('#status-filter').multiselect('refresh')
-      assert.equal(events.datatables.updateUrl('http://foo.com'), 'http://foo.com?status=Critical&zone=&check=&hide_silenced=&dashboard=admin', 'updateURL properly generates a dashboard URL with filters');
+      assert.equal(events.datatables.updateUrl('http://foo.com'), 'http://foo.com?status=Critical&zone=&check=&hide=&dashboard=admin', 'updateURL properly generates a dashboard URL with filters');
       Flask.urls['monitoring_api.events'] = '/tests/javascript/opsyMonitoring/data/events_critical.json';
       events.multiselectOptions.onDropdownHidden();
       Flask.urls = origurls;
