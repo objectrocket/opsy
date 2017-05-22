@@ -8,10 +8,9 @@ var events = {
   ],
 
   hideOptions: [
-    {label: 'Silenced Checks', title: 'Silenced Checks', value: 'checks'},
-    {label: 'Silenced Clients', title: 'Silenced Clients', value: 'clients'},
+    {label: 'Silenced', title: 'Silenced', value: 'silenced'},
     {label: 'Below Occurrence Threshold', title: 'Below Occurrence Threshold',
-    value: 'occurrences'},
+    value: 'below_occurrences'},
   ],
 
   multiselectOptions: opsyMonitoring.multiselectOptions,
@@ -43,7 +42,7 @@ var events = {
       opsyMonitoring.addFormGroup('status');
       opsyMonitoring.addFormGroup('zone');
       opsyMonitoring.addFormGroup('check');
-      opsyMonitoring.addFormGroup('hide-events', 'hide_silenced');
+      opsyMonitoring.addFormGroup('hide-events', 'hide');
       $('#zone-filter').multiselect(events.multiselectOptions);
       $('#check-filter').multiselect(events.multiselectOptions);
       $('#status-filter').multiselect(events.multiselectOptions);

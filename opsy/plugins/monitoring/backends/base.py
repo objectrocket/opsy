@@ -294,7 +294,7 @@ class Event(BaseEntity, db.Model):
 
     class EventQuery(CacheQuery):
 
-        def wtfilter_by(self, hide_silenced=None, client_subscriptions=None,
+        def wtfilter_by(self, hide=None, client_subscriptions=None,
                         check_subscribers=None, **kwargs):
             filters = []
             if client_subscriptions:
@@ -303,18 +303,11 @@ class Event(BaseEntity, db.Model):
             if check_subscribers:
                 filters.append(
                     Event.check_subscribers.contains(check_subscribers))
-            if hide_silenced:
-                hide_silenced = hide_silenced.split(',')
-                if 'checks' in hide_silenced:
-                    filters.append(db.not_(db.or_(
-                        Event.silences.any(check_name=Event.check_name),
-                        Event.silences.any(client_name=Event.client_name),
-                        Event.check_subscribers.contains(
-                            Silence.subscription))))
-                if 'clients' in hide_silenced:
-                    filters.append(db.not_(Client.silences.any(
-                        client_name=Event.client_name)))
-                if 'occurrences' in hide_silenced:
+            if hide:
+                hide = hide.split(',')
+                if 'silenced' in hide:
+                    filters.append(db.not_(Event.silences.any()))
+                if 'below_occurrences' in hide:
                     filters.append(db.not_(
                         Event.occurrences < Event.occurrences_threshold))
             return super().wtfilter_by(**kwargs).filter(*filters)
