@@ -69,7 +69,7 @@
     $(fixture).append('<div id="status-filter-div"></div><div id="zone-filter-div"></div><div id="check-filter-div"></div><div id="hide-events-filter-div"></div>');
     events.filters.create(false);
     assert.equal($('#status-filter-div').children('select').children().length, 4, "status dropdown has 4 entries");
-    assert.equal($('#hide-events-filter-div').children('select').children().length, 3, "hide events dropdown has 3 entries");
+    assert.equal($('#hide-events-filter-div').children('select').children().length, 2, "hide events dropdown has 2 entries");
     zones_cb1 = function() {
       assert.equal($('#zone-filter-div').children('select').children().length, 1, "zone dropdown has 1 child");
       Flask.urls = origurls;
