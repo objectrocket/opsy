@@ -148,7 +148,7 @@ class NamedResource(BaseResource):
             setattr(self, key, value)
 
     @classmethod
-    def create(cls, name, obj_class=None, *args, **kwargs):
+    def create(cls, name, *args, obj_class=None, **kwargs):
         if cls.query.filter_by(name=name).first():
             raise DuplicateError('%s already exists with name "%s".' % (
                 cls.__name__, name))
