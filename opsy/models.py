@@ -116,12 +116,16 @@ class BaseResource(object):
         return commit and db.session.commit()
 
     def get_dict(self, jsonify=False, serialize=False, pretty_print=False,
-                 all_attrs=False, **kwargs):
+                 all_attrs=False, truncate=False, **kwargs):
         dict_out = self.dict_out
         if all_attrs:
             attr_dict = OrderedDict([(x.key, getattr(self, x.key))
                                      for x in self.__table__.columns])  # pylint: disable=no-member
             dict_out.update(attr_dict)
+        if truncate:
+            if 'output' in dict_out:
+                dict_out['output'] = (dict_out['output'][:100] + '...') if \
+                    len(dict_out['output']) > 100 else dict_out['output']
         if jsonify:
             if pretty_print:
                 return json.dumps(dict_out, indent=4)

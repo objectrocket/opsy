@@ -39,6 +39,7 @@ class EventsAPI(Resource):
         self.reqparse = reqparse.RequestParser()
         self.reqparse.add_argument('dashboard')
         self.reqparse.add_argument('count_checks', type=bool)
+        self.reqparse.add_argument('truncate', type=bool)
         self.reqparse.add_argument('hide')
         self.reqparse.add_argument('zone')
         self.reqparse.add_argument('client')
@@ -58,7 +59,7 @@ class EventsAPI(Resource):
         if args['count_checks']:
             events = events_query.count_checks()
         else:
-            events = events_query.all_dict_out()
+            events = events_query.all_dict_out(truncate=args['truncate'])
         return jsonify({'events': events})
 
 

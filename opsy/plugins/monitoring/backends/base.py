@@ -362,7 +362,7 @@ class Event(BaseEntity, db.Model):
             and_(  # This subscription is silenced
                 foreign(Silence.check_name) == None,
                 foreign(Silence.client_name) == None,
-                Event.check_subscribers.contains(foreign(Silence.subscription))
+                Event.client_subscriptions.contains(foreign(Silence.subscription))
                 )
         ))''')
 
