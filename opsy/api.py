@@ -25,7 +25,7 @@ class Login(Resource):
             abort(401)
         return jsonify(current_user.get_session_token(current_app))
 
-    def post(self):
+    def post(self):  # pylint: disable=inconsistent-return-statements
         args = self.reqparse.parse_args()
         token = User.login(current_app, args['username'], args['password'],
                            remember=args['remember_me'])
@@ -82,7 +82,7 @@ class RoleAPI(Resource):
         self.reqparse = reqparse.RequestParser()
         super().__init__()
 
-    def get(self, role_name):  # pylint: disable=no-self-use
+    def get(self, role_name):  # pylint: disable=no-self-use,inconsistent-return-statements
         role = Role.query.wtfilter_by(name=role_name).first()
         if role and permissions.get('roles_read').can():
             return jsonify({'roles': [role.get_dict()]})
@@ -146,7 +146,7 @@ class UserAPI(Resource):
         self.reqparse = reqparse.RequestParser()
         super().__init__()
 
-    def get(self, user_name):  # pylint: disable=no-self-use
+    def get(self, user_name):  # pylint: disable=no-self-use,inconsistent-return-statements
         user = User.query.wtfilter_by(name=user_name).first()
         if user and permissions.get('user_read')(user.id).can():
             return jsonify({'users': [user.get_dict()]})

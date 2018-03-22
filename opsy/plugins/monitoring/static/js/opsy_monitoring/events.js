@@ -138,7 +138,7 @@ var events = {
 
     updateUrl: function(url) {
       url = typeof url !== 'undefined' ? url : Flask.url_for('monitoring_api.events');
-      params = {};
+      params = {'truncate': true};
       $('select.ms').each(function(idx, obj) {
         params[$(obj).data('filter')] = $(obj).children('option:selected').map(
           function() { return this.value; }

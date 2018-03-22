@@ -3,15 +3,15 @@ import uuid
 from collections import OrderedDict
 import aiohttp
 from flask import abort
+from sqlalchemy.orm import synonym
+from stevedore import driver
+from stevedore.exception import NoMatches
 import opsy
 from opsy.models import TimeStampMixin, OpsyQuery, NamedResource, BaseResource
 from opsy.flask_extensions import db
 from opsy.plugins.monitoring.dashboard import Dashboard
 from opsy.plugins.monitoring.backends import async_task
 from opsy.plugins.monitoring.exceptions import PollFailure, BackendNotFound
-from sqlalchemy.orm import synonym
-from stevedore import driver
-from stevedore.exception import NoMatches
 
 
 class CacheQuery(OpsyQuery):
@@ -362,7 +362,7 @@ class Event(BaseEntity, db.Model):
             and_(  # This subscription is silenced
                 foreign(Silence.check_name) == None,
                 foreign(Silence.client_name) == None,
-                Event.check_subscribers.contains(foreign(Silence.subscription))
+                Event.client_subscriptions.contains(foreign(Silence.subscription))
                 )
         ))''')
 
@@ -570,7 +570,7 @@ class Zone(BaseCache, NamedResource, TimeStampMixin, db.Model):
     def get_update_tasks(self, app):
         tasks = []
         for model in self.models:
-            tasks.append(async_task(self.update_objects(app, model)))
+            tasks.append(async_task(self.update_objects(app, model)))  # pylint: disable=deprecated-method
         return tasks
 
     @classmethod
