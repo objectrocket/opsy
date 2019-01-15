@@ -88,21 +88,22 @@ class MonitoringPlugin(BaseOpsyPlugin):
 
     def register_scheduler_jobs(self, app, run_once=False):
         with app.app_context():
-            for zone in Zone.query.filter(Zone.enabled == 1).all():
-                job_args = [update_cache]
-                job_kwargs = {'id': 'monitoring_poller_%s' % zone.name,
-                              'next_run_time': datetime.now(),
-                              'max_instances': 1,
-                              'args': [zone.id, app]}
-                if run_once:
-                    job_kwargs['next_run_time'] = datetime.now()
-                else:
-                    next_run = datetime.now() + timedelta(
-                        0, random.uniform(0, zone.interval))
-                    job_args.append('interval')
-                    job_kwargs['next_run_time'] = next_run
-                    job_kwargs['seconds'] = zone.interval
-                app.jobs.append([job_args, job_kwargs])
+            zones = Zone.query.filter(Zone.enabled == 1).all()
+        for zone in zones:
+            job_args = [update_cache]
+            job_kwargs = {'id': 'monitoring_poller_%s' % zone.name,
+                          'next_run_time': datetime.now(),
+                          'max_instances': 1,
+                          'args': [zone.id, app.config_file]}
+            if run_once:
+                job_kwargs['next_run_time'] = datetime.now()
+            else:
+                next_run = datetime.now() + timedelta(
+                    0, random.uniform(0, zone.interval))
+                job_args.append('interval')
+                job_kwargs['next_run_time'] = next_run
+                job_kwargs['seconds'] = zone.interval
+            app.jobs.append([job_args, job_kwargs])
 
     def register_cli_commands(self, cli):
 
@@ -121,7 +122,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
             for args, kwargs in current_app.jobs:
                 scheduler.add_job(*args, **kwargs)
             scheduler.start()
-            while scheduler.get_jobs() > 0:
+            while scheduler.get_jobs():
                 continue
             scheduler.shutdown(wait=True)
 

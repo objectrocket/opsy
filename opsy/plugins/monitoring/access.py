@@ -1,4 +1,4 @@
-from opsy.auth.access import OpsyNeed, OpsyPermission
+from opsy.access import OpsyNeed, OpsyPermission
 
 
 needs = {  # pylint: disable=invalid-name

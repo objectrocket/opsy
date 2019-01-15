@@ -3,6 +3,7 @@ from flask_iniconfig import INIConfig
 from flask_jsglue import JSGlue
 from flask_ldap3_login import LDAP3LoginManager
 from flask_login import LoginManager, current_user
+from flask_marshmallow import Marshmallow
 from flask_principal import Principal, Identity, identity_loaded, UserNeed, \
     ActionNeed, AnonymousIdentity
 from flask_sqlalchemy import SQLAlchemy
@@ -12,12 +13,14 @@ db = SQLAlchemy()  # pylint: disable=invalid-name
 jsglue = JSGlue()  # pylint: disable=invalid-name
 login_manager = LoginManager()  # pylint: disable=invalid-name
 ldap_manager = LDAP3LoginManager()  # pylint: disable=invalid-name
+marshmallow = Marshmallow()  # pylint: disable=invalid-name
 principal = Principal()  # pylint: disable=invalid-name
 
 
 def configure_extensions(app):
     db.init_app(app)
     jsglue.init_app(app)
+    marshmallow.init_app(app)
     login_manager.init_app(app)
     if app.config.opsy['enable_ldap']:
         ldap_manager.init_app(app)
@@ -25,13 +28,13 @@ def configure_extensions(app):
 
     @login_manager.user_loader
     def load_user(session_token):  # pylint: disable=unused-variable
-        from opsy.auth.models import User
+        from opsy.models import User
         return User.get_by_token(current_app, session_token)
 
     @login_manager.request_loader
     def load_user_from_request(request):  # pylint: disable=unused-variable
         session_token = request.headers.get('x-auth-token')
-        from opsy.auth.models import User
+        from opsy.models import User
         return User.get_by_token(current_app, session_token)
 
     @principal.identity_loader

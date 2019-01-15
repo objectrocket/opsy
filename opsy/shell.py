@@ -1,3 +1,4 @@
+import asyncio
 import os
 from getpass import getpass
 import click
@@ -8,7 +9,7 @@ from opsy.flask_extensions import db
 from opsy.app import create_app, create_scheduler
 from opsy.exceptions import DuplicateError
 from opsy.utils import load_plugins, print_error, print_notice
-from opsy.auth.models import Role, User, Permission
+from opsy.models import Role, User, Permission
 
 
 DEFAULT_CONFIG = '%s/opsy.ini' % os.path.abspath(os.path.curdir)
@@ -31,6 +32,7 @@ def run_scheduler():
     try:
         current_app.logger.info('Starting the scheduler...')
         scheduler.start()
+        asyncio.get_event_loop().run_forever()
     except (KeyboardInterrupt, SystemExit):
         scheduler.shutdown()
         current_app.logger.info('Stopping the scheduler...')

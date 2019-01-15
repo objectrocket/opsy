@@ -69,5 +69,7 @@ Enter the root of the repository and build the package:
 
 # F.A.Q.
 
-- Why Python3.4... Python 2.7 is where it's at!
-  - The poller relies on asyncio which is only present in Python 3.4+
+- Why Python 3.6+... Python 2.7 is where it's at!
+  - The poller relies on asyncio and the syntax defined in PEP492 which is only present in Python 3.5+
+  - aiohttp really wants Python 3.5 or higher, who am I to say no?
+  - Python 3.6 has f-strings and type hints. I like those.

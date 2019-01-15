@@ -10,7 +10,6 @@ import opsy
 from opsy.models import TimeStampMixin, OpsyQuery, NamedResource, BaseResource
 from opsy.flask_extensions import db
 from opsy.plugins.monitoring.dashboard import Dashboard
-from opsy.plugins.monitoring.backends import async_task
 from opsy.plugins.monitoring.exceptions import PollFailure, BackendNotFound
 
 
@@ -563,14 +562,14 @@ class Zone(BaseCache, NamedResource, TimeStampMixin, db.Model):
 
     enabled = synonym('_enabled', descriptor=enabled)
 
-    @asyncio.coroutine
-    def update_objects(self, app, model):
+    async def update_objects(self, app, model):
         raise NotImplementedError
 
     def get_update_tasks(self, app):
         tasks = []
         for model in self.models:
-            tasks.append(async_task(self.update_objects(app, model)))  # pylint: disable=deprecated-method
+            tasks.append(asyncio.ensure_future(
+                self.update_objects(app, model)))
         return tasks
 
     @classmethod
@@ -594,7 +593,10 @@ class Zone(BaseCache, NamedResource, TimeStampMixin, db.Model):
             ('protocol', self.protocol),
             ('port', self.port),
             ('timeout', self.timeout),
-            ('interval', self.interval)
+            ('interval', self.interval),
+            ('enabled', self.enabled),
+            ('created_at', self.created_at),
+            ('updated_at', self.updated_at)
         ])
 
     def __repr__(self):
@@ -618,34 +620,32 @@ class HttpZoneMixin(object):
         conn = aiohttp.TCPConnector(verify_ssl=False) \
             if not self.verify_ssl else None
         headers = {'User-Agent': 'Opsy/%s' % opsy.__version__}
+        timeout = aiohttp.ClientTimeout(self.timeout)
         return aiohttp.ClientSession(auth=auth, connector=conn,
-                                     headers=headers)
+                                     headers=headers, timeout=timeout)
 
-    @asyncio.coroutine
-    def get(self, session, url, expected_status=None):
+    async def get(self, session, url, expected_status=None):
         expected_status = expected_status or [200]
         try:
-            with aiohttp.Timeout(self.timeout):
-                response = yield from session.get(url)
+            response = await session.get(url)
         except asyncio.TimeoutError:
-            raise aiohttp.errors.ClientError('Timeout exceeded')
+            raise aiohttp.ClientError('Timeout exceeded')
         if response.status not in expected_status:
             response.close()
-            raise aiohttp.errors.ClientError('Unexpected response from %s, got'
-                                             ' %s' % (url, response.status))
-        return (yield from response.json())
+            raise aiohttp.ClientError('Unexpected response from %s, got'
+                                      ' %s' % (url, response.status))
+        return await response.json()
 
-    @asyncio.coroutine
-    def update_objects(self, app, model):
+    async def update_objects(self, app, model):
         del_objects = []
         init_objects = []
         results = []
         url = '%s/%s' % (self.base_url, model.uri)
         try:
-            with self._create_session() as session:
+            async with self._create_session() as session:
                 app.logger.debug('Making request to %s' % url)
-                results = yield from self.get(session, url)
-        except aiohttp.errors.ClientError as exc:
+                results = await self.get(session, url)
+        except aiohttp.ClientError as exc:
             message = 'Error updating %s cache for %s: %s' % (
                 model.entity, self.name, exc)
             app.logger.error(message)
