@@ -1,9 +1,13 @@
 from flask import abort, jsonify
+from flask_allows import requires
 from flask_restful import Resource, reqparse
+from opsy.access import HasPermission
 from opsy.plugins.monitoring.backends.base import Client, Check, Result, \
     Event, Silence, Zone
 from opsy.plugins.monitoring.dashboard import Dashboard
-from opsy.plugins.monitoring.access import permissions
+from opsy.plugins.monitoring.access import (
+    dashboards_read, zones_read, events_read, checks_read, results_read,
+    silences_read, clients_read)
 
 
 class ZonesAPI(Resource):
@@ -14,9 +18,8 @@ class ZonesAPI(Resource):
         self.reqparse.add_argument('dashboard', type=str)
         super().__init__()
 
+    @requires(HasPermission(zones_read))
     def get(self):
-        if not permissions.get('zones_read').can():
-            abort(403)
         args = self.reqparse.parse_args()
         zones = Zone.query.wtfilter_by(
             prune_none_values=True, name=args['zone'],
@@ -26,9 +29,8 @@ class ZonesAPI(Resource):
 
 class ZoneAPI(Resource):
 
+    @requires(HasPermission(zones_read))
     def get(self, zone_name):  # pylint: disable=no-self-use
-        if not permissions.get('zones_read').can():
-            abort(403)
         zones = Zone.query.wtfilter_by(name=zone_name).all_dict_out_or_404()
         return jsonify({'zones': zones})
 
@@ -47,9 +49,8 @@ class EventsAPI(Resource):
         self.reqparse.add_argument('status')
         super().__init__()
 
+    @requires(HasPermission(events_read))
     def get(self):
-        if not permissions.get('events_read').can():
-            abort(403)
         args = self.reqparse.parse_args()
         events_query = Event.query.wtfilter_by(
             prune_none_values=True,
@@ -72,9 +73,8 @@ class ChecksAPI(Resource):
         self.reqparse.add_argument('check')
         super().__init__()
 
+    @requires(HasPermission(checks_read))
     def get(self):
-        if not permissions.get('checks_read').can():
-            abort(403)
         args = self.reqparse.parse_args()
         checks = Check.query.wtfilter_by(
             prune_none_values=True,
@@ -85,9 +85,8 @@ class ChecksAPI(Resource):
 
 class CheckAPI(Resource):
 
+    @requires(HasPermission(checks_read))
     def get(self, zone_name, check_name):
-        if not permissions.get('checks_read').can():
-            abort(403)
         checks = Check.query.wtfilter_by(
             zone_name=zone_name,
             name=check_name).all_dict_out_or_404()
@@ -105,9 +104,8 @@ class SilencesAPI(Resource):
         self.reqparse.add_argument('subscription')
         super().__init__()
 
+    @requires(HasPermission(silences_read))
     def get(self):
-        if not permissions.get('silences_read').can():
-            abort(403)
         args = self.reqparse.parse_args()
         silences = Silence.query.wtfilter_by(
             prune_none_values=True,
@@ -119,9 +117,8 @@ class SilencesAPI(Resource):
 
 class SilenceAPI(Resource):
 
+    @requires(HasPermission(silences_read))
     def get(self, zone_name, silence_id):
-        if not permissions.get('silences_read').can():
-            abort(403)
         silences = Silence.query.wtfilter_by(
             zone_name=zone_name,
             id=silence_id).all_dict_out_or_404(all_attrs=True)
@@ -137,9 +134,8 @@ class ClientsAPI(Resource):
         self.reqparse.add_argument('client')
         super().__init__()
 
+    @requires(HasPermission(clients_read))
     def get(self):
-        if not permissions.get('clients_read').can():
-            abort(403)
         args = self.reqparse.parse_args()
         clients = Client.query.wtfilter_by(
             prune_none_values=True,
@@ -150,9 +146,8 @@ class ClientsAPI(Resource):
 
 class ClientAPI(Resource):
 
+    @requires(HasPermission(clients_read))
     def get(self, zone_name, client_name):
-        if not permissions.get('clients_read').can():
-            abort(403)
         clients = Client.query.wtfilter_by(
             zone_name=zone_name,
             name=client_name).all_dict_out_or_404(all_attrs=True)
@@ -161,9 +156,8 @@ class ClientAPI(Resource):
 
 class ClientEventsAPI(Resource):
 
+    @requires(HasPermission(clients_read))
     def get(self, zone_name, client_name):
-        if not permissions.get('clients_read').can():
-            abort(403)
         event_list = Event.query.wtfilter_by(
             zone_name=zone_name,
             client_name=client_name).all_dict_out()
@@ -172,9 +166,8 @@ class ClientEventsAPI(Resource):
 
 class ClientEventAPI(Resource):
 
+    @requires(HasPermission(clients_read))
     def get(self, zone_name, client_name, check_name):
-        if not permissions.get('clients_read').can():
-            abort(403)
         events = Event.query.wtfilter_by(
             zone_name=zone_name,
             client_name=client_name,
@@ -184,9 +177,8 @@ class ClientEventAPI(Resource):
 
 class ClientResultsAPI(Resource):
 
+    @requires(HasPermission(clients_read))
     def get(self, zone_name, client_name):
-        if not permissions.get('clients_read').can():
-            abort(403)
         results = Result.query.wtfilter_by(
             zone_name=zone_name,
             client_name=client_name).all_dict_out()
@@ -195,9 +187,8 @@ class ClientResultsAPI(Resource):
 
 class ClientResultAPI(Resource):
 
+    @requires(HasPermission(clients_read))
     def get(self, zone_name, client_name, check_name):
-        if not permissions.get('clients_read').can():
-            abort(403)
         results = Result.query.wtfilter_by(
             zone_name=zone_name,
             client_name=client_name,
@@ -212,9 +203,8 @@ class DashboardsAPI(Resource):
         self.reqparse.add_argument('name')
         super().__init__()
 
+    @requires(HasPermission(dashboards_read))
     def get(self):
-        if not permissions.get('dashboards_read').can():
-            abort(403)
         args = self.reqparse.parse_args()
         dashboard_list = Dashboard.query.wtfilter_by(
             prune_none_values=True, name=args['name']).all_dict_out()
@@ -223,8 +213,7 @@ class DashboardsAPI(Resource):
 
 class DashboardAPI(Resource):
 
+    @requires(HasPermission(dashboards_read))
     def get(self, dashboard_name):  # pylint: disable=no-self-use
-        if not permissions.get('dashboards_read').can():
-            abort(403)
         dashboard_list = Dashboard.query.wtfilter_by(name=dashboard_name).dict_out
         return jsonify({'dashboard': dashboard_list})

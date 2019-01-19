@@ -7,7 +7,7 @@ from opsy.config import ConfigOption
 from opsy.exceptions import DuplicateError
 from opsy.utils import print_notice, print_error
 from opsy.plugins.base import BaseOpsyPlugin
-from opsy.plugins.monitoring.access import needs
+from opsy.plugins.monitoring.access import monitoring_needs
 from opsy.plugins.monitoring.api import monitoring_api
 from opsy.plugins.monitoring.jobs import update_cache
 from opsy.plugins.monitoring.main import monitoring_main
@@ -30,7 +30,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
     config_options = [
         ConfigOption('uchiwa_url', str, False, None)
     ]
-    needs = needs
+    needs = monitoring_needs
 
     def register_blueprints(self, app):
         app.register_blueprint(monitoring_main, url_prefix='/monitoring')

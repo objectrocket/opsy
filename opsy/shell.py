@@ -3,7 +3,7 @@ import os
 from getpass import getpass
 import click
 from flask import current_app
-from flask.cli import FlaskGroup, run_command
+from flask.cli import FlaskGroup, run_command, ScriptInfo
 from prettytable import PrettyTable
 from opsy.flask_extensions import db
 from opsy.app import create_app, create_scheduler
@@ -19,8 +19,7 @@ def create_opsy_app(info):
     return create_app(os.environ.get('OPSY_CONFIG', DEFAULT_CONFIG))
 
 
-cli = FlaskGroup(create_app=create_opsy_app,  # pylint: disable=invalid-name
-                 add_default_commands=False,
+cli = FlaskGroup(add_default_commands=False,  # pylint: disable=invalid-name
                  help='The Opsy management cli.')
 cli.add_command(run_command)
 
@@ -81,24 +80,14 @@ def auth_cli():
 # pylint: disable=unused-variable
 def permission_list():
     """List all permissions the app is aware of."""
-    needs_catalog = current_app.needs_catalog
-    columns = ['name', 'description']
-    print('\ncore app:')
+    columns = ['name', 'description', 'plugin']
     table = PrettyTable(columns, sortby='name')
     table.align['name'] = 'l'
     table.align['description'] = 'l'
-    for name, need in current_app.needs_catalog.get('core').items():
-        table.add_row([name, need.doc])
+    table.align['plugin'] = 'l'
+    for need in current_app.needs_catalog:
+        table.add_row([need.name, need.doc, need.plugin])
     print(table)
-    needs_catalog.pop('core')
-    for plugin in sorted(needs_catalog.keys()):
-        print('\n%s plugin:' % plugin)
-        table = PrettyTable(columns, sortby='name')
-        table.align['name'] = 'l'
-        table.align['description'] = 'l'
-        for name, need in needs_catalog.get(plugin).items():
-            table.add_row([name, need.doc])
-        print(table)
 
 
 @auth_cli.group('user')
@@ -155,8 +144,8 @@ def user_list():
 def user_show(user_id_or_name):
     """Show a user."""
     try:
-        user = User.get_by_id_or_name(user_id_or_name,
-                                      error_on_none=True).pretty_print()
+        User.get_by_id_or_name(
+            user_id_or_name, error_on_none=True).pretty_print()
     except ValueError as error:
         print_error(error)
 
@@ -185,8 +174,8 @@ def user_modify(user_id_or_name, **kwargs):
     """Modify a user."""
     user_kwargs = {k: v for k, v in kwargs.items() if v is not None}
     try:
-        user = User.update_by_id_or_name(user_id_or_name,
-                                         **user_kwargs).pretty_print()
+        User.update_by_id_or_name(
+            user_id_or_name, **user_kwargs).pretty_print()
     except ValueError as error:
         print_error(error)
 
@@ -253,7 +242,8 @@ def role_create(role_name, **kwargs):
     """Create a role."""
     role_kwargs = {k: v for k, v in kwargs.items() if v is not None}
     try:
-        role = Role.create(role_name, **role_kwargs).pretty_print()
+        Role.create(
+            role_name, **role_kwargs).pretty_print()
     except DuplicateError as error:
         print_error(error)
 
@@ -272,8 +262,8 @@ def role_list():
 def role_show(role_id_or_name):
     """Show a role."""
     try:
-        role = Role.get_by_id_or_name(role_id_or_name,
-                                      error_on_none=True).pretty_print()
+        Role.get_by_id_or_name(
+            role_id_or_name, error_on_none=True).pretty_print()
     except ValueError as error:
         print_error(error)
 
@@ -300,8 +290,8 @@ def role_modify(role_id_or_name, **kwargs):
     """Modify a role."""
     role_kwargs = {k: v for k, v in kwargs.items() if v is not None}
     try:
-        role = Role.update_by_id_or_name(role_id_or_name,
-                                         **role_kwargs).pretty_print()
+        Role.update_by_id_or_name(
+            role_id_or_name, **role_kwargs).pretty_print()
     except ValueError as error:
         print_error(error)
 
@@ -363,7 +353,7 @@ def role_remove_permission(role_id_or_name, permission_names):
     """Remove a permissions from a role."""
     try:
         role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
-        for permission_name in permission_name:
+        for permission_name in permission_names:
             role.remove_permission(permission_name)
     except ValueError as error:
         print_error(error)
@@ -371,7 +361,8 @@ def role_remove_permission(role_id_or_name, permission_names):
 
 
 def main():
-    with create_opsy_app(None).app_context():
-        for plugin in load_plugins(current_app):
-            plugin.register_cli_commands(cli)
-    cli()
+    script_info = ScriptInfo(create_app=create_opsy_app)
+    app = script_info.load_app()
+    for plugin in load_plugins(app):
+        plugin.register_cli_commands(cli)
+    cli(obj=script_info)

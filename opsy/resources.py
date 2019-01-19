@@ -1,48 +1,46 @@
-from flask import (abort, current_app, flash, redirect, request, jsonify,
-                   url_for)
+from flask import abort, current_app, flash, redirect, request, url_for
+from flask_allows import requires, Or
 from flask_restful import Resource, reqparse
 from flask_login import current_user
-from opsy.access import permissions
+from webargs.flaskparser import use_args
+from opsy.access import (HasPermission, is_logged_in, is_same_user,
+                         users_create, users_read, users_update, users_delete,
+                         roles_create, roles_read, roles_update, roles_delete)
+from opsy.auth import login, logout, create_token
+from opsy.schema import (UserSchema, UserLoginSchema, UserTokenSchema,
+                         UserSettingSchema, RoleSchema)
 from opsy.models import User, Role
 from opsy.exceptions import DuplicateError
 
 
 class Login(Resource):
 
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('username', required=True,
-                                   location=['form', 'json'])
-        self.reqparse.add_argument('password', required=True,
-                                   location=['form', 'json'])
-        self.reqparse.add_argument('remember_me', type=bool, location='form')
-        self.reqparse.add_argument('force_renew', type=bool, location='json')
-        super().__init__()
-
+    @requires(is_logged_in)
     def get(self):  # pylint: disable=no-self-use
-        if not permissions.get('logged_in').can():
-            abort(401)
-        return jsonify(current_user.get_session_token(current_app))
+        create_token(current_user)
+        return UserTokenSchema().jsonify(current_user)
 
-    def post(self):  # pylint: disable=inconsistent-return-statements
-        args = self.reqparse.parse_args()
-        token = User.login(current_app, args['username'], args['password'],
-                           remember=args['remember_me'])
-        if token:
+    @use_args(UserLoginSchema(), locations=('form', 'json'))
+    def post(self, args):  # pylint: disable=inconsistent-return-statements
+        current_app.logger.info(args)
+        user = login(args['user_name'], args['password'],
+                     remember=args['remember_me'])
+        if not user:
             if request.is_json:
-                return jsonify(token)
-            return redirect(url_for('core_main.about'))
-        elif request.is_json:
-            abort(401, 'Username or password incorrect.')
-        else:
-            flash('Username or password incorrect.')
-            return redirect(url_for('core_main.about'))
+                abort(401, 'Username or password incorrect.')
+            else:
+                flash('Username or password incorrect.')
+                return redirect(url_for('core_main.about'))
+        if request.is_json:
+            return UserTokenSchema().jsonify(current_user)
+        return redirect(url_for('core_main.about'))
 
 
 class Logout(Resource):
 
+    @requires(is_logged_in)
     def get(self):  # pylint: disable=no-self-use
-        current_user.logout(current_app)
+        logout(current_user)
         return redirect(url_for('core_main.about'))
 
 
@@ -55,24 +53,21 @@ class RolesAPI(Resource):
         self.reqparse.add_argument('description')
         super().__init__()
 
+    @requires(HasPermission(roles_create))
     def post(self):
         self.reqparse.replace_argument('name', required=True)
         args = self.reqparse.parse_args()
-        if not permissions.get('roles_create').can():
-            abort(403)
         try:
             role = Role.create(**args)
         except (DuplicateError, ValueError) as error:
             abort(400, str(error))
-        return jsonify({'roles': [role.get_dict()]})
+        return RoleSchema().jsonify(role)
 
+    @requires(HasPermission(roles_read))
     def get(self):
         args = self.reqparse.parse_args()
-        if not permissions.get('roles_read').can():
-            abort(403)
-        roles = Role.query.wtfilter_by(prune_none_values=True,
-                                       **args).all_dict_out()
-        return jsonify({'roles': roles})
+        roles = Role.query.wtfilter_by(prune_none_values=True, **args)
+        return RoleSchema(many=True).jsonify(roles)
 
 
 class RoleAPI(Resource):
@@ -81,15 +76,15 @@ class RoleAPI(Resource):
         self.reqparse = reqparse.RequestParser()
         super().__init__()
 
-    def get(self, role_name):  # pylint: disable=no-self-use,inconsistent-return-statements
+    @requires(HasPermission(roles_read))
+    def get(self, role_name):  # pylint: disable=no-self-use
         role = Role.query.wtfilter_by(name=role_name).first()
-        if role and permissions.get('roles_read').can():
-            return jsonify({'roles': [role.get_dict()]})
-        abort(403)
-
-    def patch(self, role_name):
-        if not permissions.get('roles_update').can():
+        if not role:
             abort(403)
+        return RoleSchema().jsonify(role)
+
+    @requires(HasPermission(roles_update))
+    def patch(self, role_name):
         self.reqparse.add_argument('name')
         self.reqparse.add_argument('ldap_group')
         self.reqparse.add_argument('description')
@@ -98,11 +93,10 @@ class RoleAPI(Resource):
         if not role:
             abort(404)
         role.update(prune_none_values=True, **args)
-        return jsonify({'roles': [role.get_dict()]})
+        return RoleSchema().jsonify(role)
 
+    @requires(HasPermission(roles_delete))
     def delete(self, role_name):  # pylint: disable=no-self-use
-        if not permissions.get('roles_delete').can():
-            abort(403)
         role = Role.query.wtfilter_by(name=role_name).first()
         if not role:
             abort(404)
@@ -120,23 +114,21 @@ class UsersAPI(Resource):
         self.reqparse.add_argument('enabled')
         super().__init__()
 
+    @requires(HasPermission(users_create))
     def post(self):
-        if not permissions.get('users_create').can():
-            abort(403)
         self.reqparse.replace_argument('name', required=True)
         args = self.reqparse.parse_args()
         try:
             user = User.create(**args)
         except (DuplicateError, ValueError) as error:
             abort(400, str(error))
-        return jsonify({'users': [user.get_dict()]})
+        return UserSchema().jsonify(user)
 
+    @requires(HasPermission(users_read))
     def get(self):
-        if not permissions.get('users_read').can():
-            abort(403)
         args = self.reqparse.parse_args()
-        users = User.query.wtfilter_by(prune_none_values=True, **args).all_dict_out()
-        return jsonify({'users': users})
+        users = User.query.wtfilter_by(prune_none_values=True, **args)
+        return UserSchema(many=True).jsonify(users)
 
 
 class UserAPI(Resource):
@@ -145,26 +137,27 @@ class UserAPI(Resource):
         self.reqparse = reqparse.RequestParser()
         super().__init__()
 
-    def get(self, user_name):  # pylint: disable=no-self-use,inconsistent-return-statements
+    @requires(Or(HasPermission(users_read), is_same_user))
+    def get(self, user_name):  # pylint: disable=no-self-use
         user = User.query.wtfilter_by(name=user_name).first()
-        if user and permissions.get('user_read')(user.id).can():
-            return jsonify({'users': [user.get_dict()]})
-        abort(403)
+        if not user:
+            abort(403)
+        return UserSchema().jsonify(user)
 
+    @requires(Or(HasPermission(users_update), is_same_user))
     def patch(self, user_name):
         self.reqparse.add_argument('full_name')
         self.reqparse.add_argument('email')
         self.reqparse.add_argument('enabled')
         args = self.reqparse.parse_args()
         user = User.query.wtfilter_by(name=user_name).first()
-        if not (user and permissions.get('user_update')(user.id).can()):
-            abort(403)
+        if not user:
+            abort(404)
         user.update(prune_none_values=True, **args)
-        return jsonify({'users': [user.get_dict()]})
+        return UserSchema().jsonify(user)
 
+    @requires(HasPermission(users_delete))
     def delete(self, user_name):  # pylint: disable=no-self-use
-        if not permissions.get('users_delete').can():
-            abort(403)
         user = User.query.wtfilter_by(name=user_name).first()
         if not user:
             abort(404)
@@ -180,24 +173,26 @@ class UserSettingsAPI(Resource):
         self.reqparse.add_argument('value')
         super().__init__()
 
+    @requires(Or(HasPermission(users_update), is_same_user))
     def post(self, user_name):
         self.reqparse.replace_argument('key', required=True)
         self.reqparse.replace_argument('value', required=True)
         args = self.reqparse.parse_args()
         user = User.query.wtfilter_by(name=user_name).first()
-        if not (user and permissions.get('user_update')(user.id).can()):
-            abort(403)
+        if not user:
+            abort(404)
         try:
             setting = user.add_setting(args['key'], args['value'])
         except DuplicateError as error:
             abort(400, str(error))
-        return jsonify({'settings': [setting.get_dict()]})
+        return UserSettingSchema().jsonify(setting)
 
+    @requires(Or(HasPermission(users_read), is_same_user))
     def get(self, user_name):
         user = User.query.wtfilter_by(name=user_name).first()
-        if not (user and permissions.get('user_read')(user.id).can()):
-            abort(403)
-        return jsonify({'settings': [x.get_dict() for x in user.settings]})
+        if not user:
+            abort(404)
+        return UserSettingSchema(many=True).jsonify(user.settings)
 
 
 class UserSettingAPI(Resource):
@@ -207,31 +202,34 @@ class UserSettingAPI(Resource):
         self.reqparse.add_argument('value', required=True, location='json')
         super().__init__()
 
+    @requires(Or(HasPermission(users_update), is_same_user))
     def patch(self, user_name, setting_key):
         args = self.reqparse.parse_args()
         user = User.query.wtfilter_by(name=user_name).first()
-        if not (user and permissions.get('user_update')(user.id).can()):
-            abort(403)
+        if not user:
+            abort(404)
         try:
             setting = user.modify_setting(setting_key, args['value'])
         except ValueError as error:
             abort(404, str(error))
-        return jsonify({'settings': [setting.get_dict()]})
+        return UserSettingSchema().jsonify(setting)
 
+    @requires(Or(HasPermission(users_read), is_same_user))
     def get(self, user_name, setting_key):
         user = User.query.wtfilter_by(name=user_name).first()
-        if not (user and permissions.get('user_read')(user.id).can()):
-            abort(403)
+        if not user:
+            abort(404)
         try:
             setting = user.get_setting(setting_key, error_on_none=True)
         except ValueError as error:
             abort(404, str(error))
-        return jsonify({'settings': [setting.get_dict()]})
+        return UserSettingSchema().jsonify(setting)
 
+    @requires(Or(HasPermission(users_update), is_same_user))
     def delete(self, user_name, setting_key):
         user = User.query.wtfilter_by(name=user_name).first()
-        if not (user and permissions.get('user_update')(user.id).can()):
-            abort(403)
+        if not user:
+            abort(404)
         try:
             user.remove_setting(setting_key)
         except ValueError as error:

@@ -7,7 +7,7 @@ from opsy.api import core_api
 from opsy.flask_extensions import configure_extensions
 from opsy.utils import OpsyJSONEncoder, load_plugins
 from opsy.config import load_config, validate_config
-from opsy.access import needs
+from opsy.access import core_needs
 
 
 def create_app(config_file):
@@ -16,12 +16,12 @@ def create_app(config_file):
     create_logging(app)
     configure_extensions(app)
     app.jobs = []  # FIXME: Need to handle scheduled jobs better.
-    app.needs_catalog = {'core': needs}
+    app.needs_catalog = core_needs
     app.register_blueprint(core_main)
     app.register_blueprint(core_api)
     for plugin in load_plugins(app):
         validate_config(app, plugin=plugin)
-        app.needs_catalog[plugin.name] = plugin.needs
+        app.needs_catalog.extend(plugin.needs)
         plugin.register_blueprints(app)
     app.json_encoder = OpsyJSONEncoder
     app.plugin_links = [{
