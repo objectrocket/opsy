@@ -1,15 +1,12 @@
 import uuid
-from collections import OrderedDict
 from datetime import datetime
-from prettytable import PrettyTable
-from flask import abort, json
 from flask_login import UserMixin
 from flask_sqlalchemy import BaseQuery
 from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.orm.base import _entity_descriptor
 from opsy.flask_extensions import db
 from opsy.exceptions import DuplicateError
-from opsy.utils import get_filters_list, print_property_table
+from opsy.utils import get_filters_list
 
 
 ###############################################################################
@@ -50,24 +47,6 @@ class OpsyQuery(BaseQuery):
             raise ValueError
         return obj
 
-    def all_dict_out(self, **kwargs):
-        return [x.get_dict(**kwargs) for x in self]
-
-    def all_dict_out_or_404(self, **kwargs):
-        dict_list = self.all_dict_out(**kwargs)
-        if not dict_list:
-            abort(404)
-        return dict_list
-
-    def pretty_list(self, columns=None):
-        if not columns:
-            columns = self._joinpoint_zero().class_.__table__.columns.keys()
-        table = PrettyTable(columns)
-        for obj in self:
-            obj_dict = obj.get_dict()
-            table.add_row([obj_dict.get(x) for x in columns])
-        print(table)
-
 
 class BaseResource:
 
@@ -94,16 +73,6 @@ class BaseResource:
         return cls.query.get(obj_id).first_or_fail().update(
             prune_none_values=prune_none_values, **kwargs)
 
-    @property
-    def dict_out(self):
-        return OrderedDict([(key, getattr(self, key))
-                            for key in self.__table__.columns.keys()])  # pylint: disable=no-member
-
-    def pretty_print(self, all_attrs=False, ignore_attrs=None):
-        properties = [(key, value) for key, value in self.get_dict(  # pylint: disable=no-member
-            all_attrs=all_attrs).items()]  # pylint: disable=no-member
-        print_property_table(properties, ignore_attrs=ignore_attrs)
-
     def update(self, commit=True, prune_none_values=True, **kwargs):
         kwargs.pop('id', None)
         for key, value in kwargs.items():
@@ -121,25 +90,6 @@ class BaseResource:
     def delete(self, commit=True):
         db.session.delete(self)
         return commit and db.session.commit()
-
-    def get_dict(self, jsonify=False, serialize=False, pretty_print=False,
-                 all_attrs=False, truncate=False, **kwargs):
-        dict_out = self.dict_out
-        if all_attrs:
-            attr_dict = OrderedDict([(x.key, getattr(self, x.key))
-                                     for x in self.__table__.columns])  # pylint: disable=no-member
-            dict_out.update(attr_dict)
-        if truncate:
-            if 'output' in dict_out:
-                dict_out['output'] = (dict_out['output'][:100] + '...') if \
-                    len(dict_out['output']) > 100 else dict_out['output']
-        if jsonify:
-            if pretty_print:
-                return json.dumps(dict_out, indent=4)
-            return json.dumps(dict_out)
-        if serialize:
-            dict_out = json.loads(json.dumps(dict_out))
-        return dict_out
 
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.id)
@@ -262,16 +212,6 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
             return None
         return user
 
-    def pretty_print(self, all_attrs=False, ignore_attrs=None):
-        super().pretty_print(all_attrs=False, ignore_attrs=None)
-        print('\nSettings:')
-        columns = ['id', 'key', 'value', 'created_at', 'updated_at']
-        table = PrettyTable(columns)
-        for setting in self.settings:  # pylint: disable=no-member
-            setting_dict = setting.get_dict(all_attrs=True)
-            table.add_row([setting_dict.get(x) for x in columns])
-        print(table)
-
     @property
     def is_active(self):
         return self.enabled
@@ -312,20 +252,6 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
             raise ValueError('No setting found with key "%s".' % key)
         return setting
 
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('name', self.name),
-            ('created_at', self.created_at),
-            ('updated_at', self.updated_at),
-            ('roles', [x.name for x in self.roles]),
-            ('permissions', list({x.name for x in self.permissions})),  # dedup
-            ('email', self.email),
-            ('enabled', self.enabled),
-            ('full_name', self.full_name)
-        ])
-
 
 class UserSetting(BaseResource, TimeStampMixin, db.Model):
 
@@ -339,17 +265,6 @@ class UserSetting(BaseResource, TimeStampMixin, db.Model):
     __table_args__ = (
         db.UniqueConstraint('user_id', 'key'),
     )
-
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('user_id', self.user_id),
-            ('key', self.key),
-            ('value', self.value),
-            ('created_at', self.created_at),
-            ('updated_at', self.updated_at)
-        ])
 
 
 class Role(NamedResource, TimeStampMixin, db.Model):
@@ -393,19 +308,6 @@ class Role(NamedResource, TimeStampMixin, db.Model):
             Permission.name == permission_name).delete()
         db.session.commit()
 
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('name', self.name),
-            ('created_at', self.created_at),
-            ('updated_at', self.updated_at),
-            ('ldap_group', self.ldap_group),
-            ('description', self.description),
-            ('permissions', [x.name for x in self.permissions]),
-            ('users', [x.name for x in self.users])
-        ])
-
 
 class Permission(BaseResource, TimeStampMixin, db.Model):
 
@@ -418,16 +320,6 @@ class Permission(BaseResource, TimeStampMixin, db.Model):
     __table_args__ = (
         db.UniqueConstraint('role_id', 'name'),
     )
-
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('role_id', self.role_id),
-            ('name', self.name),
-            ('created_at', self.created_at),
-            ('updated_at', self.updated_at)
-        ])
 
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.name)

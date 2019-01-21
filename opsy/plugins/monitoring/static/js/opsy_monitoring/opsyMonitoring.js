@@ -56,8 +56,7 @@ var opsyMonitoring = {
     if (url === undefined) {
       url = Flask.url_for('monitoring_api.zones');
     }
-    $.getJSON(url, function(json, status) {
-      zones = json.zones;
+    $.getJSON(url, function(zones, status) {
       for (var i = 0; i < zones.length; i++) {
         zone = zones[i];
         if (zone.status != 'ok') {

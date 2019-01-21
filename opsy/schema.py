@@ -187,8 +187,8 @@ class UserSettingSchema(BaseSchema):
     id = field_for(UserSetting, 'id', dump_only=True)
     key = field_for(UserSetting, 'key', required=True)
     value = field_for(UserSetting, 'value', required=True)
-    created_at = field_for(User, 'created_at', dump_only=True)
-    updated_at = field_for(User, 'updated_at', dump_only=True)
+    created_at = field_for(UserSetting, 'created_at', dump_only=True)
+    updated_at = field_for(UserSetting, 'updated_at', dump_only=True)
 
     user_name = ma_fields.Pluck(
         'UserSchema', 'name', dump_only=True)

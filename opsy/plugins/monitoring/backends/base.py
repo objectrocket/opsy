@@ -1,6 +1,5 @@
 import asyncio
 import uuid
-from collections import OrderedDict
 import aiohttp
 from flask import abort
 from sqlalchemy.orm import synonym
@@ -113,20 +112,6 @@ class Client(BaseEntity, db.Model):
             return 'critical'
         return 'warning'
 
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('zone_name', self.zone_name),
-            ('zone_id', self.zone_id),
-            ('backend', self.backend),
-            ('updated_at', self.updated_at),
-            ('last_poll_time', self.zone.last_poll_time),
-            ('name', self.name),
-            ('subscriptions', self.subscriptions),
-            ('silences', [x.get_dict() for x in self.silences])
-        ])
-
     def __repr__(self):
         return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
                                self.name)
@@ -168,21 +153,6 @@ class Check(BaseEntity, db.Model):
     @classmethod
     def get_filters_maps(cls):
         return (('zone', cls.zone_name), ('check', cls.name))
-
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('zone_name', self.zone_name),
-            ('zone_id', self.zone_id),
-            ('backend', self.backend),
-            ('last_poll_time', self.zone.last_poll_time),
-            ('name', self.name),
-            ('subscribers', self.subscribers),
-            ('occurrences_threshold', self.occurrences_threshold),
-            ('interval', self.interval),
-            ('command', self.command)
-        ])
 
     def __repr__(self):
         return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -259,26 +229,6 @@ class Result(BaseEntity, db.Model):
     def get_filters_maps(cls):
         return (('zone', cls.zone_name), ('check', cls.check_name),
                 ('client', cls.client_name))
-
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('zone_name', self.zone_name),
-            ('zone_id', self.zone_id),
-            ('backend', self.backend),
-            ('last_poll_time', self.zone.last_poll_time),
-            ('client_name', self.client_name),
-            ('check_name', self.check_name),
-            ('check_subscribers', self.check_subscribers),
-            ('updated_at', self.updated_at),
-            ('occurrences_threshold', self.occurrences_threshold),
-            ('status', self.status),
-            ('interval', self.interval),
-            ('command', self.command),
-            ('output', self.output),
-            ('silences', [x.get_dict() for x in self.silences])
-        ])
 
     def __repr__(self):
         return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -383,28 +333,6 @@ class Event(BaseEntity, db.Model):
         return (('zone', cls.zone_name), ('check', cls.check_name),
                 ('client', cls.client_name))
 
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('backend', self.backend),
-            ('zone_name', self.zone_name),
-            ('zone_id', self.zone_id),
-            ('last_poll_time', self.zone.last_poll_time),
-            ('client_name', self.client_name),
-            ('client_subscriptions', self.client_subscriptions),
-            ('check_name', self.check_name),
-            ('check_subscribers', self.check_subscribers),
-            ('updated_at', self.updated_at),
-            ('occurrences_threshold', self.occurrences_threshold),
-            ('occurrences', self.occurrences),
-            ('status', self.status),
-            ('interval', self.interval),
-            ('command', self.command),
-            ('output', self.output),
-            ('silences', [x.get_dict() for x in self.silences])
-        ])
-
     def __repr__(self):
         return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
                                   self.client_name, self.check_name)
@@ -441,23 +369,6 @@ class Silence(BaseEntity, db.Model):
     def get_filters_maps(cls):
         return (('zone', cls.zone_name), ('check', cls.check_name),
                 ('client', cls.client_name))
-
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('zone_name', self.zone_name),
-            ('zone_id', self.zone_id),
-            ('backend', self.backend),
-            ('last_poll_time', self.zone.last_poll_time),
-            ('client_name', self.client_name),
-            ('check_name', self.check_name),
-            ('subscription', self.subscription),
-            ('creator', self.creator),
-            ('reason', self.reason),
-            ('created_at', self.created_at),
-            ('expire_at', self.expire_at)
-        ])
 
     def __repr__(self):
         return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -577,26 +488,6 @@ class Zone(BaseCache, NamedResource, TimeStampMixin, db.Model):
             app.logger.info('Purging %s cache for %s' % (
                 model.__tablename__, zone_name))
             model.query.filter(model.zone_name == zone_name).delete()
-
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('name', self.name),
-            ('backend', self.backend),
-            ('status', self.status),
-            ('status_message', self.status_message),
-            ('last_poll_time', self.last_poll_time),
-            ('host', self.host),
-            ('path', self.path),
-            ('protocol', self.protocol),
-            ('port', self.port),
-            ('timeout', self.timeout),
-            ('interval', self.interval),
-            ('enabled', self.enabled),
-            ('created_at', self.created_at),
-            ('updated_at', self.updated_at)
-        ])
 
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.name)

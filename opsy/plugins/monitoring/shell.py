@@ -1,12 +1,13 @@
 import click
-# from flask import current_app
-from opsy.shell import cli, click_option
+from flask import current_app
+from opsy.shell import cli, click_option, common_params
 from opsy.exceptions import DuplicateError
 from opsy.utils import print_notice, print_error
+from opsy.plugins.monitoring import MonitoringPlugin
 from opsy.plugins.monitoring.backends.base import Zone
 from opsy.plugins.monitoring.dashboard import Dashboard
-from opsy.plugins.monitoring.utils import ENTITY_MAP
 from opsy.plugins.monitoring.exceptions import BackendNotFound
+from opsy.plugins.monitoring.schema import ZoneSchema, DashboardSchema
 
 
 @cli.group('monitoring')
@@ -14,18 +15,19 @@ def monitoring_cli():
     """Commands related to the monitoring plugin."""
 
 
-# @monitoring_cli.command('update-cache')
-# def update_monitoring_cache():
-#     """Update the monitoring cache."""
-#     from apscheduler.schedulers.background import BackgroundScheduler
-#     scheduler = BackgroundScheduler()
-#     self.register_scheduler_jobs(current_app, run_once=True)
-#     for args, kwargs in current_app.jobs:
-#         scheduler.add_job(*args, **kwargs)
-#     scheduler.start()
-#     while scheduler.get_jobs():
-#         continue
-#     scheduler.shutdown(wait=True)
+@monitoring_cli.command('update-cache')
+def update_monitoring_cache():
+    """Update the monitoring cache."""
+    from apscheduler.schedulers.background import BackgroundScheduler
+    scheduler = BackgroundScheduler()
+    MonitoringPlugin(current_app).register_scheduler_jobs(
+        current_app, run_once=True)
+    for args, kwargs in current_app.jobs:
+        scheduler.add_job(*args, **kwargs)
+    scheduler.start()
+    while scheduler.get_jobs():
+        continue
+    scheduler.shutdown(wait=True)
 
 
 @monitoring_cli.group('zone')
@@ -45,38 +47,40 @@ def zone_cli():
 @click_option('--password', type=click.STRING)
 @click_option('--verify_ssl', type=click.BOOL)
 @click_option('--enabled', type=click.BOOL)
-def zone_create(name, backend, **kwargs):
+@common_params
+def zone_create(name, backend, json=None, **kwargs):
     """Create a zone."""
     zone_kwargs = {k: v for k, v in kwargs.items() if v is not None}
     try:
-        Zone.create(name, backend, **zone_kwargs).pretty_print()
+        ZoneSchema().print(
+            Zone.create(name, backend, **zone_kwargs), json=json)
     except (DuplicateError, BackendNotFound) as error:
         print_error(error)
 
 
 @zone_cli.command('list')
-# pylint: disable=unused-variable
-def zone_list():
+@common_params
+def zone_list(json):
     """List all zones."""
     columns = ['id', 'name', 'backend', 'status', 'status_message',
                'enabled', 'created_at', 'updated_at']
-    Zone.query.pretty_list(columns)
+    ZoneSchema(many=True, only=columns).print(Zone.query, json=json)
 
 
 @zone_cli.command('show')
 @click.argument('zone_id_or_name', type=click.STRING)
-# pylint: disable=unused-variable
-def zone_show(zone_id_or_name):
+@common_params
+def zone_show(zone_id_or_name, json):
     """Show a zone."""
     try:
-        Zone.get_by_id_or_name(zone_id_or_name).pretty_print()
+        ZoneSchema().print(
+            Zone.get_by_id_or_name(zone_id_or_name), json=json)
     except ValueError as error:
         print_error(error)
 
 
 @zone_cli.command('delete')
 @click.argument('zone_id_or_name', type=click.STRING)
-# pylint: disable=unused-variable
 def zone_delete(zone_id_or_name):
     """Delete a zone."""
     try:
@@ -98,13 +102,14 @@ def zone_delete(zone_id_or_name):
 @click_option('--password', type=click.STRING)
 @click_option('--verify_ssl', type=click.BOOL)
 @click_option('--enabled', type=click.BOOL)
-# pylint: disable=unused-variable
-def zone_modify(zone_id_or_name, **kwargs):
+@common_params
+def zone_modify(zone_id_or_name, json=None, **kwargs):
     """Modify a zone."""
     zone_kwargs = {k: v for k, v in kwargs.items() if v is not None}
     try:
-        Zone.update_by_id_or_name(zone_id_or_name,
-                                  **zone_kwargs).pretty_print()
+        ZoneSchema().print(
+            Zone.update_by_id_or_name(zone_id_or_name, **zone_kwargs),
+            json=json)
     except ValueError as error:
         print_error(error)
 
@@ -121,41 +126,38 @@ def dashboard_cli():
 @click_option('--zone_filters', type=click.STRING)
 @click_option('--client_filters', type=click.STRING)
 @click_option('--check_filters', type=click.STRING)
-# pylint: disable=unused-variable
-def dashboard_create(name, **kwargs):
+@common_params
+def dashboard_create(name, json=None, **kwargs):
     """Create a dashboard."""
     dashboard_kwargs = {k: v for k, v in kwargs.items() if v is not None}
     try:
-        Dashboard.create(name, **dashboard_kwargs).pretty_print(
-            ignore_attrs=['filters'])
+        DashboardSchema().print(
+            Dashboard.create(name, **dashboard_kwargs), json=json)
     except DuplicateError as error:
         print_error(error)
 
 
 @dashboard_cli.command('list')
-# pylint: disable=unused-variable
-def dashboard_list():
+@common_params
+def dashboard_list(json):
     """List all dashboards."""
-    columns = ['id', 'name', 'description', 'enabled', 'created_at',
-               'updated_at']
-    Dashboard.query.pretty_list(columns)
+    DashboardSchema(many=True).print(Dashboard.query)
 
 
 @dashboard_cli.command('show')
 @click.argument('dashboard_id_or_name', type=click.STRING)
-# pylint: disable=unused-variable
-def dashboard_show(dashboard_id_or_name):
+@common_params
+def dashboard_show(dashboard_id_or_name, json):
     """Show a dashboard."""
     try:
-        Dashboard.get_by_id_or_name(
-            dashboard_id_or_name).pretty_print(ignore_attrs=['filters'])
+        DashboardSchema().print(
+            Dashboard.get_by_id_or_name(dashboard_id_or_name), json=json)
     except ValueError as error:
         print_error(error)
 
 
 @dashboard_cli.command('delete')
 @click.argument('dashboard_id_or_name', type=click.STRING)
-# pylint: disable=unused-variable
 def dashboard_delete(dashboard_id_or_name):
     """Delete a dashboard."""
     try:
@@ -173,24 +175,22 @@ def dashboard_delete(dashboard_id_or_name):
 @click_option('--zone_filters', type=click.STRING)
 @click_option('--client_filters', type=click.STRING)
 @click_option('--check_filters', type=click.STRING)
-# pylint: disable=unused-variable
-def dashboard_modify(dashboard_id_or_name, **kwargs):
+@common_params
+def dashboard_modify(dashboard_id_or_name, json=None, **kwargs):
     """Modify a dashboard."""
     dashboard_kwargs = {k: v for k, v in kwargs.items()
                         if v is not None}
     try:
-        Dashboard.update_by_id_or_name(
-            dashboard_id_or_name,
-            **dashboard_kwargs).pretty_print(ignore_attrs=['filters'])
+        DashboardSchema().print(
+            Dashboard.update_by_id_or_name(
+                dashboard_id_or_name, **dashboard_kwargs), json=json)
     except ValueError as error:
         print_error(error)
 
 
 @dashboard_cli.command('delete-filter')
 @click.argument('dashboard_id_or_name', type=click.STRING)
-@click.argument('entity_name', type=click.Choice(['client', 'check',
-                                                  'zone']))
-# pylint: disable=unused-variable
+@click.argument('entity_name', type=click.Choice(['client', 'check', 'zone']))
 def dashboard_filter_delete(dashboard_id_or_name, entity_name):
     """Delete a dashboard's filter."""
     try:
@@ -200,20 +200,3 @@ def dashboard_filter_delete(dashboard_id_or_name, entity_name):
         print_error(error)
     print_notice('Filter for entity "%s" for dashboard "%s" '
                  'deleted.' % (entity_name, dashboard_id_or_name))
-
-
-@dashboard_cli.command('test')
-@click.argument('dashboard_id_or_name', type=click.STRING)
-@click.argument('entity_name', type=click.Choice(
-    ['client', 'check', 'result', 'event', 'silence', 'zone']))
-# pylint: disable=unused-variable
-def dashboard_test(dashboard_id_or_name, entity_name):
-    """Test a dashboard."""
-    entity = ENTITY_MAP[entity_name]
-    try:
-        dashboard = Dashboard.get_by_id_or_name(dashboard_id_or_name)
-    except ValueError as error:
-        print_error(error)
-    filters_list = dashboard.get_filters_list(entity)
-    for entity_object in entity.query.filter(*filters_list).all():
-        print(entity_object)
