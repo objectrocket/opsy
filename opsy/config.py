@@ -62,8 +62,8 @@ def validate_config(app, plugin=None):
                                               option.name, section_name,
                                               app.config_file))
             section_config[option.name] = option.default
-        if (section_config[option.name] is not None and
-                not isinstance(section_config[option.name], option.type)):
+        if (section_config[option.name] is not None and not
+                isinstance(section_config[option.name], option.type)):
             raise TypeError('Expected "%s" type for config option "%s" from '
                             'config section "%s" in config file "%s".' % (
                                 option.type.__name__, option.name,
