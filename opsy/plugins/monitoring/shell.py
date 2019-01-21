@@ -12,7 +12,6 @@ from opsy.plugins.monitoring.exceptions import BackendNotFound
 @cli.group('monitoring')
 def monitoring_cli():
     """Commands related to the monitoring plugin."""
-    pass
 
 
 # @monitoring_cli.command('update-cache')
@@ -32,7 +31,6 @@ def monitoring_cli():
 @monitoring_cli.group('zone')
 def zone_cli():
     """Commands related to zones."""
-    pass
 
 
 @zone_cli.command('create')
@@ -114,7 +112,6 @@ def zone_modify(zone_id_or_name, **kwargs):
 @monitoring_cli.group('dashboard')
 def dashboard_cli():
     """Commands related to dashboards."""
-    pass
 
 
 @dashboard_cli.command('create')

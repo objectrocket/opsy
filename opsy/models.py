@@ -17,7 +17,7 @@ from opsy.utils import get_filters_list, print_property_table
 ###############################################################################
 
 
-class TimeStampMixin(object):
+class TimeStampMixin:
     created_at = db.Column(db.DateTime, default=datetime.utcnow())
     updated_at = db.Column(db.DateTime, default=datetime.utcnow(),
                            onupdate=datetime.utcnow())
@@ -69,7 +69,7 @@ class OpsyQuery(BaseQuery):
         print(table)
 
 
-class BaseResource(object):
+class BaseResource:
 
     query_class = OpsyQuery
 
@@ -320,8 +320,7 @@ class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
             ('created_at', self.created_at),
             ('updated_at', self.updated_at),
             ('roles', [x.name for x in self.roles]),
-            ('permissions', list(
-                set([x.name for x in self.permissions]))),  # dedup
+            ('permissions', list({x.name for x in self.permissions})),  # dedup
             ('email', self.email),
             ('enabled', self.enabled),
             ('full_name', self.full_name)

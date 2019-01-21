@@ -106,7 +106,6 @@ def permission_list(json):
 @cli.group('user')
 def user_cli():
     """Commands related to users."""
-    pass
 
 
 @user_cli.command('create')
@@ -238,7 +237,6 @@ def user_modify_setting(user_id_or_name, key, value, json):
 @cli.group('role')
 def role_cli():
     """Commands related to roles."""
-    pass
 
 
 @role_cli.command('create')

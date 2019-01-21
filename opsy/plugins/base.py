@@ -3,7 +3,7 @@ import six
 
 
 @six.add_metaclass(abc.ABCMeta)
-class BaseOpsyPlugin(object):
+class BaseOpsyPlugin:
     """Base class for plugins."""
 
     def __init__(self, app):
@@ -68,10 +68,6 @@ class BaseOpsyPlugin(object):
         :param run_once: Control if the jobs are scheduled once
         :type run_once: bool
         """
-
-    @abc.abstractmethod
-    def register_cli_commands(self, cli):
-        """Register any cli commands for the plugin."""
 
     @abc.abstractmethod
     def register_shell_context(self, shell_ctx):

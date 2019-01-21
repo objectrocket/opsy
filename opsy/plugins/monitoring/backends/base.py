@@ -107,10 +107,9 @@ class Client(BaseEntity, db.Model):
     @property
     def status(self):
         results = self.results.all()
-        if all([True if (x.status == 'ok') else False for x in results]):
+        if all([x.status == 'ok' for x in results]):
             return 'ok'
-        elif any([True if (x.status == 'critical') else False
-                  for x in results]):
+        if any([x.status == 'critical' for x in results]):
             return 'critical'
         return 'warning'
 
@@ -603,7 +602,7 @@ class Zone(BaseCache, NamedResource, TimeStampMixin, db.Model):
         return '<%s %s>' % (self.__class__.__name__, self.name)
 
 
-class HttpZoneMixin(object):
+class HttpZoneMixin:
 
     @property
     def base_url(self):

@@ -39,8 +39,8 @@ def parse_include_excludes(items):
     if items:
         item_list = items.split(',')
         # Wrap in a set to remove duplicates
-        include = list(set([x for x in item_list if not x.startswith('!')]))
-        exclude = list(set([x[1:] for x in item_list if x.startswith('!')]))
+        include = list({x for x in item_list if not x.startswith('!')})
+        exclude = list({x[1:] for x in item_list if x.startswith('!')})
     else:
         include, exclude = [], []
     return include, exclude
