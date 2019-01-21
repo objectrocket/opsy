@@ -1,13 +1,17 @@
 language: python
-python:
-  - "3.6"
+# python:
+#   - "3.6"
 branches:
   only:
     - master
     - dev
 matrix:
   include:
-    # Test javascript as part of python3.4 tests
+    # Workaround for https://github.com/travis-ci/travis-ci/issues/9815
+    - python: 3.6
+    - python: 3.7
+      dist: xenial
+      sudo: true
     - language: node_js
       node_js: node
       install:
@@ -28,5 +32,5 @@ script:
   # Python validations
   - find . -name \*.py -exec pycodestyle {} +
   # Ignoring missing docstrings for now
-  # - find . -name \*.py -exec pep257 {} +
+  - find . -name \*.py -exec pep257 {} +
   - pylint opsy
