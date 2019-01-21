@@ -1,5 +1,5 @@
-from flask import abort, jsonify
-from flask_allows import requires
+from flask import jsonify
+from flask_allows import requires, And
 from flask_restful import Resource, reqparse
 from opsy.access import HasPermission
 from opsy.plugins.monitoring.backends.base import Client, Check, Result, \
@@ -156,7 +156,7 @@ class ClientAPI(Resource):
 
 class ClientEventsAPI(Resource):
 
-    @requires(HasPermission(clients_read))
+    @requires(And(HasPermission(clients_read), HasPermission(events_read)))
     def get(self, zone_name, client_name):
         event_list = Event.query.wtfilter_by(
             zone_name=zone_name,
@@ -166,7 +166,7 @@ class ClientEventsAPI(Resource):
 
 class ClientEventAPI(Resource):
 
-    @requires(HasPermission(clients_read))
+    @requires(And(HasPermission(clients_read), HasPermission(events_read)))
     def get(self, zone_name, client_name, check_name):
         events = Event.query.wtfilter_by(
             zone_name=zone_name,
@@ -177,7 +177,7 @@ class ClientEventAPI(Resource):
 
 class ClientResultsAPI(Resource):
 
-    @requires(HasPermission(clients_read))
+    @requires(And(HasPermission(clients_read), HasPermission(results_read)))
     def get(self, zone_name, client_name):
         results = Result.query.wtfilter_by(
             zone_name=zone_name,
@@ -187,7 +187,7 @@ class ClientResultsAPI(Resource):
 
 class ClientResultAPI(Resource):
 
-    @requires(HasPermission(clients_read))
+    @requires(And(HasPermission(clients_read), HasPermission(results_read)))
     def get(self, zone_name, client_name, check_name):
         results = Result.query.wtfilter_by(
             zone_name=zone_name,

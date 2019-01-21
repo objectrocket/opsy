@@ -1,66 +1,162 @@
+from marshmallow import RAISE, post_load
+from marshmallow import fields as ma_fields
+from marshmallow_sqlalchemy import field_for
+from prettytable import PrettyTable
+from webargs.flaskparser import use_args
 from opsy.flask_extensions import ma
 from opsy.models import Permission, Role, User, UserSetting
-from marshmallow_sqlalchemy import field_for
-from marshmallow import RAISE
-from marshmallow import fields as ma_fields
 
 
-class PermissionSchema(ma.ModelSchema):
+def use_args_with(schema_cls, schema_kwargs=None, **kwargs):
+    schema_kwargs = schema_kwargs or {}
 
+    def factory(request):
+        # Filter based on 'fields' query parameter
+        only = request.args.get('fields', None)
+        # Respect partial updates for PATCH and GET requests
+        partial = request.method in ['PATCH', 'GET']
+        # Add current request to the schema's context
+        return schema_cls(
+            only=only,
+            partial=partial,
+            context={'request': request},
+            **schema_kwargs
+        )
+
+    return use_args(factory, **kwargs)
+
+
+###############################################################################
+# Base schemas
+###############################################################################
+
+
+class BaseSchema(ma.ModelSchema):
+
+    @post_load
+    def make_instance(self, data):
+        """Return deserialized data as a dict, not a model instance."""
+        return data
+
+    def pt_dumps(self, obj, many=None):
+        """Returns a rendered prettytable representation of the data."""
+        many = self.many if many is None else bool(many)
+        data = self.dump(obj, many=many)
+        if many:
+            columns = []
+            for attr_name, field_obj in self.fields.items():
+                if getattr(field_obj, 'load_only', False):
+                    continue
+                columns.append(field_obj.data_key or attr_name)
+            table = PrettyTable(columns, align='l')
+            for entity in data:
+                table.add_row([entity.get(x) for x in columns])
+        else:
+            table = PrettyTable(['Property', 'Value'], align='l')
+            for key, value in data.items():
+                table.add_row([key, value])
+        return str(table)
+
+    def print(self, obj, many=None, json=False):
+        if json:
+            print(super().dumps(obj, many=many, indent=4))
+        else:
+            print(self.pt_dumps(obj, many=many))
+
+
+###############################################################################
+# Non-sqlalchemy schemas
+###############################################################################
+
+
+class UserLoginSchema(BaseSchema):
+
+    user_name = ma_fields.String(load_only=True, required=True)
+    password = ma_fields.String(load_only=True, required=True)
+    remember_me = ma_fields.Boolean(load_only=True, default=False,
+                                    missing=False)
+    force_renew = ma_fields.Boolean(load_only=True, default=False,
+                                    missing=False)
+
+
+class PermissionSchema(BaseSchema):
     class Meta:
-        name = 'permission'
-        plural_name = 'permissions'
-        model = Permission
-        fields = ('id', 'role', 'name', 'created_at', 'updated_at')
+        fields = ('name', 'description', 'plugin')
         ordered = True
+        unknown = RAISE
 
-    id = field_for(Permission, 'id', dump_only=True)
-    name = field_for(Permission, 'name', required=True)
-    created_at = field_for(Permission, 'created_at', dump_only=True)
-    updated_at = field_for(Permission, 'updated_at', dump_only=True)
-
-    role = ma.Nested(
-        'RoleSchema', dump_only=True, only=['id', 'name'])
+    name = ma_fields.String()
+    description = ma_fields.String()
+    plugin = ma_fields.String()
 
 
-class UserSchema(ma.ModelSchema):
+###############################################################################
+# Sqlalchemy schemas
+###############################################################################
+
+
+class UserSchema(BaseSchema):
 
     class Meta:
-        name = 'user'
-        plural_name = 'users'
         model = User
         fields = ('id', 'name', 'full_name', 'email', 'enabled', 'created_at',
                   'updated_at', 'settings', 'roles', 'permissions')
         ordered = True
         unknown = RAISE
 
+    def pt_dumps(self, obj, many=None):
+        """Returns a prettytable representation of the data."""
+        many = self.many if many is None else bool(many)
+        data = self.dump(obj, many=many)
+        if many:
+            columns = []
+            for attr_name, field_obj in self.fields.items():
+                if getattr(field_obj, 'load_only', False):
+                    continue
+                if field_obj.data_key or attr_name == 'settings':
+                    continue
+                columns.append(field_obj.data_key or attr_name)
+            table = PrettyTable(columns, align='l')
+            for entity in data:
+                table.add_row([entity.get(x) for x in columns])
+            return_data = str(table)
+        else:
+            user_table = PrettyTable(['Property', 'Value'], align='l')
+            settings = None
+            for key, value in data.items():
+                if key == 'settings':
+                    settings = value
+                    continue
+                user_table.add_row([key, value])
+            return_data = f'{user_table}\n\nSettings:'
+            try:
+                columns = settings[0].keys()
+                settings_table = PrettyTable(columns, align='l')
+                for setting in settings:
+                    settings_table.add_row(setting.values())
+                return_data = f'{return_data}\n{settings_table}'
+            except IndexError:
+                return_data = f'{return_data} No user settings found.'
+        return return_data
+
     id = field_for(User, 'id', dump_only=True)
     name = field_for(User, 'name', required=True)
-    email = field_for(User, 'email', field_class=ma.Email)
+    email = field_for(
+        User, 'email', field_class=ma.Email)  # pylint: disable=no-member
     created_at = field_for(User, 'created_at', dump_only=True)
     updated_at = field_for(User, 'updated_at', dump_only=True)
 
-    settings = ma.Nested(
-        'UserSettingSchema', many=True, dump_only=True, only=['key', 'value'])
+    settings = ma_fields.Nested(
+        'UserSettingSchema', many=True, dump_only=True)
     permissions = ma_fields.Pluck(
-        'PermissionSchema', 'name', many=True, dump_only=True)
-    roles = ma.Nested(
-        'RoleSchema', many=True, dump_only=True, only=['name', 'permissions'])
+        'RolePermissionSchema', 'name', many=True, dump_only=True)
+    roles = ma_fields.Pluck(
+        'RoleSchema', 'name', many=True, dump_only=True)
 
 
-class UserLoginSchema(ma.Schema):
-
-    user_name = ma_fields.String(load_only=True, required=True)
-    password = ma_fields.String(load_only=True, required=True)
-    remember_me = ma_fields.Boolean(load_only=True, default=False, missing=False)
-    force_renew = ma_fields.Boolean(load_only=True, default=False, missing=False)
-
-
-class UserTokenSchema(ma.ModelSchema):
+class UserTokenSchema(BaseSchema):
 
     class Meta:
-        name = 'auth'
-        plural_name = 'auth'
         model = User
         fields = ('id', 'name', 'session_token', 'session_token_expires_at')
         ordered = True
@@ -79,11 +175,9 @@ class UserTokenSchema(ma.ModelSchema):
     submit = ma_fields.String(load_only=True)  # submit button on login
 
 
-class UserSettingSchema(ma.ModelSchema):
+class UserSettingSchema(BaseSchema):
 
     class Meta:
-        name = 'user_setting'
-        plural_name = 'user_settings'
         model = UserSetting
         fields = ('id', 'user_name', 'key', 'value', 'created_at',
                   'updated_at')
@@ -100,14 +194,12 @@ class UserSettingSchema(ma.ModelSchema):
         'UserSchema', 'name', dump_only=True)
 
 
-class RoleSchema(ma.ModelSchema):
+class RoleSchema(BaseSchema):
 
     class Meta:
-        name = 'role'
-        plural_name = 'roles'
         model = Role
-        fields = ('id', 'name', 'created_at', 'updated_at', 'ldap_group',
-                  'description', 'permissions', 'users')
+        fields = ('id', 'name', 'ldap_group', 'description', 'created_at',
+                  'updated_at', 'permissions', 'users')
         ordered = True
         unknown = RAISE
 
@@ -117,6 +209,22 @@ class RoleSchema(ma.ModelSchema):
     updated_at = field_for(Role, 'updated_at', dump_only=True)
 
     permissions = ma_fields.Pluck(
-        'PermissionSchema', 'name', many=True, dump_only=True)
+        'RolePermissionSchema', 'name', many=True, dump_only=True)
     users = ma_fields.Pluck(
         'UserSchema', 'name', many=True, dump_only=True)
+
+
+class RolePermissionSchema(BaseSchema):
+
+    class Meta:
+        model = Permission
+        fields = ('id', 'role', 'name', 'created_at', 'updated_at')
+        ordered = True
+
+    id = field_for(Permission, 'id', dump_only=True)
+    name = field_for(Permission, 'name', required=True)
+    created_at = field_for(Permission, 'created_at', dump_only=True)
+    updated_at = field_for(Permission, 'updated_at', dump_only=True)
+
+    role = ma.Nested(  # pylint: disable=no-member
+        'RoleSchema', dump_only=True, only=['id', 'name'])

@@ -1,4 +1,3 @@
-from flask import current_app
 from flask_allows import Allows
 from flask_iniconfig import INIConfig
 from flask_jsglue import JSGlue

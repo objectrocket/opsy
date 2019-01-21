@@ -1,8 +1,6 @@
 from flask import Blueprint
 from flask_restful import Api
-from opsy.resources import (Login, Logout,
-                            RoleAPI, RolesAPI,
-                            UserAPI, UsersAPI,
+from opsy.resources import (AuthAPI, RoleAPI, RolesAPI, UserAPI, UsersAPI,
                             UserSettingAPI, UserSettingsAPI)
 
 
@@ -11,11 +9,8 @@ core_api = Blueprint(  # pylint: disable=invalid-name
 api = Api(core_api)  # pylint: disable=invalid-name
 
 api.add_resource(
-    Login, '/login',
-    endpoint='login')
-api.add_resource(
-    Logout, '/logout',
-    endpoint='logout')
+    AuthAPI, '/auth',
+    endpoint='auth')
 api.add_resource(
     RolesAPI, '/roles',
     endpoint='roles')

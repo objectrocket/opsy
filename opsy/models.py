@@ -2,7 +2,7 @@ import uuid
 from collections import OrderedDict
 from datetime import datetime
 from prettytable import PrettyTable
-from flask import abort, current_app, json
+from flask import abort, json
 from flask_login import UserMixin
 from flask_sqlalchemy import BaseQuery
 from werkzeug.security import generate_password_hash, check_password_hash

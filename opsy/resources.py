@@ -1,47 +1,37 @@
-from flask import abort, current_app, flash, redirect, request, url_for
+from flask import abort, current_app
 from flask_allows import requires, Or
 from flask_restful import Resource, reqparse
 from flask_login import current_user
-from webargs.flaskparser import use_args
 from opsy.access import (HasPermission, is_logged_in, is_same_user,
                          users_create, users_read, users_update, users_delete,
                          roles_create, roles_read, roles_update, roles_delete)
 from opsy.auth import login, logout, create_token
-from opsy.schema import (UserSchema, UserLoginSchema, UserTokenSchema,
-                         UserSettingSchema, RoleSchema)
+from opsy.schema import (use_args_with, UserSchema, UserLoginSchema,
+                         UserTokenSchema, UserSettingSchema, RoleSchema)
 from opsy.models import User, Role
 from opsy.exceptions import DuplicateError
 
 
-class Login(Resource):
+class AuthAPI(Resource):
 
     @requires(is_logged_in)
     def get(self):  # pylint: disable=no-self-use
         create_token(current_user)
         return UserTokenSchema().jsonify(current_user)
 
-    @use_args(UserLoginSchema(), locations=('form', 'json'))
-    def post(self, args):  # pylint: disable=inconsistent-return-statements
+    @use_args_with(UserLoginSchema, locations=('form', 'json'))
+    def post(self, args):
         current_app.logger.info(args)
         user = login(args['user_name'], args['password'],
                      remember=args['remember_me'])
         if not user:
-            if request.is_json:
-                abort(401, 'Username or password incorrect.')
-            else:
-                flash('Username or password incorrect.')
-                return redirect(url_for('core_main.about'))
-        if request.is_json:
-            return UserTokenSchema().jsonify(current_user)
-        return redirect(url_for('core_main.about'))
-
-
-class Logout(Resource):
+            abort(401, 'Username or password incorrect.')
+        return UserTokenSchema().jsonify(current_user)
 
     @requires(is_logged_in)
-    def get(self):  # pylint: disable=no-self-use
+    def delete(self):  # pylint: disable=no-self-use
         logout(current_user)
-        return redirect(url_for('core_main.about'))
+        return ('', 205)
 
 
 class RolesAPI(Resource):
@@ -53,20 +43,19 @@ class RolesAPI(Resource):
         self.reqparse.add_argument('description')
         super().__init__()
 
+    @use_args_with(RoleSchema, as_kwargs=True)
     @requires(HasPermission(roles_create))
-    def post(self):
-        self.reqparse.replace_argument('name', required=True)
-        args = self.reqparse.parse_args()
+    def post(self, **kwargs):
         try:
-            role = Role.create(**args)
+            role = Role.create(**kwargs)
         except (DuplicateError, ValueError) as error:
             abort(400, str(error))
         return RoleSchema().jsonify(role)
 
+    @use_args_with(RoleSchema, as_kwargs=True)
     @requires(HasPermission(roles_read))
-    def get(self):
-        args = self.reqparse.parse_args()
-        roles = Role.query.wtfilter_by(prune_none_values=True, **args)
+    def get(self, **kwargs):
+        roles = Role.query.filter_by(**kwargs)
         return RoleSchema(many=True).jsonify(roles)
 
 

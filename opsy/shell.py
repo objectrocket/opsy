@@ -1,27 +1,44 @@
 import asyncio
 import os
-from getpass import getpass
+from functools import partial, wraps
 import click
 from flask import current_app
-from flask.cli import FlaskGroup, run_command, ScriptInfo
-from prettytable import PrettyTable
+from flask.cli import AppGroup, run_command, routes_command, ScriptInfo
+from stevedore import extension
 from opsy.flask_extensions import db
 from opsy.app import create_app, create_scheduler
 from opsy.exceptions import DuplicateError
 from opsy.utils import load_plugins, print_error, print_notice
 from opsy.models import Role, User, Permission
+from opsy.schema import (PermissionSchema, UserSchema, RoleSchema)
 
 
-DEFAULT_CONFIG = '%s/opsy.ini' % os.path.abspath(os.path.curdir)
+DEFAULT_CONFIG = os.environ.get(
+    'OPSY_CONFIG', '%s/opsy.ini' % os.path.abspath(os.path.curdir))
+
+click_option = partial(  # pylint: disable=invalid-name
+    click.option, show_default=True)
 
 
-def create_opsy_app(info):
-    return create_app(os.environ.get('OPSY_CONFIG', DEFAULT_CONFIG))
+def common_params(func):
+    @click_option('--json', type=click.BOOL, default=False, is_flag=True,
+                  help='Output JSON')
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        return func(*args, **kwargs)
+    return wrapper
 
 
-cli = FlaskGroup(add_default_commands=False,  # pylint: disable=invalid-name
-                 help='The Opsy management cli.')
+@click.group(cls=AppGroup, help='The Opsy management cli.')
+@click_option('--config', type=click.Path(), default=DEFAULT_CONFIG,
+              help='Config file for opsy.', show_default=True)
+@click.pass_context
+def cli(ctx, config):
+    ctx.obj.data['config'] = config
+
+
 cli.add_command(run_command)
+cli.add_command(routes_command)
 
 
 @cli.command('run-scheduler')
@@ -62,6 +79,8 @@ def shell():
 
 
 @cli.command('init-db')
+@click.confirmation_option(
+    prompt='This will delete everything. Do you want to continue?')
 def init_db():
     """Drop everything in database and rebuild the schema."""
     current_app.logger.info('Creating database...')
@@ -70,27 +89,21 @@ def init_db():
     db.session.commit()
 
 
-@cli.group('auth')
-def auth_cli():
-    """Commands related to auth."""
-    pass
+# @cli.group('auth')
+# def auth_cli():
+#     """Commands related to auth."""
+#     pass
 
 
-@auth_cli.command('permission-list')
-# pylint: disable=unused-variable
-def permission_list():
+@cli.command('permission-list')
+@common_params
+def permission_list(json):
     """List all permissions the app is aware of."""
-    columns = ['name', 'description', 'plugin']
-    table = PrettyTable(columns, sortby='name')
-    table.align['name'] = 'l'
-    table.align['description'] = 'l'
-    table.align['plugin'] = 'l'
-    for need in current_app.needs_catalog:
-        table.add_row([need.name, need.doc, need.plugin])
-    print(table)
+    PermissionSchema(many=True).print(
+        current_app.needs_catalog, json=json)
 
 
-@auth_cli.group('user')
+@cli.group('user')
 def user_cli():
     """Commands related to users."""
     pass
@@ -98,61 +111,55 @@ def user_cli():
 
 @user_cli.command('create')
 @click.argument('user_name', type=click.STRING)
-@click.option('--full_name', type=click.STRING)
-@click.option('--enabled', type=click.BOOL)
-@click.option('--email', type=click.STRING)
-@click.option('--password', type=click.STRING)
-# pylint: disable=unused-variable
-def user_create(user_name, **kwargs):
+@click_option('--full_name', type=click.STRING)
+@click_option('--enabled', type=click.BOOL)
+@click_option('--email', type=click.STRING)
+@click_option('--password', type=click.STRING)
+@common_params
+def user_create(user_name, json=None, **kwargs):
     """Create a user."""
     user_kwargs = {k: v for k, v in kwargs.items() if v is not None}
     try:
-        User.create(user_name, **user_kwargs).pretty_print()
+        UserSchema().print(User.create(user_name, **user_kwargs), json=json)
     except DuplicateError as error:
         print_error(error)
 
 
 @user_cli.command('password')
 @click.argument('user_id_or_name', type=click.STRING)
-# pylint: disable=unused-variable
-def user_password(user_id_or_name):
+@click_option('--password', prompt=True, confirmation_prompt=True,
+              hide_input=True)
+def user_password(user_id_or_name, password):
     """Change a user's password interactively."""
     try:
         user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
     except ValueError as error:
         print_error(error)
-    password1 = getpass('New password: ')
-    password2 = getpass('New password again: ')
-    if password1 != password2:
-        print_error('Passwords do not match!')
-    user.password = password1
+    user.password = password
     print_notice('Password updated for user "%s".' % user_id_or_name)
 
 
 @user_cli.command('list')
-# pylint: disable=unused-variable
-def user_list():
+@common_params
+def user_list(json):
     """List all users."""
-    columns = ['id', 'name', 'full_name', 'email', 'enabled', 'created_at',
-               'updated_at', 'roles']
-    User.query.pretty_list(columns)
+    UserSchema(many=True).print(User.query, json=json)
 
 
 @user_cli.command('show')
 @click.argument('user_id_or_name', type=click.STRING)
-# pylint: disable=unused-variable
-def user_show(user_id_or_name):
+@common_params
+def user_show(user_id_or_name, json):
     """Show a user."""
     try:
-        User.get_by_id_or_name(
-            user_id_or_name, error_on_none=True).pretty_print()
+        UserSchema().print(User.get_by_id_or_name(
+            user_id_or_name, error_on_none=True), json=json)
     except ValueError as error:
         print_error(error)
 
 
 @user_cli.command('delete')
 @click.argument('user_id_or_name', type=click.STRING)
-# pylint: disable=unused-variable
 def user_delete(user_id_or_name):
     """Delete a user."""
     try:
@@ -164,18 +171,19 @@ def user_delete(user_id_or_name):
 
 @user_cli.command('modify')
 @click.argument('user_id_or_name', type=click.STRING)
-@click.option('--enabled', type=click.BOOL)
-@click.option('--name', type=click.STRING)
-@click.option('--full_name', type=click.STRING)
-@click.option('--email', type=click.STRING)
-@click.option('--password', type=click.STRING)
-# pylint: disable=unused-variable
-def user_modify(user_id_or_name, **kwargs):
+@click_option('--enabled', type=click.BOOL)
+@click_option('--name', type=click.STRING)
+@click_option('--full_name', type=click.STRING)
+@click_option('--email', type=click.STRING)
+@click_option('--password', type=click.STRING)
+@common_params
+def user_modify(user_id_or_name, json=None, **kwargs):
     """Modify a user."""
     user_kwargs = {k: v for k, v in kwargs.items() if v is not None}
     try:
-        User.update_by_id_or_name(
-            user_id_or_name, **user_kwargs).pretty_print()
+        UserSchema().print(
+            User.update_by_id_or_name(user_id_or_name, **user_kwargs),
+            json=json)
     except ValueError as error:
         print_error(error)
 
@@ -184,8 +192,8 @@ def user_modify(user_id_or_name, **kwargs):
 @click.argument('user_id_or_name', type=click.STRING)
 @click.argument('key', type=click.STRING)
 @click.argument('value', type=click.STRING)
-# pylint: disable=unused-variable
-def user_add_setting(user_id_or_name, key, value):
+@common_params
+def user_add_setting(user_id_or_name, key, value, json=None):
     """Add a setting to a user."""
     try:
         user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
@@ -195,39 +203,39 @@ def user_add_setting(user_id_or_name, key, value):
         user.add_setting(key, value)
     except DuplicateError as error:
         print_error(error)
-    user.pretty_print()
+    UserSchema().print(user, json=json)
 
 
 @user_cli.command('remove-setting')
 @click.argument('user_id_or_name', type=click.STRING)
 @click.argument('key', type=click.STRING)
-# pylint: disable=unused-variable
-def user_remove_setting(user_id_or_name, key):
+@common_params
+def user_remove_setting(user_id_or_name, key, json):
     """Remove a user's setting."""
     try:
         user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
         user.remove_setting(key)
     except ValueError as error:
         print_error(error)
-    user.pretty_print()
+    UserSchema().print(user, json=json)
 
 
 @user_cli.command('modify-setting')
 @click.argument('user_id_or_name', type=click.STRING)
 @click.argument('key', type=click.STRING)
 @click.argument('value', type=click.STRING)
-# pylint: disable=unused-variable
-def user_modify_setting(user_id_or_name, key, value):
+@common_params
+def user_modify_setting(user_id_or_name, key, value, json):
     """Modify a user's setting."""
     try:
         user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
         user.modify_setting(key)
     except ValueError as error:
         print_error(error)
-    user.pretty_print()
+    UserSchema().print(user, json=json)
 
 
-@auth_cli.group('role')
+@cli.group('role')
 def role_cli():
     """Commands related to roles."""
     pass
@@ -235,42 +243,39 @@ def role_cli():
 
 @role_cli.command('create')
 @click.argument('role_name', type=click.STRING)
-@click.option('--ldap_group', type=click.STRING)
-@click.option('--description', type=click.STRING)
-# pylint: disable=unused-variable
-def role_create(role_name, **kwargs):
+@click_option('--ldap_group', type=click.STRING)
+@click_option('--description', type=click.STRING)
+@common_params
+def role_create(role_name, json=None, **kwargs):
     """Create a role."""
     role_kwargs = {k: v for k, v in kwargs.items() if v is not None}
     try:
-        Role.create(
-            role_name, **role_kwargs).pretty_print()
+        RoleSchema().print(Role.create(role_name, **role_kwargs), json=json)
     except DuplicateError as error:
         print_error(error)
 
 
 @role_cli.command('list')
-# pylint: disable=unused-variable
-def role_list():
+@common_params
+def role_list(json):
     """List all roles."""
-    columns = ['id', 'name', 'description', 'created_at', 'updated_at']
-    Role.query.pretty_list(columns)
+    RoleSchema(many=True).print(Role.query, json=json)
 
 
 @role_cli.command('show')
 @click.argument('role_id_or_name', type=click.STRING)
-# pylint: disable=unused-variable
-def role_show(role_id_or_name):
+@common_params
+def role_show(role_id_or_name, json):
     """Show a role."""
     try:
-        Role.get_by_id_or_name(
-            role_id_or_name, error_on_none=True).pretty_print()
+        RoleSchema().print(Role.get_by_id_or_name(
+            role_id_or_name, error_on_none=True), json=json)
     except ValueError as error:
         print_error(error)
 
 
 @role_cli.command('delete')
 @click.argument('role_id_or_name', type=click.STRING)
-# pylint: disable=unused-variable
 def role_delete(role_id_or_name):
     """Delete a role."""
     try:
@@ -282,16 +287,16 @@ def role_delete(role_id_or_name):
 
 @role_cli.command('modify')
 @click.argument('role_id_or_name', type=click.STRING)
-@click.option('--description', type=click.STRING)
-@click.option('--ldap_group', type=click.STRING)
-@click.option('--name', type=click.STRING)
-# pylint: disable=unused-variable
-def role_modify(role_id_or_name, **kwargs):
+@click_option('--description', type=click.STRING)
+@click_option('--ldap_group', type=click.STRING)
+@click_option('--name', type=click.STRING)
+@common_params
+def role_modify(role_id_or_name, json=None, **kwargs):
     """Modify a role."""
     role_kwargs = {k: v for k, v in kwargs.items() if v is not None}
     try:
-        Role.update_by_id_or_name(
-            role_id_or_name, **role_kwargs).pretty_print()
+        RoleSchema().print(Role.update_by_id_or_name(
+            role_id_or_name, **role_kwargs), json=json)
     except ValueError as error:
         print_error(error)
 
@@ -299,8 +304,8 @@ def role_modify(role_id_or_name, **kwargs):
 @role_cli.command('add-user')
 @click.argument('role_id_or_name', type=click.STRING)
 @click.argument('user_ids_or_names', type=click.STRING, nargs=-1)
-# pylint: disable=unused-variable
-def role_add_user(role_id_or_name, user_ids_or_names):
+@common_params
+def role_add_user(role_id_or_name, user_ids_or_names, json):
     """Add a users to a role."""
     try:
         role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
@@ -310,14 +315,14 @@ def role_add_user(role_id_or_name, user_ids_or_names):
             role.add_user(user)
     except ValueError as error:
         print_error(error)
-    role.pretty_print()
+    RoleSchema().print(role)
 
 
 @role_cli.command('remove-user')
 @click.argument('role_id_or_name', type=click.STRING)
 @click.argument('user_ids_or_names', type=click.STRING, nargs=-1)
-# pylint: disable=unused-variable
-def role_remove_user(role_id_or_name, user_ids_or_names):
+@common_params
+def role_remove_user(role_id_or_name, user_ids_or_names, json):
     """Remove a users from a role."""
     try:
         role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
@@ -327,14 +332,14 @@ def role_remove_user(role_id_or_name, user_ids_or_names):
             role.remove_user(user)
     except ValueError as error:
         print_error(error)
-    role.pretty_print()
+    RoleSchema().print(role)
 
 
 @role_cli.command('add-permission')
 @click.argument('role_id_or_name', type=click.STRING)
 @click.argument('permission_names', type=click.STRING, nargs=-1)
-# pylint: disable=unused-variable
-def role_add_permission(role_id_or_name, permission_names):
+@common_params
+def role_add_permission(role_id_or_name, permission_names, json):
     """Add a permissions to a role."""
     try:
         role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
@@ -342,14 +347,14 @@ def role_add_permission(role_id_or_name, permission_names):
             role.add_permission(permission_name)
     except ValueError as error:
         print_error(error)
-    role.pretty_print()
+    RoleSchema().print(role, json=json)
 
 
 @role_cli.command('remove-permission')
 @click.argument('role_id_or_name', type=click.STRING)
 @click.argument('permission_names', type=click.STRING, nargs=-1)
-# pylint: disable=unused-variable
-def role_remove_permission(role_id_or_name, permission_names):
+@common_params
+def role_remove_permission(role_id_or_name, permission_names, json):
     """Remove a permissions from a role."""
     try:
         role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
@@ -357,12 +362,14 @@ def role_remove_permission(role_id_or_name, permission_names):
             role.remove_permission(permission_name)
     except ValueError as error:
         print_error(error)
-    role.pretty_print()
+    RoleSchema().print(role, json=json)
 
 
 def main():
-    script_info = ScriptInfo(create_app=create_opsy_app)
-    app = script_info.load_app()
-    for plugin in load_plugins(app):
-        plugin.register_cli_commands(cli)
-    cli(obj=script_info)
+
+    def create_opsy_app(script_info):
+        return create_app(script_info.data['config'])
+    # Load the plugins
+    extension.ExtensionManager(namespace='opsy.command', invoke_on_load=False)
+    cli(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
+        obj=ScriptInfo(create_app=create_opsy_app))

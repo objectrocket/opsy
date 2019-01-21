@@ -29,14 +29,14 @@ roles_update = CoreNeed(  # pylint: disable=invalid-name
 roles_delete = CoreNeed(  # pylint: disable=invalid-name
     'roles_delete', 'Ability to delete roles in the API.')
 
-core_needs = [god_mode, users_create, users_read, users_update, users_delete,
-              roles_create, roles_read, roles_update, roles_delete]
+core_needs = [  # pylint: disable=invalid-name
+    god_mode, users_create, users_read, users_update, users_delete,
+    roles_create, roles_read, roles_update, roles_delete
+]
 
 
 class HasPermission(Requirement):
-    '''
-    Checks if the user has the necessary permission to access the resource.
-    '''
+    """Checks if the user has the necessary permission to access resource."""
 
     def __init__(self, permission):
         self.permission = permission.name
@@ -63,8 +63,6 @@ def is_logged_in(user):
 
 
 def is_same_user(user):
-    '''
-    Checks if the user is the same user in the request.
-    '''
+    """Checks if the user is the same user in the request."""
     user_name = request.view_args.get('user_name')
     return user.name == user_name
