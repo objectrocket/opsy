@@ -31,6 +31,5 @@ install:
 script:
   # Python validations
   - find . -name \*.py -exec pycodestyle {} +
-  # Ignoring missing docstrings for now
-  - find . -name \*.py -exec pep257 {} +
+  - find . -name \*.py -exec pydocstyle {} +
   - pylint opsy
