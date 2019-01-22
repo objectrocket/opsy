@@ -11,8 +11,11 @@ from opsy.flask_extensions import ldap_manager
 
 def login(username, password, remember=False, force=False, fresh=True):
     if current_app.config.opsy['enable_ldap']:
+        current_app.logger.info(f'Attempting LDAP login for {username}...')
         result = ldap_manager.authenticate(username, password)
         if not result.status == AuthenticationResponseStatus.success:
+            current_app.logger.info(
+                f'LDAP login failed for {username}. Incorrect password?')
             return False
         full_name_attr = current_app.config.opsy['ldap_user_full_name_attr']
         email_attr = current_app.config.opsy['ldap_user_email_attr']
@@ -31,21 +34,31 @@ def login(username, password, remember=False, force=False, fresh=True):
         for role in Role.query.filter(Role.ldap_group.in_(groups)).all():
             user.roles.append(role)
     else:
+        current_app.logger.info(f'Attempting local login for {username}...')
         user = User.query.filter_by(name=username).first()
         if not user:
+            current_app.logger.info(f'User {username} does not exist.')
             return False
         if not user.verify_password(password):
+            current_app.logger.info(f'Incorrect password for {username}.')
             return False
     if not login_user(user, remember=remember, force=force, fresh=fresh):
+        current_app.logger.info(f'Login for {username} failed. Disabled?')
         return False
+    current_app.logger.info(f'{username} logged in successfully.')
     return user
 
 
 def logout(user):
+    username = user.name
     user.session_token = None
     user.session_token_expires_at = None
+    for role in user.roles:
+        if role.ldap_group:
+            user.roles.remove(role)
     user.save()
     logout_user()
+    current_app.logger.info(f'{username} logged out successfully.')
 
 
 def create_token(user, force_renew=False):

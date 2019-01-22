@@ -8,30 +8,30 @@ Need = namedtuple(  # pylint: disable=invalid-name
     'Need', ['plugin', 'name', 'doc'])
 CoreNeed = partial(Need, 'core')  # pylint: disable=invalid-name
 
-god_mode = CoreNeed(  # pylint: disable=invalid-name
+GOD_MODE = CoreNeed(
     'god_mode', 'Provides all access to everything.')
 # Users
-users_create = CoreNeed(  # pylint: disable=invalid-name
+USERS_CREATE = CoreNeed(
     'users_create', 'Ability to create users in the API.')
-users_read = CoreNeed(  # pylint: disable=invalid-name
+USERS_READ = CoreNeed(
     'users_read', 'Ability to list/show users in the API.')
-users_update = CoreNeed(  # pylint: disable=invalid-name
+USERS_UPDATE = CoreNeed(
     'users_update', 'Ability to update users in the API.')
-users_delete = CoreNeed(  # pylint: disable=invalid-name
+USERS_DELETE = CoreNeed(
     'users_delete', 'Ability to delete users in the API.')
 # Roles
-roles_create = CoreNeed(  # pylint: disable=invalid-name
+ROLES_CREATE = CoreNeed(
     'roles_create', 'Ability to create roles in the API.')
-roles_read = CoreNeed(  # pylint: disable=invalid-name
+ROLES_READ = CoreNeed(
     'roles_read', 'Ability to list/show roles in the API.')
-roles_update = CoreNeed(  # pylint: disable=invalid-name
+ROLES_UPDATE = CoreNeed(
     'roles_update', 'Ability to update roles in the API.')
-roles_delete = CoreNeed(  # pylint: disable=invalid-name
+ROLES_DELETE = CoreNeed(
     'roles_delete', 'Ability to delete roles in the API.')
 
-core_needs = [  # pylint: disable=invalid-name
-    god_mode, users_create, users_read, users_update, users_delete,
-    roles_create, roles_read, roles_update, roles_delete
+CORE_NEEDS = [
+    GOD_MODE, USERS_CREATE, USERS_READ, USERS_UPDATE, USERS_DELETE,
+    ROLES_CREATE, ROLES_READ, ROLES_UPDATE, ROLES_DELETE
 ]
 
 
@@ -53,7 +53,7 @@ class HasPermission(Requirement):
             # And a user gets their own permissions from their roles
             if hasattr(user, 'permissions'):
                 permissions.extend([x.name for x in user.permissions])
-        return self.permission in permissions or god_mode.name in permissions
+        return self.permission in permissions or GOD_MODE.name in permissions
 
 
 def is_logged_in(user):

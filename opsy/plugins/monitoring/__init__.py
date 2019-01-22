@@ -1,21 +1,15 @@
 import random
 from datetime import datetime, timedelta
-import click
-from flask import current_app
 from stevedore import extension
 from opsy.config import ConfigOption
-from opsy.exceptions import DuplicateError
-from opsy.utils import print_notice, print_error
 from opsy.plugins.base import BaseOpsyPlugin
-from opsy.plugins.monitoring.access import monitoring_needs
+from opsy.plugins.monitoring.access import MONITORING_NEEDS
 from opsy.plugins.monitoring.api import monitoring_api
 from opsy.plugins.monitoring.jobs import update_cache
 from opsy.plugins.monitoring.main import monitoring_main
 from opsy.plugins.monitoring.backends.base import Client, Check, Result, \
     Event, Silence, Zone
 from opsy.plugins.monitoring.dashboard import Dashboard, DashboardFilter
-from opsy.plugins.monitoring.utils import ENTITY_MAP
-from opsy.plugins.monitoring.exceptions import BackendNotFound
 
 
 class MonitoringPlugin(BaseOpsyPlugin):
@@ -30,7 +24,7 @@ class MonitoringPlugin(BaseOpsyPlugin):
     config_options = [
         ConfigOption('uchiwa_url', str, False, None)
     ]
-    needs = monitoring_needs
+    needs = MONITORING_NEEDS
 
     def register_blueprints(self, app):
         app.register_blueprint(monitoring_main, url_prefix='/monitoring')

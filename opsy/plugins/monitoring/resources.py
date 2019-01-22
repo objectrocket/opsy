@@ -6,8 +6,8 @@ from opsy.plugins.monitoring.backends.base import Client, Check, Result, \
     Event, Silence, Zone
 from opsy.plugins.monitoring.dashboard import Dashboard
 from opsy.plugins.monitoring.access import (
-    dashboards_read, zones_read, events_read, checks_read, results_read,
-    silences_read, clients_read)
+    DASHBOARDS_READ, ZONES_READ, EVENTS_READ, CHECKS_READ, RESULTS_READ,
+    SILENCES_READ, CLIENTS_READ)
 from opsy.plugins.monitoring.schema import (
     ClientSchema, CheckSchema, ResultSchema, EventSchema, SilenceSchema,
     ZoneSchema, DashboardSchema)
@@ -21,7 +21,7 @@ class ZonesAPI(Resource):
         self.reqparse.add_argument('dashboard', type=str)
         super().__init__()
 
-    @requires(HasPermission(zones_read))
+    @requires(HasPermission(ZONES_READ))
     def get(self):
         args = self.reqparse.parse_args()
         zones = Zone.query.wtfilter_by(
@@ -32,7 +32,7 @@ class ZonesAPI(Resource):
 
 class ZoneAPI(Resource):
 
-    @requires(HasPermission(zones_read))
+    @requires(HasPermission(ZONES_READ))
     def get(self, zone_name):  # pylint: disable=no-self-use
         zone = Zone.query.wtfilter_by(name=zone_name).first()
         return ZoneSchema().jsonify(zone)
@@ -52,7 +52,7 @@ class EventsAPI(Resource):
         self.reqparse.add_argument('status')
         super().__init__()
 
-    @requires(HasPermission(events_read))
+    @requires(HasPermission(EVENTS_READ))
     def get(self):
         args = self.reqparse.parse_args()
         events_query = Event.query.wtfilter_by(
@@ -76,7 +76,7 @@ class ChecksAPI(Resource):
         self.reqparse.add_argument('check')
         super().__init__()
 
-    @requires(HasPermission(checks_read))
+    @requires(HasPermission(CHECKS_READ))
     def get(self):
         args = self.reqparse.parse_args()
         checks = Check.query.wtfilter_by(
@@ -88,7 +88,7 @@ class ChecksAPI(Resource):
 
 class CheckAPI(Resource):
 
-    @requires(HasPermission(checks_read))
+    @requires(HasPermission(CHECKS_READ))
     def get(self, zone_name, check_name):
         check = Check.query.wtfilter_by(
             zone_name=zone_name,
@@ -107,7 +107,7 @@ class SilencesAPI(Resource):
         self.reqparse.add_argument('subscription')
         super().__init__()
 
-    @requires(HasPermission(silences_read))
+    @requires(HasPermission(SILENCES_READ))
     def get(self):
         args = self.reqparse.parse_args()
         silences = Silence.query.wtfilter_by(
@@ -120,7 +120,7 @@ class SilencesAPI(Resource):
 
 class SilenceAPI(Resource):
 
-    @requires(HasPermission(silences_read))
+    @requires(HasPermission(SILENCES_READ))
     def get(self, zone_name, silence_id):
         silence = Silence.query.wtfilter_by(
             zone_name=zone_name,
@@ -137,7 +137,7 @@ class ClientsAPI(Resource):
         self.reqparse.add_argument('client')
         super().__init__()
 
-    @requires(HasPermission(clients_read))
+    @requires(HasPermission(CLIENTS_READ))
     def get(self):
         args = self.reqparse.parse_args()
         clients = Client.query.wtfilter_by(
@@ -149,7 +149,7 @@ class ClientsAPI(Resource):
 
 class ClientAPI(Resource):
 
-    @requires(HasPermission(clients_read))
+    @requires(HasPermission(CLIENTS_READ))
     def get(self, zone_name, client_name):
         client = Client.query.wtfilter_by(
             zone_name=zone_name,
@@ -159,7 +159,7 @@ class ClientAPI(Resource):
 
 class ClientEventsAPI(Resource):
 
-    @requires(And(HasPermission(clients_read), HasPermission(events_read)))
+    @requires(And(HasPermission(CLIENTS_READ), HasPermission(EVENTS_READ)))
     def get(self, zone_name, client_name):
         events = Event.query.wtfilter_by(
             zone_name=zone_name,
@@ -169,7 +169,7 @@ class ClientEventsAPI(Resource):
 
 class ClientEventAPI(Resource):
 
-    @requires(And(HasPermission(clients_read), HasPermission(events_read)))
+    @requires(And(HasPermission(CLIENTS_READ), HasPermission(EVENTS_READ)))
     def get(self, zone_name, client_name, check_name):
         event = Event.query.wtfilter_by(
             zone_name=zone_name,
@@ -180,7 +180,7 @@ class ClientEventAPI(Resource):
 
 class ClientResultsAPI(Resource):
 
-    @requires(And(HasPermission(clients_read), HasPermission(results_read)))
+    @requires(And(HasPermission(CLIENTS_READ), HasPermission(RESULTS_READ)))
     def get(self, zone_name, client_name):
         results = Result.query.wtfilter_by(
             zone_name=zone_name,
@@ -190,7 +190,7 @@ class ClientResultsAPI(Resource):
 
 class ClientResultAPI(Resource):
 
-    @requires(And(HasPermission(clients_read), HasPermission(results_read)))
+    @requires(And(HasPermission(CLIENTS_READ), HasPermission(RESULTS_READ)))
     def get(self, zone_name, client_name, check_name):
         result = Result.query.wtfilter_by(
             zone_name=zone_name,
@@ -206,7 +206,7 @@ class DashboardsAPI(Resource):
         self.reqparse.add_argument('name')
         super().__init__()
 
-    @requires(HasPermission(dashboards_read))
+    @requires(HasPermission(DASHBOARDS_READ))
     def get(self):
         args = self.reqparse.parse_args()
         dashboards = Dashboard.query.wtfilter_by(
@@ -216,7 +216,7 @@ class DashboardsAPI(Resource):
 
 class DashboardAPI(Resource):
 
-    @requires(HasPermission(dashboards_read))
+    @requires(HasPermission(DASHBOARDS_READ))
     def get(self, dashboard_name):  # pylint: disable=no-self-use
         dashboard = Dashboard.query.wtfilter_by(name=dashboard_name).first()
         return DashboardSchema().jsonify(dashboard)

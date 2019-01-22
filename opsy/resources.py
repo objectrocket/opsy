@@ -3,8 +3,8 @@ from flask_allows import requires, Or
 from flask_restful import Resource, reqparse
 from flask_login import current_user
 from opsy.access import (HasPermission, is_logged_in, is_same_user,
-                         users_create, users_read, users_update, users_delete,
-                         roles_create, roles_read, roles_update, roles_delete)
+                         USERS_CREATE, USERS_READ, USERS_UPDATE, USERS_DELETE,
+                         ROLES_CREATE, ROLES_READ, ROLES_UPDATE, ROLES_DELETE)
 from opsy.auth import login, logout, create_token
 from opsy.schema import (use_args_with, UserSchema, UserLoginSchema,
                          UserTokenSchema, UserSettingSchema, RoleSchema)
@@ -44,7 +44,7 @@ class RolesAPI(Resource):
         super().__init__()
 
     @use_args_with(RoleSchema, as_kwargs=True)
-    @requires(HasPermission(roles_create))
+    @requires(HasPermission(ROLES_CREATE))
     def post(self, **kwargs):
         try:
             role = Role.create(**kwargs)
@@ -53,7 +53,7 @@ class RolesAPI(Resource):
         return RoleSchema().jsonify(role)
 
     @use_args_with(RoleSchema, as_kwargs=True)
-    @requires(HasPermission(roles_read))
+    @requires(HasPermission(ROLES_READ))
     def get(self, **kwargs):
         roles = Role.query.filter_by(**kwargs)
         return RoleSchema(many=True).jsonify(roles)
@@ -65,14 +65,14 @@ class RoleAPI(Resource):
         self.reqparse = reqparse.RequestParser()
         super().__init__()
 
-    @requires(HasPermission(roles_read))
+    @requires(HasPermission(ROLES_READ))
     def get(self, role_name):  # pylint: disable=no-self-use
         role = Role.query.wtfilter_by(name=role_name).first()
         if not role:
             abort(403)
         return RoleSchema().jsonify(role)
 
-    @requires(HasPermission(roles_update))
+    @requires(HasPermission(ROLES_UPDATE))
     def patch(self, role_name):
         self.reqparse.add_argument('name')
         self.reqparse.add_argument('ldap_group')
@@ -84,7 +84,7 @@ class RoleAPI(Resource):
         role.update(prune_none_values=True, **args)
         return RoleSchema().jsonify(role)
 
-    @requires(HasPermission(roles_delete))
+    @requires(HasPermission(ROLES_DELETE))
     def delete(self, role_name):  # pylint: disable=no-self-use
         role = Role.query.wtfilter_by(name=role_name).first()
         if not role:
@@ -103,7 +103,7 @@ class UsersAPI(Resource):
         self.reqparse.add_argument('enabled')
         super().__init__()
 
-    @requires(HasPermission(users_create))
+    @requires(HasPermission(USERS_CREATE))
     def post(self):
         self.reqparse.replace_argument('name', required=True)
         args = self.reqparse.parse_args()
@@ -113,7 +113,7 @@ class UsersAPI(Resource):
             abort(400, str(error))
         return UserSchema().jsonify(user)
 
-    @requires(HasPermission(users_read))
+    @requires(HasPermission(USERS_READ))
     def get(self):
         args = self.reqparse.parse_args()
         users = User.query.wtfilter_by(prune_none_values=True, **args)
@@ -126,14 +126,14 @@ class UserAPI(Resource):
         self.reqparse = reqparse.RequestParser()
         super().__init__()
 
-    @requires(Or(HasPermission(users_read), is_same_user))
+    @requires(Or(HasPermission(USERS_READ), is_same_user))
     def get(self, user_name):  # pylint: disable=no-self-use
         user = User.query.wtfilter_by(name=user_name).first()
         if not user:
             abort(403)
         return UserSchema().jsonify(user)
 
-    @requires(Or(HasPermission(users_update), is_same_user))
+    @requires(Or(HasPermission(USERS_UPDATE), is_same_user))
     def patch(self, user_name):
         self.reqparse.add_argument('full_name')
         self.reqparse.add_argument('email')
@@ -145,7 +145,7 @@ class UserAPI(Resource):
         user.update(prune_none_values=True, **args)
         return UserSchema().jsonify(user)
 
-    @requires(HasPermission(users_delete))
+    @requires(HasPermission(USERS_DELETE))
     def delete(self, user_name):  # pylint: disable=no-self-use
         user = User.query.wtfilter_by(name=user_name).first()
         if not user:
@@ -162,7 +162,7 @@ class UserSettingsAPI(Resource):
         self.reqparse.add_argument('value')
         super().__init__()
 
-    @requires(Or(HasPermission(users_update), is_same_user))
+    @requires(Or(HasPermission(USERS_UPDATE), is_same_user))
     def post(self, user_name):
         self.reqparse.replace_argument('key', required=True)
         self.reqparse.replace_argument('value', required=True)
@@ -176,7 +176,7 @@ class UserSettingsAPI(Resource):
             abort(400, str(error))
         return UserSettingSchema().jsonify(setting)
 
-    @requires(Or(HasPermission(users_read), is_same_user))
+    @requires(Or(HasPermission(USERS_READ), is_same_user))
     def get(self, user_name):
         user = User.query.wtfilter_by(name=user_name).first()
         if not user:
@@ -191,7 +191,7 @@ class UserSettingAPI(Resource):
         self.reqparse.add_argument('value', required=True, location='json')
         super().__init__()
 
-    @requires(Or(HasPermission(users_update), is_same_user))
+    @requires(Or(HasPermission(USERS_UPDATE), is_same_user))
     def patch(self, user_name, setting_key):
         args = self.reqparse.parse_args()
         user = User.query.wtfilter_by(name=user_name).first()
@@ -203,7 +203,7 @@ class UserSettingAPI(Resource):
             abort(404, str(error))
         return UserSettingSchema().jsonify(setting)
 
-    @requires(Or(HasPermission(users_read), is_same_user))
+    @requires(Or(HasPermission(USERS_READ), is_same_user))
     def get(self, user_name, setting_key):
         user = User.query.wtfilter_by(name=user_name).first()
         if not user:
@@ -214,7 +214,7 @@ class UserSettingAPI(Resource):
             abort(404, str(error))
         return UserSettingSchema().jsonify(setting)
 
-    @requires(Or(HasPermission(users_update), is_same_user))
+    @requires(Or(HasPermission(USERS_UPDATE), is_same_user))
     def delete(self, user_name, setting_key):
         user = User.query.wtfilter_by(name=user_name).first()
         if not user:
