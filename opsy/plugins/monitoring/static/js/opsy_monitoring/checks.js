@@ -29,7 +29,7 @@ var checks = {
       url = opsyMonitoring.getDashboardUrl(Flask.url_for('monitoring_api.zones'));
       $.getJSON(url, function(data) {
         newzones = [];
-        $.each(data.zones, function(idx, obj) {
+        $.each(data, function(idx, obj) {
           newzones.push({label: obj.name, title: obj.name, value: obj.name});
         });
         newzones.sort(function(a, b) { return a.value > b.value; });
@@ -63,7 +63,7 @@ var checks = {
       url = opsyMonitoring.getDashboardUrl(Flask.url_for('monitoring_api.checks'));
       $.getJSON(url, function(data) {
         newchecks = [];
-        $.each(data.checks, function(idx, obj) {
+        $.each(data, function(idx, obj) {
           newchecks.push({label: obj.name,
             title: obj.name, value: obj.name});
         });
@@ -121,7 +121,7 @@ var checks = {
         //'stateSave' : true,
         'ajax': {
           url: checks.datatables.updateUrl(),
-          dataSrc: 'checks',
+          dataSrc: '',
         },
         'dom': '<"row"<"col-sm-2"l><"col-sm-2"<"#zone-filter-div">><"col-sm-2"' +
           '<"#check-filter-div">><"col-sm-4"><"col-sm-2"f>><"row"<"col-sm-12"tr>>' +

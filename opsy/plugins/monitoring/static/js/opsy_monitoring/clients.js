@@ -24,7 +24,7 @@ var clients = {
       url = opsyMonitoring.getDashboardUrl(Flask.url_for('monitoring_api.zones'));
       $.getJSON(url, function(data) {
         newzones = [];
-        $.each(data.zones, function(idx, obj) {
+        $.each(data, function(idx, obj) {
           newzones.push({label: obj.name, title: obj.name, value: obj.name});
         });
         newzones.sort(function(a, b) { return a.value > b.value; });
@@ -88,7 +88,6 @@ var clients = {
           url: clients.datatables.updateUrl(),
           //dataSrc: 'clients',
           dataSrc: function(json) {
-            json = json.clients;
             returnData = new Array();
             for (var i = 0; i < json.length; i++) {
               var row = json[i];
@@ -105,7 +104,7 @@ var clients = {
                 'backend': row.backend,
                 'subscriptions': row.subscriptions,
                 'timestamp': '<time class="timeago" datetime="' +
-                  row.last_poll_time + 'Z">' + row.last_poll_time + 'Z</time>',
+                  row.updated_at + 'Z">' + row.updated_at + 'Z</time>',
                 //jscs:enable requireCamelCaseOrUpperCaseIdentifiers
               });
             }

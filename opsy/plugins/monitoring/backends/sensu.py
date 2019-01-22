@@ -5,7 +5,7 @@ from opsy.plugins.monitoring.backends.base import Client, Check, Result, \
     Event, Silence, Zone, HttpZoneMixin
 
 
-class SensuBase(object):
+class SensuBase:
     __mapper_args__ = {
         'polymorphic_identity': 'sensu'
     }

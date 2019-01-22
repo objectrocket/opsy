@@ -1,6 +1,5 @@
 import asyncio
 import uuid
-from collections import OrderedDict
 import aiohttp
 from flask import abort
 from sqlalchemy.orm import synonym
@@ -10,7 +9,6 @@ import opsy
 from opsy.models import TimeStampMixin, OpsyQuery, NamedResource, BaseResource
 from opsy.flask_extensions import db
 from opsy.plugins.monitoring.dashboard import Dashboard
-from opsy.plugins.monitoring.backends import async_task
 from opsy.plugins.monitoring.exceptions import PollFailure, BackendNotFound
 
 
@@ -108,26 +106,11 @@ class Client(BaseEntity, db.Model):
     @property
     def status(self):
         results = self.results.all()
-        if all([True if (x.status == 'ok') else False for x in results]):
+        if all([x.status == 'ok' for x in results]):
             return 'ok'
-        elif any([True if (x.status == 'critical') else False
-                  for x in results]):
+        if any([x.status == 'critical' for x in results]):
             return 'critical'
         return 'warning'
-
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('zone_name', self.zone_name),
-            ('zone_id', self.zone_id),
-            ('backend', self.backend),
-            ('updated_at', self.updated_at),
-            ('last_poll_time', self.zone.last_poll_time),
-            ('name', self.name),
-            ('subscriptions', self.subscriptions),
-            ('silences', [x.get_dict() for x in self.silences])
-        ])
 
     def __repr__(self):
         return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -170,21 +153,6 @@ class Check(BaseEntity, db.Model):
     @classmethod
     def get_filters_maps(cls):
         return (('zone', cls.zone_name), ('check', cls.name))
-
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('zone_name', self.zone_name),
-            ('zone_id', self.zone_id),
-            ('backend', self.backend),
-            ('last_poll_time', self.zone.last_poll_time),
-            ('name', self.name),
-            ('subscribers', self.subscribers),
-            ('occurrences_threshold', self.occurrences_threshold),
-            ('interval', self.interval),
-            ('command', self.command)
-        ])
 
     def __repr__(self):
         return '<%s %s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -261,26 +229,6 @@ class Result(BaseEntity, db.Model):
     def get_filters_maps(cls):
         return (('zone', cls.zone_name), ('check', cls.check_name),
                 ('client', cls.client_name))
-
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('zone_name', self.zone_name),
-            ('zone_id', self.zone_id),
-            ('backend', self.backend),
-            ('last_poll_time', self.zone.last_poll_time),
-            ('client_name', self.client_name),
-            ('check_name', self.check_name),
-            ('check_subscribers', self.check_subscribers),
-            ('updated_at', self.updated_at),
-            ('occurrences_threshold', self.occurrences_threshold),
-            ('status', self.status),
-            ('interval', self.interval),
-            ('command', self.command),
-            ('output', self.output),
-            ('silences', [x.get_dict() for x in self.silences])
-        ])
 
     def __repr__(self):
         return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -385,28 +333,6 @@ class Event(BaseEntity, db.Model):
         return (('zone', cls.zone_name), ('check', cls.check_name),
                 ('client', cls.client_name))
 
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('backend', self.backend),
-            ('zone_name', self.zone_name),
-            ('zone_id', self.zone_id),
-            ('last_poll_time', self.zone.last_poll_time),
-            ('client_name', self.client_name),
-            ('client_subscriptions', self.client_subscriptions),
-            ('check_name', self.check_name),
-            ('check_subscribers', self.check_subscribers),
-            ('updated_at', self.updated_at),
-            ('occurrences_threshold', self.occurrences_threshold),
-            ('occurrences', self.occurrences),
-            ('status', self.status),
-            ('interval', self.interval),
-            ('command', self.command),
-            ('output', self.output),
-            ('silences', [x.get_dict() for x in self.silences])
-        ])
-
     def __repr__(self):
         return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
                                   self.client_name, self.check_name)
@@ -443,23 +369,6 @@ class Silence(BaseEntity, db.Model):
     def get_filters_maps(cls):
         return (('zone', cls.zone_name), ('check', cls.check_name),
                 ('client', cls.client_name))
-
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('zone_name', self.zone_name),
-            ('zone_id', self.zone_id),
-            ('backend', self.backend),
-            ('last_poll_time', self.zone.last_poll_time),
-            ('client_name', self.client_name),
-            ('check_name', self.check_name),
-            ('subscription', self.subscription),
-            ('creator', self.creator),
-            ('reason', self.reason),
-            ('created_at', self.created_at),
-            ('expire_at', self.expire_at)
-        ])
 
     def __repr__(self):
         return '<%s %s/%s/%s>' % (self.__class__.__name__, self.zone_name,
@@ -563,14 +472,14 @@ class Zone(BaseCache, NamedResource, TimeStampMixin, db.Model):
 
     enabled = synonym('_enabled', descriptor=enabled)
 
-    @asyncio.coroutine
-    def update_objects(self, app, model):
+    async def update_objects(self, app, model):
         raise NotImplementedError
 
     def get_update_tasks(self, app):
         tasks = []
         for model in self.models:
-            tasks.append(async_task(self.update_objects(app, model)))  # pylint: disable=deprecated-method
+            tasks.append(asyncio.ensure_future(
+                self.update_objects(app, model)))
         return tasks
 
     @classmethod
@@ -580,28 +489,11 @@ class Zone(BaseCache, NamedResource, TimeStampMixin, db.Model):
                 model.__tablename__, zone_name))
             model.query.filter(model.zone_name == zone_name).delete()
 
-    @property
-    def dict_out(self):
-        return OrderedDict([
-            ('id', self.id),
-            ('name', self.name),
-            ('backend', self.backend),
-            ('status', self.status),
-            ('status_message', self.status_message),
-            ('last_poll_time', self.last_poll_time),
-            ('host', self.host),
-            ('path', self.path),
-            ('protocol', self.protocol),
-            ('port', self.port),
-            ('timeout', self.timeout),
-            ('interval', self.interval)
-        ])
-
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.name)
 
 
-class HttpZoneMixin(object):
+class HttpZoneMixin:
 
     @property
     def base_url(self):
@@ -618,34 +510,32 @@ class HttpZoneMixin(object):
         conn = aiohttp.TCPConnector(verify_ssl=False) \
             if not self.verify_ssl else None
         headers = {'User-Agent': 'Opsy/%s' % opsy.__version__}
+        timeout = aiohttp.ClientTimeout(self.timeout)
         return aiohttp.ClientSession(auth=auth, connector=conn,
-                                     headers=headers)
+                                     headers=headers, timeout=timeout)
 
-    @asyncio.coroutine
-    def get(self, session, url, expected_status=None):
+    async def get(self, session, url, expected_status=None):
         expected_status = expected_status or [200]
         try:
-            with aiohttp.Timeout(self.timeout):
-                response = yield from session.get(url)
+            response = await session.get(url)
         except asyncio.TimeoutError:
-            raise aiohttp.errors.ClientError('Timeout exceeded')
+            raise aiohttp.ClientError('Timeout exceeded')
         if response.status not in expected_status:
             response.close()
-            raise aiohttp.errors.ClientError('Unexpected response from %s, got'
-                                             ' %s' % (url, response.status))
-        return (yield from response.json())
+            raise aiohttp.ClientError('Unexpected response from %s, got'
+                                      ' %s' % (url, response.status))
+        return await response.json()
 
-    @asyncio.coroutine
-    def update_objects(self, app, model):
+    async def update_objects(self, app, model):
         del_objects = []
         init_objects = []
         results = []
         url = '%s/%s' % (self.base_url, model.uri)
         try:
-            with self._create_session() as session:
+            async with self._create_session() as session:
                 app.logger.debug('Making request to %s' % url)
-                results = yield from self.get(session, url)
-        except aiohttp.errors.ClientError as exc:
+                results = await self.get(session, url)
+        except aiohttp.ClientError as exc:
             message = 'Error updating %s cache for %s: %s' % (
                 model.entity, self.name, exc)
             app.logger.error(message)

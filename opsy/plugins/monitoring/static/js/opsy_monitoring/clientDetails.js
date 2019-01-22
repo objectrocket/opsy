@@ -16,8 +16,7 @@ var clientDetails = {
 
     clientData: function() {
       $.getJSON(Flask.url_for('monitoring_api.client', {'zone_name': ZONE, 'client_name': CLIENT}),
-      function(data) {
-        client = data.clients[0];
+      function(client) {
         //jscs:disable requireCamelCaseOrUpperCaseIdentifiers
         $('#clientdetailsname').html('<a href="' +
           Flask.url_for('monitoring_main.client', {'zone': client.zone_name, 'client_name': client.name}) +
@@ -41,7 +40,6 @@ var clientDetails = {
         'ajax': {
           url: Flask.url_for('monitoring_api.client_results', {'zone_name': ZONE, 'client_name': CLIENT}),
           dataSrc: function(json) {
-            json = json.results;
             returnData = new Array();
             for (var i = 0; i < json.length; i++) {
               var row = json[i];

@@ -3,12 +3,14 @@ import random
 import time
 from datetime import datetime
 from sqlalchemy.exc import OperationalError
+from opsy.app import create_app
 from opsy.flask_extensions import db
 from opsy.plugins.monitoring.backends.base import Zone
 from opsy.plugins.monitoring.exceptions import PollFailure
 
 
-def update_cache(zone_id, app):
+def update_cache(zone_id, config_file):
+    app = create_app(config_file)
     with app.app_context():
         zone = Zone.query.get(zone_id)
         loop = asyncio.new_event_loop()
@@ -26,19 +28,20 @@ def update_cache(zone_id, app):
                     zone.status = 'ok'
                     zone.last_poll_time = datetime.utcnow()
                     zone.save()
-                    app.logger.info('Updated cache for zone %s.', zone.name)
+                    app.logger.info(  # pylint: disable=no-member
+                        'Updated cache for zone %s.', zone.name)
                     break
                 except OperationalError as error:
                     if i == (3 - 1):
                         raise
-                    app.logger.info(
+                    app.logger.info(  # pylint: disable=no-member
                         'Retryable error in transaction on '
                         'attempt %d for zone %s: %s',
                         i + 1, zone.name, error.__class__.__name__)
                     db.session.rollback()  # pylint: disable=no-member
                     time.sleep(random.uniform(.5, 1.5))
         except (PollFailure, OperationalError) as error:
-            app.logger.error(
+            app.logger.error(  # pylint: disable=no-member
                 'Failed to update cache on zone %s: %s',
                 zone.name, error.__class__.__name__)
             zone.status = 'critical'

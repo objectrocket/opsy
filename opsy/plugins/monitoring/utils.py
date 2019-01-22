@@ -5,7 +5,7 @@ ENTITY_MAP = {'client': Client, 'check': Check, 'result': Result,
               'event': Event, 'silence': Silence, 'zone': Zone}
 
 
-class MonitoringFilter(object):
+class MonitoringFilter:
 
     def __init__(self, entity, filters):
         if entity not in ['zone', 'client', 'check']:
@@ -31,6 +31,6 @@ class MonitoringFilter(object):
             filter_items = filters.split(',')
             # Wrap in a set to remove duplicates
             self.includes = list(
-                set([x for x in filter_items if not x.startswith('!')]))
+                {x for x in filter_items if not x.startswith('!')})
             self.excludes = list(
-                set([x[1:] for x in filter_items if x.startswith('!')]))
+                {x[1:] for x in filter_items if x.startswith('!')})

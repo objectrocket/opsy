@@ -4,7 +4,6 @@ import sys
 from flask import json
 from flask._compat import text_type
 from itsdangerous import json as _json
-from prettytable import PrettyTable
 from dateutil.tz import tzutc
 from stevedore import driver
 
@@ -39,8 +38,8 @@ def parse_include_excludes(items):
     if items:
         item_list = items.split(',')
         # Wrap in a set to remove duplicates
-        include = list(set([x for x in item_list if not x.startswith('!')]))
-        exclude = list(set([x[1:] for x in item_list if x.startswith('!')]))
+        include = list({x for x in item_list if not x.startswith('!')})
+        exclude = list({x[1:] for x in item_list if x.startswith('!')})
     else:
         include, exclude = [], []
     return include, exclude
@@ -56,17 +55,6 @@ def load_plugins(app):
             invoke_args=(app,),
             invoke_on_load=True)
         yield plugin_manager.driver
-
-
-def print_property_table(properties, ignore_attrs=None):
-    table = PrettyTable(['Property', 'Value'])
-    table.align['Property'] = 'l'
-    table.align['Value'] = 'l'
-    for key, value in sorted(properties):
-        if ignore_attrs and key in ignore_attrs:
-            continue
-        table.add_row([key, value])
-    print(table)
 
 
 def gwrap(some_string):

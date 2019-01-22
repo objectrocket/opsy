@@ -30,8 +30,8 @@ CONFIG_OPTIONS = [
     ConfigOption('scheduler_grace_time', int, False, 10),
     ConfigOption('log_file', str, False, None),
     ConfigOption('session_token_ttl', int, False, 86400),
-    ConfigOption('base_permissions', list, False, None),
-    ConfigOption('logged_in_permissions', list, False, None),
+    ConfigOption('base_permissions', list, False, []),
+    ConfigOption('logged_in_permissions', list, False, []),
     ConfigOption('enable_ldap', bool, False, False),
     ConfigOption('ldap_user_full_name_attr', str, False, 'displayName'),
     ConfigOption('ldap_user_email_attr', str, False, 'mail'),
@@ -62,8 +62,8 @@ def validate_config(app, plugin=None):
                                               option.name, section_name,
                                               app.config_file))
             section_config[option.name] = option.default
-        if (section_config[option.name] is not None and
-                not isinstance(section_config[option.name], option.type)):
+        if (section_config[option.name] is not None and not
+                isinstance(section_config[option.name], option.type)):
             raise TypeError('Expected "%s" type for config option "%s" from '
                             'config section "%s" in config file "%s".' % (
                                 option.type.__name__, option.name,

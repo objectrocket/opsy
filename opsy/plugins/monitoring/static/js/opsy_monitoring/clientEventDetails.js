@@ -16,8 +16,7 @@ var clientEventDetails = {
 
     clientData: function() {
       $.getJSON(Flask.url_for('monitoring_api.client', {'zone_name': ZONE, 'client_name': CLIENT}),
-      function(data) {
-        client = data.clients[0];
+      function(client) {
         //jscs:disable requireCamelCaseOrUpperCaseIdentifiers
         $('#clientdetailsname').html('<a href="' +
           Flask.url_for('monitoring_main.client', {'zone': client.zone_name, 'client_name': client.name}) +
@@ -29,15 +28,13 @@ var clientEventDetails = {
 
     eventData: function() {
       $.getJSON(Flask.url_for('monitoring_api.client_event', {'zone_name': ZONE, 'client_name': CLIENT, 'check_name': CHECK}),
-      function(data) {
-        event = data.events[0];
+      function(event) {
         $('#eventdetailsname').html(event.check_name); //jscs:ignore requireCamelCaseOrUpperCaseIdentifiers
         $('tbody', '#eventdetailstable').html(opsyMonitoring.formatJSONToTable(event));
       })
       .fail(function() {
         $.getJSON(Flask.url_for('monitoring_api.client_result', {'zone_name': ZONE, 'client_name': CLIENT, 'check_name': CHECK}),
-        function(data) {
-          event = data.results[0];
+        function(event) {
           $('#eventdetailsname').html(event.check_name); //jscs:ignore requireCamelCaseOrUpperCaseIdentifiers
           $('tbody', '#eventdetailstable').html(opsyMonitoring.formatJSONToTable(event));
         });

@@ -75,7 +75,7 @@ class Dashboard(NamedResource, TimeStampMixin, db.Model):
         try:
             filter_object = self.get_filter_by_entity(entity_name)
             return filter_object.update(filters=filters)
-        except ValueError:
+        except AttributeError:
             return self.create_filter(entity_name, filters).save()
 
     def get_filters_list(self, entity):

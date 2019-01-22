@@ -61,9 +61,10 @@ var events = {
 
     updateZones: function(init, cb) {
       url = opsyMonitoring.getDashboardUrl(Flask.url_for('monitoring_api.zones'));
-      $.getJSON(url, function(data) {
+      $.getJSON(url, function(json) {
+        zones = json;
         newzones = [];
-        $.each(data.zones, function(idx, obj) {
+        $.each(zones, function(idx, obj) {
           newzones.push({label: obj.name, title: obj.name, value: obj.name});
         });
         newzones.sort(function(a, b) { return a.value > b.value; });
@@ -101,7 +102,7 @@ var events = {
       '?count_checks=true');
       $.getJSON(url, function(data) {
         newchecks = [];
-        $.each(data.events, function(idx, obj) {
+        $.each(data, function(idx, obj) {
           newchecks.push({label: obj.name + ' (' + obj.count + ')',
             title: obj.name, value: obj.name});
         });
@@ -167,7 +168,7 @@ var events = {
         'ajax': {
           url: events.datatables.updateUrl(),
           dataSrc: function(json) {
-            json = json.events;
+            json = json;
             returnData = new Array();
             for (var i = 0; i < json.length; i++) {
               var row = json[i];
