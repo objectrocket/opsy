@@ -1,8 +1,21 @@
 from flask import Blueprint
 from flask_restful import Api
-from opsy.resources import (AuthAPI, RoleAPI, RolesAPI, UserAPI, UsersAPI,
-                            UserSettingAPI, UserSettingsAPI)
+from opsy.views import (about, user_login, user_logout, AuthAPI, RoleAPI,
+                        RolesAPI, UserAPI, UsersAPI, UserSettingAPI,
+                        UserSettingsAPI)
 
+
+core_site = Blueprint('core_site', __name__,  # pylint: disable=invalid-name
+                      template_folder='templates',
+                      static_url_path='/static',
+                      static_folder='static')
+
+core_site.add_url_rule(
+    '/', endpoint='about', view_func=about)
+core_site.add_url_rule(
+    '/login', endpoint='user_login', view_func=user_login, methods=['POST'])
+core_site.add_url_rule(
+    '/logout', endpoint='user_logout', view_func=user_logout)
 
 core_api = Blueprint(  # pylint: disable=invalid-name
     'core_api', __name__, url_prefix='/api')

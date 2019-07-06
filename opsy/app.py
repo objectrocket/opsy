@@ -2,12 +2,9 @@ import logging
 from logging.handlers import WatchedFileHandler
 from flask import Flask
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from opsy.main import core_main
-from opsy.api import core_api
 from opsy.flask_extensions import configure_extensions
 from opsy.utils import OpsyJSONEncoder, load_plugins
-from opsy.config import load_config, validate_config
-from opsy.access import CORE_NEEDS
+from opsy.config import load_config
 
 
 def create_app(config_file):
@@ -16,30 +13,7 @@ def create_app(config_file):
     create_logging(app)
     configure_extensions(app)
     app.jobs = []  # FIXME: Need to handle scheduled jobs better.
-    app.needs_catalog = CORE_NEEDS
-    app.register_blueprint(core_main)
-    app.register_blueprint(core_api)
-    for plugin in load_plugins(app):
-        validate_config(app, plugin=plugin)
-        app.needs_catalog.extend(plugin.needs)
-        plugin.register_blueprints(app)
     app.json_encoder = OpsyJSONEncoder
-    app.plugin_links = [{
-        'name': 'About',
-        'id': 'about',
-        'content': 'core_main.about',
-        'get_vars': None,
-        'type': 'link'
-    }]
-
-    @app.before_first_request
-    def load_plugin_links():  # pylint: disable=unused-variable
-        for plugin in load_plugins(app):
-            plugin.register_link_structure(app)
-
-    @app.context_processor
-    def inject_links():  # pylint: disable=unused-variable
-        return dict(link_structures=app.plugin_links)
     return app
 
 

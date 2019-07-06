@@ -1,226 +1,197 @@
-from flask import abort, current_app
-from flask_allows import requires, Or
-from flask_restful import Resource, reqparse
-from flask_login import current_user
-from opsy.access import (HasPermission, is_logged_in, is_same_user,
-                         USERS_CREATE, USERS_READ, USERS_UPDATE, USERS_DELETE,
-                         ROLES_CREATE, ROLES_READ, ROLES_UPDATE, ROLES_DELETE)
-from opsy.auth import login, logout, create_token
-from opsy.schema import (use_args_with, UserSchema, UserLoginSchema,
-                         UserTokenSchema, UserSettingSchema, RoleSchema)
-from opsy.models import User, Role
-from opsy.exceptions import DuplicateError
+from collections import namedtuple
+from functools import wraps
+from flask import current_app, request
+from flask_allows import allows, Or, Requirement
+from flask_apispec import ResourceMeta
+from flask_classful import FlaskView, get_interesting_members, \
+    _dashify_uppercase
+from opsy.utils import merge_dict
 
 
-class AuthAPI(Resource):
-
-    @requires(is_logged_in)
-    def get(self):  # pylint: disable=no-self-use
-        create_token(current_user)
-        return UserTokenSchema().jsonify(current_user)
-
-    @use_args_with(UserLoginSchema, locations=('form', 'json'))
-    def post(self, args):
-        current_app.logger.info(args)
-        user = login(args['user_name'], args['password'],
-                     remember=args['remember_me'])
-        if not user:
-            abort(401, 'Username or password incorrect.')
-        return UserTokenSchema().jsonify(current_user)
-
-    @requires(is_logged_in)
-    def delete(self):  # pylint: disable=no-self-use
-        logout(current_user)
-        return ('', 205)
+Need = namedtuple(  # pylint: disable=invalid-name
+    'Need', ['name', 'resource', 'description'])
 
 
-class RolesAPI(Resource):
-
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('name')
-        self.reqparse.add_argument('ldap_group')
-        self.reqparse.add_argument('description')
-        super().__init__()
-
-    @use_args_with(RoleSchema, as_kwargs=True)
-    @requires(HasPermission(ROLES_CREATE))
-    def post(self, **kwargs):
-        try:
-            role = Role.create(**kwargs)
-        except (DuplicateError, ValueError) as error:
-            abort(400, str(error))
-        return RoleSchema().jsonify(role)
-
-    @use_args_with(RoleSchema, as_kwargs=True)
-    @requires(HasPermission(ROLES_READ))
-    def get(self, **kwargs):
-        roles = Role.query.filter_by(**kwargs)
-        return RoleSchema(many=True).jsonify(roles)
+def is_logged_in(user):
+    if current_app.config.get('LOGIN_DISABLED') or user.is_authenticated:
+        return True
+    return False
 
 
-class RoleAPI(Resource):
-
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        super().__init__()
-
-    @requires(HasPermission(ROLES_READ))
-    def get(self, role_name):  # pylint: disable=no-self-use
-        role = Role.query.wtfilter_by(name=role_name).first()
-        if not role:
-            abort(403)
-        return RoleSchema().jsonify(role)
-
-    @requires(HasPermission(ROLES_UPDATE))
-    def patch(self, role_name):
-        self.reqparse.add_argument('name')
-        self.reqparse.add_argument('ldap_group')
-        self.reqparse.add_argument('description')
-        args = self.reqparse.parse_args()
-        role = Role.query.wtfilter_by(name=role_name).first()
-        if not role:
-            abort(404)
-        role.update(prune_none_values=True, **args)
-        return RoleSchema().jsonify(role)
-
-    @requires(HasPermission(ROLES_DELETE))
-    def delete(self, role_name):  # pylint: disable=no-self-use
-        role = Role.query.wtfilter_by(name=role_name).first()
-        if not role:
-            abort(404)
-        role.delete()
-        return ('', 202)
+def is_same_user(user):
+    """Checks if the user is the same user in the request."""
+    user_name = request.view_args.get('user_name')
+    return user.name == user_name
 
 
-class UsersAPI(Resource):
+def rbac(*requirements, resource_name=None, **opts):
+    """
+    This is a modified version of flask_allows requirement decorator to tie
+    into Opsy's RBAC system.
+    """
 
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('name')
-        self.reqparse.add_argument('full_name')
-        self.reqparse.add_argument('email')
-        self.reqparse.add_argument('enabled')
-        super().__init__()
+    identity = opts.get("identity")
+    on_fail = opts.get("on_fail")
+    throws = opts.get("throws")
 
-    @requires(HasPermission(USERS_CREATE))
-    def post(self):
-        self.reqparse.replace_argument('name', required=True)
-        args = self.reqparse.parse_args()
-        try:
-            user = User.create(**args)
-        except (DuplicateError, ValueError) as error:
-            abort(400, str(error))
-        return UserSchema().jsonify(user)
+    def decorator(f):
 
-    @requires(HasPermission(USERS_READ))
-    def get(self):
-        args = self.reqparse.parse_args()
-        users = User.query.wtfilter_by(prune_none_values=True, **args)
-        return UserSchema(many=True).jsonify(users)
+        @wraps(f)
+        def allower(*args, **kwargs):
+            if resource_name:
+                need = f'{resource_name}_{f.__name__}'
+                if requirements:
+                    new_requirements = (Or(HasPermission(need), requirements))
+                else:
+                    new_requirements = (HasPermission(need),)
+            else:
+                new_requirements = requirements
 
-
-class UserAPI(Resource):
-
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        super().__init__()
-
-    @requires(Or(HasPermission(USERS_READ), is_same_user))
-    def get(self, user_name):  # pylint: disable=no-self-use
-        user = User.query.wtfilter_by(name=user_name).first()
-        if not user:
-            abort(403)
-        return UserSchema().jsonify(user)
-
-    @requires(Or(HasPermission(USERS_UPDATE), is_same_user))
-    def patch(self, user_name):
-        self.reqparse.add_argument('full_name')
-        self.reqparse.add_argument('email')
-        self.reqparse.add_argument('enabled')
-        args = self.reqparse.parse_args()
-        user = User.query.wtfilter_by(name=user_name).first()
-        if not user:
-            abort(404)
-        user.update(prune_none_values=True, **args)
-        return UserSchema().jsonify(user)
-
-    @requires(HasPermission(USERS_DELETE))
-    def delete(self, user_name):  # pylint: disable=no-self-use
-        user = User.query.wtfilter_by(name=user_name).first()
-        if not user:
-            abort(404)
-        user.delete()
-        return ('', 202)
+            result = allows.run(
+                new_requirements,
+                identity=identity,
+                on_fail=on_fail,
+                throws=throws,
+                f_args=args,
+                f_kwargs=kwargs,
+            )
+            # authorization failed
+            if result is not None:
+                return result
+            return f(*args, **kwargs)
+        allower.__rbac__ = True
+        return allower
+    return decorator
 
 
-class UserSettingsAPI(Resource):
-
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('key')
-        self.reqparse.add_argument('value')
-        super().__init__()
-
-    @requires(Or(HasPermission(USERS_UPDATE), is_same_user))
-    def post(self, user_name):
-        self.reqparse.replace_argument('key', required=True)
-        self.reqparse.replace_argument('value', required=True)
-        args = self.reqparse.parse_args()
-        user = User.query.wtfilter_by(name=user_name).first()
-        if not user:
-            abort(404)
-        try:
-            setting = user.add_setting(args['key'], args['value'])
-        except DuplicateError as error:
-            abort(400, str(error))
-        return UserSettingSchema().jsonify(setting)
-
-    @requires(Or(HasPermission(USERS_READ), is_same_user))
-    def get(self, user_name):
-        user = User.query.wtfilter_by(name=user_name).first()
-        if not user:
-            abort(404)
-        return UserSettingSchema(many=True).jsonify(user.settings)
+def no_rbac(func):
+    func.__rbac__ = False
+    return func
 
 
-class UserSettingAPI(Resource):
+class HasPermission(Requirement):
+    """Checks if the user has the necessary permission to access resource."""
 
-    def __init__(self):
-        self.reqparse = reqparse.RequestParser()
-        self.reqparse.add_argument('value', required=True, location='json')
-        super().__init__()
+    def __init__(self, permission):
+        self.permission = permission
 
-    @requires(Or(HasPermission(USERS_UPDATE), is_same_user))
-    def patch(self, user_name, setting_key):
-        args = self.reqparse.parse_args()
-        user = User.query.wtfilter_by(name=user_name).first()
-        if not user:
-            abort(404)
-        try:
-            setting = user.modify_setting(setting_key, args['value'])
-        except ValueError as error:
-            abort(404, str(error))
-        return UserSettingSchema().jsonify(setting)
+    def fulfill(self, user):
+        if current_app.config.get('LOGIN_DISABLED'):
+            return True
+        # Everyone gets base permissions
+        permissions = current_app.config.opsy['base_permissions']
+        if user.is_authenticated and user.is_active:
+            # Logged in users get logged in permissions
+            permissions.extend(
+                current_app.config.opsy['logged_in_permissions'])
+            # And a user gets their own permissions from their roles
+            if hasattr(user, 'permissions'):
+                permissions.extend([x.name for x in user.permissions])
+        return self.permission in permissions or 'god_mode' in permissions
 
-    @requires(Or(HasPermission(USERS_READ), is_same_user))
-    def get(self, user_name, setting_key):
-        user = User.query.wtfilter_by(name=user_name).first()
-        if not user:
-            abort(404)
-        try:
-            setting = user.get_setting(setting_key, error_on_none=True)
-        except ValueError as error:
-            abort(404, str(error))
-        return UserSettingSchema().jsonify(setting)
 
-    @requires(Or(HasPermission(USERS_UPDATE), is_same_user))
-    def delete(self, user_name, setting_key):
-        user = User.query.wtfilter_by(name=user_name).first()
-        if not user:
-            abort(404)
-        try:
-            user.remove_setting(setting_key)
-        except ValueError as error:
-            abort(404, str(error))
-        return ('', 202)
+class Resource(FlaskView, metaclass=ResourceMeta):
+
+    resource_name = None
+    no_rbac = False
+    _needs = None
+
+    @classmethod
+    def register(cls, *args, **kwargs):
+        cls.resource_name = cls.build_resource_name()
+        needs = {}
+        for verb, value in get_interesting_members(Resource, cls):
+            # iterate through the routes and add their dynamic needs
+            method = getattr(cls, verb)
+            if not getattr(method, '__rbac__', True):
+                # No rbac for this endpoint
+                continue
+            need = Need(
+                f'{cls.resource_name}_{verb}',
+                cls.resource_name,
+                f'Ability to "{verb}" against {cls.resource_name}.')
+            needs[verb] = need
+        cls._needs = {cls.resource_name: needs}
+        super().register(*args, **kwargs)
+
+    @classmethod
+    def default_route_base(cls):
+        if cls.__name__.endswith("View"):
+            route_base = _dashify_uppercase(cls.__name__[:-4])
+        elif cls.__name__.endswith("API"):
+            route_base = _dashify_uppercase(cls.__name__[:-3])
+        else:
+            route_base = _dashify_uppercase(cls.__name__)
+        return route_base
+
+    @classmethod
+    def make_proxy_method(cls, name, *args):
+        """
+        We add some additional logic to this method to inject our rbac
+        decorator on a per-method basis.
+        """
+        method = getattr(cls, name)
+        if cls.no_rbac or hasattr(method, '__rbac__'):
+            # We skip if the class has rbac disabled or if the method
+            # has already been touched.
+            return super().make_proxy_method(name, *args)
+        resource_name = cls.build_resource_name()
+        cls.decorators.insert(0, rbac(resource_name=resource_name))
+        proxy = super().make_proxy_method(name, *args)
+        cls.decorators.pop(0)
+        return proxy
+
+    @classmethod
+    def build_resource_name(cls):
+        return cls.resource_name or cls.get_route_base()
+
+
+class ResourceManager(object):
+
+    def __init__(self, app=None, docs=None, route_prefix=None):
+        self.app = app
+        self.registry = []
+        self.docs = docs
+        self._needs_catalog = None
+        self.route_prefix = route_prefix
+        if app:
+            self.init_app(app)
+
+    def init_app(self, app, docs=None):
+        self.app = app
+        if docs:
+            self.docs = docs
+
+    def add_resource(self, resource):
+        if not self.app:
+            raise ValueError('ResourceManager must be registered with an app.')
+        resource.route_prefix = self.route_prefix
+        self.registry.append(resource)
+        resource.register(self.app)
+        if self.docs:
+            for name, value in get_interesting_members(Resource, resource):
+                self.docs.register(
+                    resource, endpoint=resource.build_route_name(name))
+
+    @property
+    def needs_catalog(self):
+        if self._needs_catalog:
+            return self._needs_catalog
+        catalog = {}
+        for klass in self.registry:
+            merge_dict(catalog, klass._needs)
+        self._needs_catalog = catalog
+        return catalog
+
+    def get_needs(self, resource=None, method=None):
+        needs_list = [
+            Need('god_mode', 'all', 'Unlimited access to everything.')]
+        needs = self.needs_catalog
+        if resource:
+            needs = {k: v for k, v in needs.items() if k == resource}
+        if method:
+            needs = {k: {method: v[method]} for k, v in needs.items()}
+        for value in needs.values():
+            for need in value.values():
+                needs_list.append(need)
+        return needs_list

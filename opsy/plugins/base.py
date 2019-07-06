@@ -1,29 +1,30 @@
-import abc
-import six
+from abc import ABCMeta, abstractmethod
 
 
-@six.add_metaclass(abc.ABCMeta)
-class BaseOpsyPlugin:
+class BaseOpsyPlugin(metaclass=ABCMeta):
     """Base class for plugins."""
 
     def __init__(self, app):
         pass
 
-    @abc.abstractproperty
+    @property
+    @abstractmethod
     def name(self):
         """This should just return the name of the plugin.
 
         :rtype: String
         """
 
-    @abc.abstractproperty
+    @property
+    @abstractmethod
     def config_options(self):
         """This should return a list of all config options for the plugin.
 
         :rtype: list
         """
 
-    @abc.abstractproperty
+    @property
+    @abstractmethod
     def needs(self):
         """This should provide a dict of all the needs for this plugin.
 
@@ -39,7 +40,7 @@ class BaseOpsyPlugin:
         :rtype: Flask
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def register_blueprints(self, app):
         """Register any blueprints that the plugin provides.
 
@@ -49,7 +50,7 @@ class BaseOpsyPlugin:
         :rtype: Flask
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def register_link_structure(self, app):
         """Register a link structure for the plugin.
 
@@ -59,7 +60,7 @@ class BaseOpsyPlugin:
         :rtype: Dict
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def register_scheduler_jobs(self, app, run_once=False):
         """Register any scheduler jobs for the plugin.
 
@@ -69,7 +70,7 @@ class BaseOpsyPlugin:
         :type run_once: bool
         """
 
-    @abc.abstractmethod
+    @abstractmethod
     def register_shell_context(self, shell_ctx):
         """Register any objects for the plugin on the shell context.
 

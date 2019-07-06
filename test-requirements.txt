@@ -1,6 +1,4 @@
 pylint==2.2.2
-# Fix for https://github.com/jschaf/pylint-flask/pull/9 not being released yet
-#pylint-flask==0.5
--e git+https://github.com/jschaf/pylint-flask.git@c14415421662cf5bf494c7123473484c742b3661#egg=pylint-flask
+pylint-flask==0.6
 pycodestyle==2.4.0
 pydocstyle==3.0.0

@@ -92,19 +92,6 @@ class Dashboard(NamedResource, TimeStampMixin, db.Model):
                         filters_list.append(~map_column.in_(excludes))
         return filters_list
 
-    @property
-    def dict_out(self):
-        filters_dict = self.filters.all_dict_out()
-        return {
-            'id': self.id,
-            'name': self.name,
-            'updated_at': self.updated_at,
-            'created_at': self.created_at,
-            'description': self.description,
-            'enabled': self.enabled,
-            'filters': filters_dict
-        }
-
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.name)
 
@@ -129,17 +116,6 @@ class DashboardFilter(BaseResource, TimeStampMixin, db.Model):
     def __init__(self, dashboard_id, entity, filters):
         super().__init__(dashboard_id=dashboard_id, entity=entity,
                          filters=filters)
-
-    @property
-    def dict_out(self):
-        return {
-            'id': self.id,
-            'dashboard_id': self.dashboard_id,
-            'updated_at': self.updated_at,
-            'created_at': self.created_at,
-            'entity': self.entity,
-            'filters': self.filters,
-        }
 
     def __repr__(self):
         return '<%s %s %s>' % (self.id, self.entity, self.filters)

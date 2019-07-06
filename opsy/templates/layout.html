@@ -8,22 +8,22 @@
     <!-- The above 3 meta tags *must* come first in the head; any other head content must come *after* these tags -->
     <meta name="description" content="">
     <meta name="author" content="">
-    <link rel="icon" href="{{url_for('core_main.static', filename='img/opsy.png')}}">
+    <link rel="icon" href="{{url_for('core_site.static', filename='img/opsy.png')}}">
 
     <title>{% if title %}{{ title }} | {% endif %}Opsy</title>
 
     <!-- Bootstrap core CSS -->
-    <link href="{{url_for('core_main.static', filename='css/bootstrap/bootstrap.min.css')}}" rel="stylesheet">
+    <link href="{{url_for('core_site.static', filename='css/bootstrap/bootstrap.min.css')}}" rel="stylesheet">
 
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-    <link href="{{url_for('core_main.static', filename='css/bootstrap/ie10-viewport-bug-workaround.css')}}" rel="stylesheet">
+    <link href="{{url_for('core_site.static', filename='css/bootstrap/ie10-viewport-bug-workaround.css')}}" rel="stylesheet">
 
     <!-- Custom styles for this template -->
-    <link href="{{url_for('core_main.static', filename='css/opsy/opsy.css')}}" rel="stylesheet">
+    <link href="{{url_for('core_site.static', filename='css/opsy/opsy.css')}}" rel="stylesheet">
 
     <!-- Just for debugging purposes. Don't actually copy these 2 lines! -->
     <!--[if lt IE 9]><script src="../../assets/js/ie8-responsive-file-warning.js"></script><![endif]-->
-    <script src="{{url_for('core_main.static', filename='js/bootstrap/ie-emulation-modes-warning.js')}}"></script>
+    <script src="{{url_for('core_site.static', filename='js/bootstrap/ie-emulation-modes-warning.js')}}"></script>
 
     <!-- HTML5 shim and Respond.js for IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
@@ -70,14 +70,14 @@
             <ul class="nav navbar-nav navbar-right">
                 {% if current_user.is_authenticated %}
                 <li><p class="navbar-text">Hello {% if current_user.full_name %}{{ current_user.full_name }}{% else %}{{ current_user.name }}{% endif %}.</p></li>
-                <li><a href="{{ url_for('core_main.user_logout') }}">Logout</a></li>
+                <li><a href="{{ url_for('core_site.user_logout') }}">Logout</a></li>
                 {% else %}
                 <li class="dropdown">
-                    <a href="{{ url_for('core_main.user_login') }}" class="dropdown-toggle" data-toggle="dropdown">Log In <span class="caret"></span></a>
+                    <a href="{{ url_for('core_site.user_login') }}" class="dropdown-toggle" data-toggle="dropdown">Log In <span class="caret"></span></a>
                     <ul class="dropdown-menu dropdown-lr" role="menu">
                         <div class="col-lg-12">
                             <div class="text-center"><h3><b>Log In</b></h3></div>
-                            <form id="ajax-login-form" action="{{ url_for('core_main.user_login') }}" method="post" role="form" autocomplete="off">
+                            <form id="ajax-login-form" action="{{ url_for('core_site.user_login') }}" method="post" role="form" autocomplete="off">
                                 <div class="form-group">
                                     <label for="user_name">Username</label>
                                     <input type="text" name="user_name" id="user_name" tabindex="1" class="form-control" placeholder="Username" value="" autocomplete="off">
@@ -141,11 +141,11 @@
     ================================================== -->
     <!-- Placed at the end of the document so the pages load faster -->
     {{ JSGlue.include() }}
-    <script src="{{url_for('core_main.static', filename='js/jquery/jquery.min.js')}}"></script>
-    <script src="{{url_for('core_main.static', filename='js/bootstrap/bootstrap.min.js')}}"></script>
+    <script src="{{url_for('core_site.static', filename='js/jquery/jquery.min.js')}}"></script>
+    <script src="{{url_for('core_site.static', filename='js/bootstrap/bootstrap.min.js')}}"></script>
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
-    <script src="{{url_for('core_main.static', filename='js/bootstrap/ie10-viewport-bug-workaround.js')}}"></script>
-    <script src="{{url_for('core_main.static', filename='js/opsy/opsy.js')}}"></script>
+    <script src="{{url_for('core_site.static', filename='js/bootstrap/ie10-viewport-bug-workaround.js')}}"></script>
+    <script src="{{url_for('core_site.static', filename='js/opsy/opsy.js')}}"></script>
     {%- block footer -%}
     {%- endblock %}
 </body>

@@ -5,7 +5,7 @@ from flask_ldap3_login import AuthenticationResponseStatus
 from flask_login import login_user, logout_user
 from itsdangerous import (TimedJSONWebSignatureSerializer
                           as Serializer, BadSignature, SignatureExpired)
-from opsy.models import User, Role
+from opsy.auth.models import User, Role
 from opsy.flask_extensions import ldap_manager
 
 
