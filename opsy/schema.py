@@ -1,26 +1,39 @@
-from marshmallow import post_load
+from flask_apispec import use_kwargs as api_spec_use_kwargs
+from marshmallow import post_load, RAISE
+from marshmallow import fields as ma_fields
 from prettytable import PrettyTable
-from webargs.flaskparser import use_args
 from opsy.flask_extensions import ma
+from flask_marshmallow.fields import _rapply, _url_val
 
 
-def use_args_with(schema_cls, schema_kwargs=None, **kwargs):
-    schema_kwargs = schema_kwargs or {}
+def use_kwargs(schema_cls, schema_kwargs={}, **kwargs):
 
     def factory(request):
-        # Filter based on 'fields' query parameter
-        only = request.args.get('fields', None)
         # Respect partial updates for PATCH and GET requests
-        partial = request.method in ['PATCH', 'GET']
+        partial = getattr(request, 'method', None) in ['PATCH', 'GET']
+        # partial = request.method in ['PATCH', 'GET']
         # Add current request to the schema's context
         return schema_cls(
-            only=only,
             partial=partial,
             context={'request': request},
             **schema_kwargs
         )
 
-    return use_args(factory, **kwargs)
+    return api_spec_use_kwargs(factory, **kwargs)
+
+
+class Hyperlinks(ma_fields.Dict):
+    """We recreate this from upstream, but inherit from Dict so apispec gets
+    the right type"""
+
+    _CHECK_ATTRIBUTE = False
+
+    def __init__(self, schema, **kwargs):
+        self.schema = schema
+        ma_fields.Dict.__init__(self, **kwargs)
+
+    def _serialize(self, value, attr, obj):
+        return _rapply(self.schema, _url_val, key=attr, obj=obj)
 
 
 class Password(ma.String):
@@ -40,7 +53,7 @@ class Password(ma.String):
 class BaseSchema(ma.ModelSchema):
 
     @post_load
-    def make_instance(self, data):
+    def make_instance(self, data, **kwargs):
         """Return deserialized data as a dict, not a model instance."""
         return data
 

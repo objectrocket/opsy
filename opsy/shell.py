@@ -4,11 +4,12 @@ from functools import partial, wraps
 import click
 from flask import current_app
 from flask.cli import AppGroup, run_command, routes_command, ScriptInfo
-from opsy.flask_extensions import db, rm
+from opsy.flask_extensions import db
 from opsy.app import create_app, create_scheduler
 from opsy.exceptions import DuplicateError
-from opsy.utils import load_plugins, print_error, print_notice
-from opsy.auth.schema import PermissionSchema, UserSchema, RoleSchema
+from opsy.utils import (load_plugins, print_error, print_notice,
+                        get_protected_routes)
+from opsy.auth.schema import UserSchema, RoleSchema, PermissionSchema
 from opsy.auth.models import Role, User, Permission
 from opsy.inventory.models import Zone, Host, Group, HostGroupMapping
 from opsy.monitoring.models import Event, MonitoringService, Dashboard
@@ -109,7 +110,7 @@ def init_db():
 @common_params
 def permission_list(json, **kwargs):
     """List all permissions the app is aware of."""
-    PermissionSchema(many=True).print(rm.get_needs(**kwargs), json=json)
+    PermissionSchema(many=True).print(get_protected_routes(), json=json)
 
 
 @cli.group('user')

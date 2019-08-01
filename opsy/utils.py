@@ -1,9 +1,10 @@
 import copy
-from datetime import date
 import uuid
 import sys
 from collections import Mapping
-from flask import json
+from datetime import date
+from operator import attrgetter
+from flask import json, current_app
 from flask._compat import text_type
 from itsdangerous import json as _json
 from dateutil.tz import tzutc
@@ -22,29 +23,6 @@ class OpsyJSONEncoder(json.JSONEncoder):
         if hasattr(o, '__html__'):
             return text_type(o.__html__())
         return _json.JSONEncoder.default(self, o)
-
-
-def get_filters_list(filters):
-    filters_list = []
-    for items, db_object in filters:
-        if items:
-            include, exclude = parse_include_excludes(items)
-            if include:
-                filters_list.append(db_object.in_(include))
-            if exclude:
-                filters_list.append(~db_object.in_(exclude))
-    return filters_list
-
-
-def parse_include_excludes(items):
-    if items:
-        item_list = items.split(',')
-        # Wrap in a set to remove duplicates
-        include = list({x for x in item_list if not x.startswith('!')})
-        exclude = list({x[1:] for x in item_list if x.startswith('!')})
-    else:
-        include, exclude = [], []
-    return include, exclude
 
 
 def load_plugins(app):
@@ -135,3 +113,27 @@ def merge_dict(dest, upd, recursive_update=True, merge_lists=False):
             for k in upd:
                 dest[k] = upd[k]
     return dest
+
+
+def get_protected_routes(ignored_methods=["HEAD", "OPTIONS"]):
+    permissions = []
+    rules = list(current_app.url_map.iter_rules())
+    if not rules:
+        return permissions
+
+    rules = sorted(rules, key=attrgetter('endpoint'))
+
+    rule_methods = [", ".join(sorted(rule.methods - set(ignored_methods)))
+                    for rule in rules]
+
+    for rule, method in zip(rules, rule_methods):
+        view_func = current_app.view_functions[rule.endpoint]
+        if getattr(view_func, '__rbac__', False):
+            permissions.append(
+                {
+                    'endpoint': rule.rule,
+                    'method': method,
+                    'permission_needed': view_func.__rbac__[
+                        'permission_needed']
+                })
+    return permissions

@@ -3,17 +3,22 @@ from opsy.flask_extensions import db
 from opsy.models import TimeStampMixin, OpsyQuery, NamedModel, BaseModel
 from opsy.utils import merge_dict
 from sqlalchemy.orm import validates
+from sqlalchemy.ext.mutable import MutableDict
 
 ###############################################################################
 # Inventory models
 ###############################################################################
 
 
+class VarsMixin:
+    vars = db.Column(MutableDict.as_mutable(db.JSON))
+
+
 class Zone(NamedModel, TimeStampMixin, db.Model):
 
     __tablename__ = 'zones'
 
-    vars = db.Column(db.JSON)
+    vars = db.Column(MutableDict.as_mutable(db.JSON))
     description = db.Column(db.Text)
     hosts = db.relationship('Host', cascade='all, delete-orphan',
                             backref='zone', lazy='joined',
@@ -36,11 +41,11 @@ class Host(NamedModel, TimeStampMixin, db.Model):
     cpu_arch = db.Column(db.String(128))
     cpu_model = db.Column(db.String(128))
     cpu_count = db.Column(db.BigInteger)
-    cpu_flags = db.Column(db.JSON)
+    cpu_flags = db.Column(MutableDict.as_mutable(db.JSON))
     memory = db.Column(db.BigInteger)
     swap = db.Column(db.BigInteger)
-    disks = db.Column(db.JSON)
-    networking = db.Column(db.JSON)
+    disks = db.Column(MutableDict.as_mutable(db.JSON))
+    networking = db.Column(MutableDict.as_mutable(db.JSON))
     kernel = db.Column(db.String(128))
     os = db.Column(db.String(128))
     os_family = db.Column(db.String(128))
@@ -48,8 +53,8 @@ class Host(NamedModel, TimeStampMixin, db.Model):
     os_codename = db.Column(db.String(128))
     os_arch = db.Column(db.String(128))
     init_system = db.Column(db.String(128))
-    facts = db.Column(db.JSON)
-    vars = db.Column(db.JSON)
+    facts = db.Column(MutableDict.as_mutable(db.JSON))
+    vars = db.Column(MutableDict.as_mutable(db.JSON))
 
     groups = db.relationship('Group',
                              order_by='host_group_mappings.c.priority',
@@ -71,11 +76,14 @@ class Host(NamedModel, TimeStampMixin, db.Model):
     @property
     def compiled_vars(self):
         compiled_dict = {}
-        merge_dict(compiled_dict, self.zone.vars, merge_lists=True)
+        if self.zone.vars:
+            merge_dict(compiled_dict, self.zone.vars, merge_lists=True)
         for group in self.groups:
-            merge_dict(
-                compiled_dict, group.compiled_vars, merge_lists=True)
-        merge_dict(compiled_dict, self.vars, merge_lists=True)
+            if group.compiled_vars:
+                merge_dict(
+                    compiled_dict, group.compiled_vars, merge_lists=True)
+        if self.vars:
+            merge_dict(compiled_dict, self.vars, merge_lists=True)
         return compiled_dict
 
     def __repr__(self):
@@ -93,7 +101,7 @@ class Group(BaseModel, TimeStampMixin, db.Model):
         db.String(36), db.ForeignKey('zones.id', ondelete='CASCADE'),
         index=True, nullable=True)
     default_priority = db.Column(db.BigInteger, default=100)
-    vars = db.Column(db.JSON)
+    vars = db.Column(MutableDict.as_mutable(db.JSON))
 
     children = db.relationship(
         "Group", backref=db.backref('parent', remote_side='Group.id'))
@@ -113,10 +121,13 @@ class Group(BaseModel, TimeStampMixin, db.Model):
     def compiled_vars(self):
         compiled_dict = {}
         if self.zone:
-            merge_dict(compiled_dict, self.zone.vars, merge_lists=True)
+            if self.zone.vars:
+                merge_dict(compiled_dict, self.zone.vars, merge_lists=True)
         if self.parent:
-            merge_dict(compiled_dict, self.parent.vars, merge_lists=True)
-        merge_dict(compiled_dict, self.vars, merge_lists=True)
+            if self.parent.vars:
+                merge_dict(compiled_dict, self.parent.vars, merge_lists=True)
+        if self.vars:
+            merge_dict(compiled_dict, self.vars, merge_lists=True)
         return compiled_dict
 
     def add_host(self, host, priority=None):
@@ -175,6 +186,14 @@ class HostGroupMapping(BaseModel, TimeStampMixin, db.Model):
 
     host = db.relationship('Host', backref='group_mappings')
     group = db.relationship('Group', backref='host_mappings')
+
+    @property
+    def host_name(self):
+        return self.host.name
+
+    @property
+    def group_name(self):
+        return self.group.name
 
     @classmethod
     def get_by_host_id_or_name(cls, host_id_or_name, group_id_or_name=None,

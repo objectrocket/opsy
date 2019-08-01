@@ -17,19 +17,19 @@ class UserLoginSchema(BaseSchema):
     password = ma_fields.String(load_only=True, required=True)
     remember_me = ma_fields.Boolean(load_only=True, default=False,
                                     missing=False)
-    force_renew = ma_fields.Boolean(load_only=True, default=False,
-                                    missing=False)
+    # force_renew = ma_fields.Boolean(load_only=True, default=False,
+    #                                 missing=False)
 
 
 class PermissionSchema(BaseSchema):
     class Meta:
-        fields = ('name', 'resource', 'description')
+        fields = ('endpoint', 'method', 'permission_needed')
         ordered = True
         unknown = RAISE
 
-    name = ma_fields.String()
-    resource = ma_fields.String()
-    description = ma_fields.String()
+    endpoint = ma_fields.String()
+    method = ma_fields.String()
+    permission_needed = ma_fields.String()
 
 ###############################################################################
 # Sqlalchemy schemas

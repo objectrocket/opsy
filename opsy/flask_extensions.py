@@ -8,7 +8,6 @@ from flask_ldap3_login import LDAP3LoginManager
 from flask_login import LoginManager, current_user
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
-from opsy.resources import ResourceManager
 
 allows = Allows()  # pylint: disable=invalid-name
 db = SQLAlchemy()  # pylint: disable=invalid-name
@@ -17,8 +16,7 @@ jsglue = JSGlue()  # pylint: disable=invalid-name
 ldap_manager = LDAP3LoginManager()  # pylint: disable=invalid-name
 login_manager = LoginManager()  # pylint: disable=invalid-name
 ma = Marshmallow()  # pylint: disable=invalid-name
-rm = ResourceManager(route_prefix='/api/v1/')  # pylint: disable=invalid-name
-docs = FlaskApiSpec()  # pylint: disable=invalid-name
+apispec = FlaskApiSpec()  # pylint: disable=invalid-name
 
 
 def configure_extensions(app):
@@ -38,33 +36,28 @@ def configure_extensions(app):
         'APISPEC_SPEC': APISpec(
             title='opsy',
             version='v1',
-            openapi_version="3.0.2",
+            openapi_version='2.0',
+            info={'description': "It's Opsy!"},
             plugins=[MarshmallowPlugin()],
         ),
-        'APISPEC_SWAGGER_URL': '/swagger/',
+        'APISPEC_SWAGGER_URL': '/docs/swagger.json',
+        'APISPEC_SWAGGER_UI_URL': '/docs/',
     })
-    docs.init_app(app)
-    rm.init_app(app, docs=docs)
-    from opsy.auth.resources import RolesAPI
-    from opsy.inventory.resources import (
-        ZonesAPI, HostsAPI, GroupsAPI, HostGroupMappingsAPI)
-    rm.add_resource(RolesAPI)
-    rm.add_resource(ZonesAPI)
-    rm.add_resource(HostsAPI)
-    rm.add_resource(GroupsAPI)
-    rm.add_resource(HostGroupMappingsAPI)
+    app.config['APISPEC_SPEC'].components.security_scheme(
+        'api_key', {'type': 'apiKey', 'in': 'header', 'name': 'X-AUTH-TOKEN'})
+    apispec.init_app(app)
 
     @login_manager.user_loader
     def load_user(session_token):  # pylint: disable=unused-variable
         from opsy.auth.models import User
-        from opsy.auth import verify_token
+        from opsy.auth.utils import verify_token
         user = User.get_by_token(session_token)
         return verify_token(user)
 
     @login_manager.request_loader
     def load_user_from_request(request):  # pylint: disable=unused-variable
-        session_token = request.headers.get('x-auth-token')
+        session_token = request.headers.get('X-AUTH-TOKEN')
         from opsy.auth.models import User
-        from opsy.auth import verify_token
+        from opsy.auth.utils import verify_token
         user = User.get_by_token(session_token)
         return verify_token(user)

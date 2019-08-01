@@ -3,6 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from opsy.flask_extensions import db
 from opsy.models import TimeStampMixin, OpsyQuery, NamedModel, BaseModel
 from opsy.exceptions import DuplicateError
+from opsy.auth.utils import create_token
 
 ###############################################################################
 # Auth models
@@ -44,7 +45,6 @@ class User(UserMixin, NamedModel, TimeStampMixin, db.Model):
             self.password = password
 
     def get_id(self):
-        from opsy.auth import create_token
         create_token(self)
         return self.session_token
 
