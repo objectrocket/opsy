@@ -1,12 +1,11 @@
 import uuid
-from copy import deepcopy
 from datetime import datetime
 from flask_sqlalchemy import BaseQuery
 from sqlalchemy import or_
+from sqlalchemy.orm.attributes import CollectionAttributeImpl
 from sqlalchemy.orm.base import _entity_descriptor
 from opsy.flask_extensions import db
 from opsy.exceptions import DuplicateError
-from opsy.utils import merge_dict
 
 ###############################################################################
 # Base models
@@ -23,6 +22,7 @@ class OpsyQuery(BaseQuery):
 
     def filter_in(self, ignore_none=False, **kwargs):
         filters = []
+        joins = []
         for key, value in kwargs.items():
             local_descriptor = None  # for joins this is the local attribute
             if '___' in key:
@@ -31,7 +31,7 @@ class OpsyQuery(BaseQuery):
                 relationship_attr = None
             descriptor = _entity_descriptor(self._joinpoint_zero(), key)
             if relationship_attr:
-                self = self.join(descriptor, isouter=True)
+                joins.append(descriptor)
                 local_descriptor = descriptor
                 descriptor = _entity_descriptor(descriptor, relationship_attr)
             if isinstance(value, str):
@@ -39,6 +39,8 @@ class OpsyQuery(BaseQuery):
                     descriptor, value, local_descriptor))
             else:
                 filters.append(descriptor == value)
+        for descriptor in joins:
+            self = self.outerjoin(descriptor)
         return self.filter(*filters)
 
     def _get_filters_list(self, descriptor, items, local_descriptor):
@@ -59,7 +61,8 @@ class OpsyQuery(BaseQuery):
             if not_like:
                 exclude_list.extend([descriptor.like(x) for x in not_like])
             if exclude_list:
-                if local_descriptor:
+                if local_descriptor and isinstance(
+                        local_descriptor, CollectionAttributeImpl):
                     # If this is a join we want to also include things that
                     # don't match the join condition on negation. So like
                     # if the foreign key is null, for example.
@@ -129,10 +132,6 @@ class BaseModel:
     def update(self, commit=True, **kwargs):
         kwargs.pop('id', None)
         for key, value in kwargs.items():
-            if isinstance(value, dict) and value.pop('__update', False):
-                merge_lists = value.pop('__merge_lists', False)
-                value = merge_dict(
-                    getattr(self, key), value, merge_lists=merge_lists)
             setattr(self, key, value)
         return self.save() if commit else self
 
