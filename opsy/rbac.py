@@ -18,7 +18,7 @@ def is_same_user(user):
 
 def need_permission(permission_name, *requirements, identity=None,
                     on_fail=None, throws=None):
-    """Modified version of flask_allows requires decorator to tie into RBAC"""
+    """Modified version of flask_allows requires decorator to tie into RBAC."""
 
     def decorator(func):
 
