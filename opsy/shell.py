@@ -4,13 +4,15 @@ from functools import partial, wraps
 import click
 from flask import current_app
 from flask.cli import AppGroup, run_command, routes_command, ScriptInfo
-from stevedore import extension
 from opsy.flask_extensions import db
 from opsy.app import create_app, create_scheduler
 from opsy.exceptions import DuplicateError
-from opsy.utils import load_plugins, print_error, print_notice
-from opsy.models import Role, User, Permission
-from opsy.schema import (PermissionSchema, UserSchema, RoleSchema)
+from opsy.utils import (load_plugins, print_error, print_notice,
+                        get_protected_routes)
+from opsy.auth.schema import UserSchema, RoleSchema, PermissionSchema
+from opsy.auth.models import Role, User, Permission
+from opsy.inventory.models import Zone, Host, Group, HostGroupMapping
+from opsy.monitoring.models import Event, MonitoringService, Dashboard
 
 
 DEFAULT_CONFIG = os.environ.get(
@@ -65,7 +67,14 @@ def shell():
                  'db': db,
                  'User': User,
                  'Role': Role,
-                 'Permission': Permission}
+                 'Permission': Permission,
+                 'Zone': Zone,
+                 'Host': Host,
+                 'Group': Group,
+                 'HostGroupMapping': HostGroupMapping,
+                 'Event': Event,
+                 'MonitoringService': MonitoringService,
+                 'Dashboard': Dashboard}
     for plugin in load_plugins(current_app):
         plugin.register_shell_context(shell_ctx)
     shell_ctx.update(app.make_shell_context())
@@ -96,11 +105,12 @@ def init_db():
 
 
 @cli.command('permission-list')
+@click_option('--resource', type=click.STRING)
+@click_option('--method', type=click.STRING)
 @common_params
-def permission_list(json):
+def permission_list(json, **kwargs):
     """List all permissions the app is aware of."""
-    PermissionSchema(many=True).print(
-        current_app.needs_catalog, json=json)
+    PermissionSchema(many=True).print(get_protected_routes(), json=json)
 
 
 @cli.group('user')
@@ -367,7 +377,5 @@ def main():
 
     def create_opsy_app(script_info):
         return create_app(script_info.data['config'])
-    # Load the plugins
-    extension.ExtensionManager(namespace='opsy.command', invoke_on_load=False)
     cli(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
         obj=ScriptInfo(create_app=create_opsy_app))

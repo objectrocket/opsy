@@ -1,13 +1,7 @@
 #Opsy files
 /opsy.ini
+/opsy.db
 *fakeapi*
-
-#Debian packaging
-debian/debhelper-build-stamp
-debian/files
-debian/opsy.postinst.debhelper
-debian/opst.substvars
-debian/opsy
 
 #PBR
 ChangeLog

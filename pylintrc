@@ -26,7 +26,7 @@ ignored-classes=optparse.Values,thread._local,_thread._local,SQLAlchemy
 # system, and so shouldn't trigger E1101 when accessed. Python regular
 # expressions are accepted.
 generated-members=add,query,from_inifile,bulk_save_objects,commit,__tablename__,columns,delete
-ignored-modules=flask_sqlalchemy
+ignored-modules=flask_sqlalchemy,flask_marshmallow
 
 [MESSAGES CONTROL]
 # Disable the message, report, category or checker with the given id(s). You

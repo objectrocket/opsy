@@ -1,13 +1,11 @@
 import uuid
 from datetime import datetime
-from flask_login import UserMixin
 from flask_sqlalchemy import BaseQuery
-from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy import or_
+from sqlalchemy.orm.attributes import CollectionAttributeImpl
 from sqlalchemy.orm.base import _entity_descriptor
 from opsy.flask_extensions import db
 from opsy.exceptions import DuplicateError
-from opsy.utils import get_filters_list
-
 
 ###############################################################################
 # Base models
@@ -22,18 +20,74 @@ class TimeStampMixin:
 
 class OpsyQuery(BaseQuery):
 
-    def wtfilter_by(self, prune_none_values=False, **kwargs):
-        if prune_none_values:
-            kwargs = {k: v for k, v in kwargs.items() if v is not None}
+    def filter_in(self, ignore_none=False, **kwargs):
         filters = []
+        joins = []
         for key, value in kwargs.items():
+            local_descriptor = None  # for joins this is the local attribute
+            if '___' in key:
+                key, relationship_attr = key.split('___', 1)
+            else:
+                relationship_attr = None
             descriptor = _entity_descriptor(self._joinpoint_zero(), key)
+            if relationship_attr:
+                joins.append(descriptor)
+                local_descriptor = descriptor
+                descriptor = _entity_descriptor(descriptor, relationship_attr)
             if isinstance(value, str):
-                descriptor = _entity_descriptor(self._joinpoint_zero(), key)
-                filters.extend(get_filters_list([(value, descriptor)]))
+                filters.extend(self._get_filters_list(
+                    descriptor, value, local_descriptor))
             else:
                 filters.append(descriptor == value)
-        return self.filter(*filters)
+        new_self = self
+        for descriptor in joins:
+            new_self = new_self.outerjoin(descriptor)
+        return new_self.filter(*filters)
+
+    def _get_filters_list(self, descriptor, items, local_descriptor):
+
+        filters_list = []
+        if items:
+            include, exclude, like, not_like = self._parse_filters(items)
+            include_list = []
+            exclude_list = []
+            if include:
+                include_list.append(descriptor.in_(include))
+            if like:
+                include_list.extend([descriptor.like(x) for x in like])
+            if include_list:
+                filters_list.append(or_(*include_list))
+            if exclude:
+                exclude_list.append(descriptor.in_(exclude))
+            if not_like:
+                exclude_list.extend([descriptor.like(x) for x in not_like])
+            if exclude_list:
+                if local_descriptor and isinstance(
+                        local_descriptor, CollectionAttributeImpl):
+                    # If this is a join we want to also include things that
+                    # don't match the join condition on negation. So like
+                    # if the foreign key is null, for example.
+                    filters_list.append(
+                        ~local_descriptor.any(or_(*exclude_list)))
+                else:
+                    filters_list.append(~or_(*exclude_list))
+        return filters_list
+
+    def _parse_filters(self, items):
+        if items:
+            item_list = items.split(',')
+            # Wrap in a set to remove duplicates
+            include = list({x for x in item_list
+                            if not x.startswith('!') and '*' not in x})
+            exclude = list({x[1:] for x in item_list
+                            if x.startswith('!') and '*' not in x})
+            like = list({x.replace('*', '%') for x in item_list
+                         if not x.startswith('!') and '*' in x})
+            not_like = list({x[1:].replace('*', '%') for x in item_list
+                             if x.startswith('!') and '*' in x})
+        else:
+            include, exclude, like, not_like = [], [], [], []
+        return include, exclude, like, not_like
 
     def get_or_fail(self, ident):
         obj = self.get(ident)
@@ -48,7 +102,7 @@ class OpsyQuery(BaseQuery):
         return obj
 
 
-class BaseResource:
+class BaseModel:
 
     query_class = OpsyQuery
 
@@ -65,39 +119,40 @@ class BaseResource:
         return obj.save()
 
     @classmethod
-    def delete_by_id(cls, obj_id):
-        return cls.query.get(obj_id).first_or_fail().delete()
+    def get_by_id(cls, obj_id, **kwargs):
+        return cls.query.get_or_fail(obj_id)
 
     @classmethod
-    def update_by_id(cls, obj_id, prune_none_values=True, **kwargs):
-        return cls.query.get(obj_id).first_or_fail().update(
-            prune_none_values=prune_none_values, **kwargs)
+    def delete_by_id(cls, obj_id, **kwargs):
+        return cls.query.get_or_fail(obj_id).delete(**kwargs)
 
-    def update(self, commit=True, prune_none_values=True, **kwargs):
+    @classmethod
+    def update_by_id(cls, obj_id, **kwargs):
+        return cls.query.get_or_fail(obj_id).update(**kwargs)
+
+    def update(self, commit=True, **kwargs):
         kwargs.pop('id', None)
         for key, value in kwargs.items():
-            if value is None and prune_none_values is True:
-                continue
             setattr(self, key, value)
         return self.save() if commit else self
 
-    def save(self, commit=True):
+    def save(self):
         db.session.add(self)
-        if commit:
-            db.session.commit()
+        db.session.commit()
         return self
 
     def delete(self, commit=True):
         db.session.delete(self)
-        return commit and db.session.commit()
+        if commit:
+            db.session.commit()
 
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.id)
 
 
-class NamedResource(BaseResource):
+class NamedModel(BaseModel):
 
-    name = db.Column(db.String(128), unique=True, index=True)
+    name = db.Column(db.String(128), unique=True, index=True, nullable=False)
 
     def __init__(self, name, **kwargs):
         self.name = name
@@ -116,13 +171,14 @@ class NamedResource(BaseResource):
         return obj.save()
 
     @classmethod
-    def delete_by_name(cls, obj_name):
-        return cls.query.filter_by(name=obj_name).first_or_fail().delete()
+    def delete_by_name(cls, obj_name, **kwargs):
+        return cls.query.filter_by(name=obj_name).first_or_fail().delete(
+            **kwargs)
 
     @classmethod
-    def update_by_name(cls, obj_name, prune_none_values=True, **kwargs):
+    def update_by_name(cls, obj_name, **kwargs):
         return cls.query.filter_by(name=obj_name).first_or_fail().update(
-            prune_none_values=prune_none_values, **kwargs)
+            **kwargs)
 
     @classmethod
     def get_by_id_or_name(cls, obj_id_or_name, error_on_none=False):
@@ -134,192 +190,16 @@ class NamedResource(BaseResource):
         return obj
 
     @classmethod
-    def delete_by_id_or_name(cls, obj_id_or_name):
-        return cls.get_by_id_or_name(obj_id_or_name,
-                                     error_on_none=True).delete()
+    def delete_by_id_or_name(cls, obj_id_or_name, error_on_none=True,
+                             **kwargs):
+        return cls.get_by_id_or_name(
+            obj_id_or_name, error_on_none=error_on_none).delete(**kwargs)
 
     @classmethod
-    def update_by_id_or_name(cls, obj_id_or_name, **kwargs):
-        return cls.get_by_id_or_name(obj_id_or_name,
-                                     error_on_none=True).update(**kwargs)
-
-    def __repr__(self):
-        return '<%s %s>' % (self.__class__.__name__, self.name)
-
-
-###############################################################################
-# Auth models
-###############################################################################
-
-
-role_mappings = db.Table(  # pylint: disable=invalid-name
-    'role_mappings',
-    db.Model.metadata,
-    db.Column('role_id', db.String(36),
-              db.ForeignKey('roles.id', ondelete='CASCADE'), index=True),
-    db.Column('user_id', db.String(36),
-              db.ForeignKey('users.id', ondelete='CASCADE'), index=True),
-    db.Column('created_at', db.DateTime, default=datetime.utcnow()),
-    db.Column('updated_at', db.DateTime, default=datetime.utcnow(),
-              onupdate=datetime.utcnow()))
-
-
-class User(UserMixin, NamedResource, TimeStampMixin, db.Model):
-
-    __tablename__ = 'users'
-
-    full_name = db.Column(db.String(64))
-    email = db.Column(db.String(64), index=True)
-    password_hash = db.Column(db.String(128))
-    session_token = db.Column(db.String(255), index=True)
-    session_token_expires_at = db.Column(db.DateTime)
-    enabled = db.Column(db.Boolean, default=False)
-    settings = db.relationship('UserSetting', cascade='all, delete-orphan',
-                               backref='user', lazy='joined',
-                               query_class=OpsyQuery, )
-    roles = db.relationship('Role', secondary=role_mappings,
-                            lazy='joined', backref='users')
-    permissions = db.relationship('Permission', lazy='joined',
-                                  secondary='join(Permission, Role, '
-                                  'Permission.role_id == Role.id).join('
-                                  'role_mappings, '
-                                  'Role.id == role_mappings.c.role_id)')
-
-    __table_args__ = (
-        db.UniqueConstraint('session_token', name='sess_uc'),
-    )
-
-    def __init__(self, name, enabled=1, full_name=None, email=None,
-                 password=None):
-        self.name = name
-        self.enabled = enabled
-        self.full_name = full_name
-        self.email = email
-        if password:
-            self.password = password
-
-    def get_id(self):
-        from opsy.auth import create_token
-        create_token(self)
-        return self.session_token
-
-    @classmethod
-    def get_by_token(cls, token):
-        if not token:
-            return None
-        user = cls.query.filter(cls.session_token == token).first()
-        if not user:
-            return None
-        return user
-
-    @property
-    def is_active(self):
-        return self.enabled
-
-    @property
-    def password(self):
-        raise AttributeError('Password is not a readable attribute.')
-
-    @password.setter
-    def password(self, password):
-        self.password_hash = generate_password_hash(password)
-        self.session_token = None
-        self.save()
-
-    def verify_password(self, password):
-        if not self.password_hash:
-            return False
-        return check_password_hash(self.password_hash, password)
-
-    def add_setting(self, key, value):
-        if not key:
-            raise ValueError('Setting must have a key.')
-        if self.get_setting(key):
-            raise DuplicateError('Setting already exists with key "%s".' % key)
-        return UserSetting.create(user_id=self.id, key=key, value=value).save()
-
-    def remove_setting(self, key):
-        return self.get_setting(key, error_on_none=True).delete()
-
-    def modify_setting(self, key, value):
-        return self.get_setting(key, error_on_none=True).update(
-            value=value)
-
-    def get_setting(self, key, error_on_none=False):
-        setting = UserSetting.query.filter(UserSetting.user_id == self.id,
-                                           UserSetting.key == key).first()
-        if not setting and error_on_none:
-            raise ValueError('No setting found with key "%s".' % key)
-        return setting
-
-
-class UserSetting(BaseResource, TimeStampMixin, db.Model):
-
-    __tablename__ = 'user_settings'
-
-    user_id = db.Column(db.String(36), db.ForeignKey('users.id',
-                                                     ondelete='CASCADE'))
-    key = db.Column(db.String(128))
-    value = db.Column(db.String(128))
-
-    __table_args__ = (
-        db.UniqueConstraint('user_id', 'key'),
-    )
-
-
-class Role(NamedResource, TimeStampMixin, db.Model):
-
-    __tablename__ = 'roles'
-
-    ldap_group = db.Column(db.String(128))
-    description = db.Column(db.String(128))
-    permissions = db.relationship('Permission', backref='role',
-                                  cascade='all, delete-orphan')
-
-    def add_user(self, user):
-        if user in self.users:
-            raise ValueError('User "%s" already added to role "%s".' % (
-                user.name, self.name))
-        self.users.append(user)
-        self.save()
-
-    def remove_user(self, user):
-        if user not in self.users:
-            raise ValueError('User "%s" not in role "%s".' % (
-                user.name, self.name))
-        self.users.remove(user)
-        self.save()
-
-    def add_permission(self, permission_name):
-        if permission_name in [x.name for x in self.permissions]:
-            raise ValueError('Permission "%s" already added to role "%s".' % (
-                permission_name, self.name))
-        permission_obj = Permission(
-            role_id=self.id, name=permission_name)
-        permission_obj.save()
-        return permission_obj
-
-    def remove_permission(self, permission_name):
-        if permission_name not in [x.name for x in self.permissions]:
-            raise ValueError('Permission "%s" not in role "%s".' % (
-                permission_name, self.name))
-        Permission.query.filter(
-            Permission.role_id == self.id,
-            Permission.name == permission_name).delete()
-        db.session.commit()
-
-
-class Permission(BaseResource, TimeStampMixin, db.Model):
-
-    __tablename__ = 'permissions'
-
-    role_id = db.Column(db.String(36), db.ForeignKey(
-        'roles.id', ondelete='CASCADE'), index=True)
-    name = db.Column(db.String(128))
-
-    __table_args__ = (
-        db.UniqueConstraint('role_id', 'name'),
-    )
+    def update_by_id_or_name(cls, obj_id_or_name, error_on_none=True,
+                             **kwargs):
+        return cls.get_by_id_or_name(
+            obj_id_or_name, error_on_none=error_on_none).update(**kwargs)
 
     def __repr__(self):
         return '<%s %s>' % (self.__class__.__name__, self.name)
