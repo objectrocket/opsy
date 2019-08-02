@@ -1,5 +1,5 @@
 # Opsy
-It's Opsy! A simple A multi-user/role operations inventory system with aspirations.
+It's Opsy! A simple multi-user/role operations inventory system with aspirations.
 
 # Developing
 It's recommended to use a virtual environment for development.
