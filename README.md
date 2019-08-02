@@ -1,75 +1,39 @@
 # Opsy
-The ultimate operations dashboard. Provides a framework for operations tools.
+It's Opsy! A simple A multi-user/role operations inventory system with aspirations.
 
 # Developing
-Create a virtualenvironment with virtualenvwrapper
-`mkvirtualenv -p /path/to/python3.4 opsy`
+It's recommended to use a virtual environment for development.
 
-Clone down the opsy source code
-`git clone git@github.com:cryptk/opsy.git`
+    $ mkvirtualenv -p /usr/bin/python3.6 opsy
 
-Install opsy for development (ensure you are in your previously created virtualenv)
-`~/opsy $ pip install --editable .`
+Clone down the opsy repo:
 
-A database should be created for opsy and initialized by running:
-`opsy init-db`
+    $ git clone git@github.com:testeddoughnut/opsy.git
 
-Run the app via uWSGI
-`~/opsy $ uwsgi -M --wsgi-file contrib/uwsgi/wsgi.py --callable app --http-socket 0.0.0.0:5000 --processes 4 --mule=contrib/uwsgi/scheduler.py`
+Install opsy for development (ensure you are in your previously created virtualenv):
 
-This should start the app server on http://127.0.0.1:5000/
+    $ pip install --editable .
 
-# Using the CLI utility
-Opsy comes with a CLI utility to interact with its database models or to perform some tasks. This can be invoked by running `opsy`. To see a full list of commands run `opsy --help`. This can also be used on subcommands, like `opsy monitoring --help`.
+Create opsy.ini by copying the example config:
 
-The CLI utility is also used for adding zones and dashboards for the monitoring plugin. Example:
+    $ cp opsy.ini.example opsy.ini
 
-    $ opsy monitoring zone create DEV sensu --host localhost --port 4567 --timeout 5 --interval 5 --enabled 1
-    +----------------+------------------------------------------+
-    | Property       | Value                                    |
-    +----------------+------------------------------------------+
-    | created_at     | 2016-12-12 18:25:35                      |
-    | updated_at     | 2016-12-12 18:25:35                      |
-    | id             | 6e8c630e-d747-4151-bf59-baf0708184f1     |
-    | name           | DEV                                      |
-    | backend        | sensu                                    |
-    | last_poll_time | None                                     |
-    | enabled        | True                                     |
-    | status         | new                                      |
-    | status_message | This zone is new and has not polled yet. |
-    | host           | localhost                                |
-    | path           | None                                     |
-    | protocol       | http                                     |
-    | port           | 4567                                     |
-    | timeout        | 5                                        |
-    | interval       | 5                                        |
-    | username       | None                                     |
-    | password       | None                                     |
-    | verify_ssl     | True                                     |
-    +----------------+------------------------------------------+
-    $ opsy monitoring dashboard create DevTeam --description 'Board for the dev team' --enabled 1 --zone_filters 'DEV'
-    +-------------+--------------------------------------+
-    | Property    | Value                                |
-    +-------------+--------------------------------------+
-    | created_at  | 2016-12-12 18:25:42                  |
-    | updated_at  | 2016-12-12 18:25:42                  |
-    | id          | ba7ffd07-352b-4f84-9625-76b09b9b06ad |
-    | name        | DevTeam                              |
-    | description | Board for the dev team               |
-    | enabled     | True                                 |
-    +-------------+--------------------------------------+
+Initialize the DB, the example config uses sqlite by default for development:
 
-# Building a deb package
+    $ opsy init-db
 
-Install the packaging dependencies:
-`apt-get install dh-virtualenv debhelper`
+You can now create your first user and role, then add the user to the role:
 
-Enter the root of the repository and build the package:
-`dpkg-buildpackage -us -uc`
+    $ opsy user create admin
+    $ opsy role create admins
+    $ opsy role add-user admins admin
 
-# F.A.Q.
+Each route is protected by a permission for that route. You can get a full list of the permissions by running `opsy permission-list`. Permissions are granted to roles and users gain access to permissions by being in roles. For now let's add all the permissions to our new role, something like this should do that:
 
-- Why Python 3.6+... Python 2.7 is where it's at!
-  - The poller relies on asyncio and the syntax defined in PEP492 which is only present in Python 3.5+
-  - aiohttp really wants Python 3.5 or higher, who am I to say no?
-  - Python 3.6 has f-strings and type hints. I like those.
+    $ for x in $(opsy permission-list | grep api | awk '{print $6}' | sort | uniq); do opsy role add-permission admins $x; done
+
+We are now ready to start opsy for the first time:
+
+    $ opsy run
+
+By default it listens on `http://127.0.0.1:5000/`. You can access the auto generated swagger docs by navigating to `http://127.0.0.1:5000/docs/`.

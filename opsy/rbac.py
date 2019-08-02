@@ -1,11 +1,6 @@
-from collections import namedtuple
 from functools import wraps
 from flask import current_app, request, abort
 from flask_allows import allows, Or, Requirement
-
-
-Need = namedtuple(  # pylint: disable=invalid-name
-    'Need', ['name', 'resource', 'description'])
 
 
 def is_logged_in(user):

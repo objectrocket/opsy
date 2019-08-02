@@ -10,20 +10,17 @@
 [opsy]
 # This section contains configuration for the core functionality of Opsy.
 
-# The SQLAlchemy compatible database URI
+# The SQLAlchemy compatible database URI. DB must support JSON.
 # Required: True
-database_uri = mysql://opsy:password@localhost/opsy
+#database_uri = mysql://opsy:password@localhost/opsy
+#database_uri = postgresql://opsy:password@localhost/opsy
+database_uri = sqlite:///opsy.db
 
 # This key is used for crypto features, such as encoding the user id into
 # the session token. Think of it as an important password that you should
 # change and keep safe.
 # Required: True
 secret_key = this should be changed
-
-# This is a list of any enabled plugins for Opsy.
-# Required: False
-# Default value: None
-enabled_plugins = ['monitoring']
 
 # This is a list of any permissions that should be granted to all users, even
 # unauthenticated users. Really should only be basic read permissions.
@@ -35,7 +32,7 @@ base_permissions = []
 # users, but not unauthenticated users.
 # Required: False
 # Default value: None
-logged_in_permissions = ['dashboards_read', 'zones_read', 'events_read', 'checks_read', 'results_read', 'silences_read', 'clients_read']
+logged_in_permissions = ['zones_list', 'zones_get', 'hosts_list', 'hosts_get', 'groups_list', 'groups_get']
 
 # Where Opsy should log. Not strictly necessary.
 # Required: False
@@ -77,12 +74,3 @@ ldap_user_email_attr = mail
 # Required: False
 # Default value: cn
 ldap_group_name_attr = cn
-
-[monitoring]
-# This section contains configuration for the monitoring plugin for Opsy.
-
-# Gross hard coded URL to Uchiwa. This config option will go away in the
-# future and will likely be made into an field in the Zone model.
-# Required: False
-# Default value: None
-uchiwa_url = http://url.to.uchiwa.com/
