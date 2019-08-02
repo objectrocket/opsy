@@ -10,7 +10,6 @@ flask-ldap3-login==0.9.16
 Flask-Login==0.4.1
 flask-marshmallow==0.10.1
 Flask-SQLAlchemy==2.3.2
-humanize==0.5.1
 marshmallow==3.0.0rc8
 marshmallow-sqlalchemy==0.17.0
 pbr==5.1.1

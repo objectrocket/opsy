@@ -14,7 +14,7 @@
 # Required: True
 #database_uri = mysql://opsy:password@localhost/opsy
 #database_uri = postgresql://opsy:password@localhost/opsy
-database_uri = sqlite:///opsy.db
+database_uri = sqlite:///../opsy.db
 
 # This key is used for crypto features, such as encoding the user id into
 # the session token. Think of it as an important password that you should
