@@ -30,14 +30,14 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            python3 -m venv venv
-            . venv/bin/activate
+            python3 -m venv ~/venv
+            . ~/venv/bin/activate
             pip install -r requirements.txt
             pip install -r test-requirements.txt
 
       - save_cache:
           paths:
-            - ./venv
+            - ~/venv
           key: v1-dependencies-{{ checksum "requirements.txt" }}-{{ checksum "test-requirements.txt" }}
 
       # run tests!
@@ -48,8 +48,8 @@ jobs:
       - run:
           name: run tests
           command: |
-            . venv/bin/activate
+            . ~/venv/bin/activate
             ls -lah
-            #find opsy -name \*.py -exec pycodestyle {} +
-            #find opsy -name \*.py -exec pydocstyle {} +
+            find . -name \*.py -exec pycodestyle {} +
+            find . -name \*.py -exec pydocstyle {} +
             pylint opsy
