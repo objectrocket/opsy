@@ -49,6 +49,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            find ~/repo -name \*.py -exec pycodestyle {} +
-            find ~/repo -name \*.py -exec pydocstyle {} +
+            ls -lah
+            #find opsy -name \*.py -exec pycodestyle {} +
+            #find opsy -name \*.py -exec pydocstyle {} +
             pylint opsy
