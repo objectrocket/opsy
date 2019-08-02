@@ -199,14 +199,11 @@ class HostGroupMappingSchema(BaseSchema):
     group = ma.Nested(  # pylint: disable=no-member
         'GroupRefSchema', dump_only=True)
 
-    _links = Hyperlinks(
-        {"self": ma.URLFor(
-            "inventory_hosts.host_group_mappings_get",
-            id_or_name="<host_id>", mapping_id="<id>"),
-         "collection": ma.URLFor(
-            "inventory_hosts.host_group_mappings_list",
-            id_or_name="<host_id>")}, dump_only=True
-    )
+    _links = Hyperlinks({
+        "self": ma.URLFor("inventory_hosts.host_group_mappings_get",
+                          id_or_name="<host_id>", mapping_id="<id>"),
+        "collection": ma.URLFor("inventory_hosts.host_group_mappings_list",
+                                id_or_name="<host_id>")}, dump_only=True)
 
 
 class HostGroupMappingQuerySchema(BaseSchema):

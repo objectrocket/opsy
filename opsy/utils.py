@@ -61,9 +61,11 @@ def print_notice(msg, title=None):
     print("[%s] %s" % (gwrap(title), msg))
 
 
+# pylint: disable=too-many-branches
 def merge_dict(dest, upd, recursive_update=True, merge_lists=False):
-    '''
-    Recursive version of the default dict.update
+    """
+    Recursive version of the default dict.update.
+
     Merges upd recursively into dest
     If recursive_update=False, will use the classic dict.update, or fall back
     on a manual merge (helpful for non-dict types like FunctionWrapper)
@@ -74,7 +76,7 @@ def merge_dict(dest, upd, recursive_update=True, merge_lists=False):
     .. versionchanged: 2016.11.6
         When merging lists, duplicate values are removed. Values already
         present in the ``dest`` list are not added from the ``upd`` list.
-    '''
+    """
     if (not isinstance(dest, Mapping)) \
             or (not isinstance(upd, Mapping)):
         raise TypeError(
@@ -104,18 +106,19 @@ def merge_dict(dest, upd, recursive_update=True, merge_lists=False):
             else:
                 dest[key] = upd[key]
         return dest
-    else:
-        try:
-            for k in upd:
-                dest[k] = upd[k]
-        except AttributeError:
-            # this mapping is not a dict
-            for k in upd:
-                dest[k] = upd[k]
+    try:
+        for k in upd:
+            dest[k] = upd[k]
+    except AttributeError:
+        # this mapping is not a dict
+        for k in upd:
+            dest[k] = upd[k]
     return dest
 
 
-def get_protected_routes(ignored_methods=["HEAD", "OPTIONS"]):
+def get_protected_routes(ignored_methods=None):
+    if ignored_methods is None:
+        ignored_methods = ["HEAD", "OPTIONS"]
     permissions = []
     rules = list(current_app.url_map.iter_rules())
     if not rules:

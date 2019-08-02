@@ -1,12 +1,15 @@
 from flask_apispec import use_kwargs as api_spec_use_kwargs
-from marshmallow import post_load, RAISE
+from flask_marshmallow.fields import _rapply, _url_val
+from marshmallow import post_load
 from marshmallow import fields as ma_fields
 from prettytable import PrettyTable
 from opsy.flask_extensions import ma
-from flask_marshmallow.fields import _rapply, _url_val
 
 
-def use_kwargs(schema_cls, schema_kwargs={}, **kwargs):
+def use_kwargs(schema_cls, schema_kwargs=None, **kwargs):
+
+    if schema_kwargs is None:
+        schema_kwargs = {}
 
     def factory(request):
         # Respect partial updates for PATCH and GET requests
@@ -23,8 +26,8 @@ def use_kwargs(schema_cls, schema_kwargs={}, **kwargs):
 
 
 class Hyperlinks(ma_fields.Dict):
-    """We recreate this from upstream, but inherit from Dict so apispec gets
-    the right type"""
+    # We recreate this from upstream, but inherit from Dict so apispec gets
+    # the right type.
 
     _CHECK_ATTRIBUTE = False
 

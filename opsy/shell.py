@@ -377,7 +377,5 @@ def main():
 
     def create_opsy_app(script_info):
         return create_app(script_info.data['config'])
-    # Load the plugins
-    #extension.ExtensionManager(namespace='opsy.command', invoke_on_load=False)
     cli(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
         obj=ScriptInfo(create_app=create_opsy_app))

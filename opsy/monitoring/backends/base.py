@@ -1,6 +1,6 @@
 import asyncio
-import aiohttp
 from abc import abstractmethod, ABCMeta
+import aiohttp
 from flask import current_app
 from sqlalchemy import and_, tuple_
 from werkzeug.urls import url_join
@@ -67,7 +67,7 @@ class HttpPollerBackend(metaclass=ABCMeta):
                                      headers=headers, timeout=timeout)
 
     async def fetch(self, urls, expected_status=None):
-        """This performs the data retrival"""
+        """This performs the data retrival."""
         async with self._create_session() as session:
             tasks = [
                 asyncio.ensure_future(
@@ -76,7 +76,7 @@ class HttpPollerBackend(metaclass=ABCMeta):
             return await asyncio.gather(*tasks)
 
     def update(self):
-        """This triggers the work needed to update"""
+        """This triggers the work needed to update."""
         current_app.logger.info(
             f'Updating monitoring service {self.monitoring_service.name}..')
         try:

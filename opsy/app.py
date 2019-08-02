@@ -39,12 +39,13 @@ def create_views(app):
     create_auth_views(app)
     create_inventory_views(app)
     # Workaround for https://github.com/jmcarp/flask-apispec/issues/111
+    # pylint: disable=protected-access
     for key, value in apispec.spec._paths.items():
-            apispec.spec._paths[key] = {
-                inner_key: inner_value
-                for inner_key, inner_value in value.items()
-                if inner_key != 'options'
-            }
+        apispec.spec._paths[key] = {
+            inner_key: inner_value
+            for inner_key, inner_value in value.items()
+            if inner_key != 'options'
+        }
 
 
 def create_scheduler(app, scheduler_class=AsyncIOScheduler):

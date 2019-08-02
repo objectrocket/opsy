@@ -19,6 +19,7 @@ ma = Marshmallow()  # pylint: disable=invalid-name
 apispec = FlaskApiSpec()  # pylint: disable=invalid-name
 
 
+# pylint: disable=unused-import
 def configure_extensions(app):
     # Make SQLAlchemy aware of models
     from opsy.auth import models as am  # noqa: F401

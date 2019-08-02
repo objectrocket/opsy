@@ -1,5 +1,4 @@
 from marshmallow import RAISE
-from marshmallow_sqlalchemy import field_for
 from opsy.flask_extensions import ma
 from opsy.schema import BaseSchema, Password
 from opsy.monitoring.models import Dashboard, Event, MonitoringService

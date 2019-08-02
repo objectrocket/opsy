@@ -1,14 +1,11 @@
-from flask import abort, Blueprint, current_app
-from flask_allows import requires, Or
+from flask import abort, Blueprint
+from flask_allows import requires
 from flask_apispec import marshal_with, doc
 from flask_login import current_user
+from opsy.auth.schema import UserLoginSchema, UserTokenSchema
+from opsy.auth.utils import login, logout, create_token
 from opsy.flask_extensions import apispec
 from opsy.schema import use_kwargs
-from opsy.auth.utils import login, logout, create_token
-from opsy.auth.schema import (UserSchema, UserLoginSchema,
-                              UserTokenSchema, UserSettingSchema, RoleSchema)
-from opsy.auth.models import User, Role
-from opsy.exceptions import DuplicateError
 from opsy.rbac import is_logged_in
 
 
@@ -25,6 +22,7 @@ def create_auth_views(app):
 ###############################################################################
 
 
+# pylint: disable=invalid-name
 login_blueprint = Blueprint('auth_login', __name__)
 
 ###############################################################################

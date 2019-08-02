@@ -9,6 +9,7 @@ Need = namedtuple(  # pylint: disable=invalid-name
 
 
 def is_logged_in(user):
+    """Checks if the user is logged in."""
     if current_app.config.get('LOGIN_DISABLED') or user.is_authenticated:
         return True
     return False
@@ -22,12 +23,9 @@ def is_same_user(user):
 
 def need_permission(permission_name, *requirements, identity=None,
                     on_fail=None, throws=None):
-    """
-    This is a modified version of flask_allows requires decorator to tie
-    into Opsy's RBAC system.
-    """
+    """Modified version of flask_allows requires decorator to tie into RBAC."""
 
-    def decorator(f):
+    def decorator(func):
 
         permission = HasPermission(permission_name)
         if requirements:
@@ -35,7 +33,7 @@ def need_permission(permission_name, *requirements, identity=None,
         else:
             new_requirements = (permission,)
 
-        @wraps(f)
+        @wraps(func)
         def allower(*args, **kwargs):
             result = allows.run(
                 new_requirements,
@@ -48,7 +46,7 @@ def need_permission(permission_name, *requirements, identity=None,
             # authorization failed
             if result is not None:
                 return result
-            return f(*args, **kwargs)
+            return func(*args, **kwargs)
 
         rbac_info = {
             'permission_needed': permission_name,

@@ -1,9 +1,9 @@
+from sqlalchemy.ext.mutable import MutableDict
+from sqlalchemy.orm import validates
 from opsy.exceptions import DuplicateError
 from opsy.flask_extensions import db
-from opsy.models import TimeStampMixin, OpsyQuery, NamedModel, BaseModel
+from opsy.models import BaseModel, NamedModel, OpsyQuery, TimeStampMixin
 from opsy.utils import merge_dict
-from sqlalchemy.orm import validates
-from sqlalchemy.ext.mutable import MutableDict
 
 ###############################################################################
 # Inventory models
@@ -87,7 +87,7 @@ class Host(NamedModel, TimeStampMixin, db.Model):
         return compiled_dict
 
     def __repr__(self):
-        return (f'<{self.__class__.__name__} {self.zone.name}/{self.name}>')
+        return f'<{self.__class__.__name__} {self.zone.name}/{self.name}>'
 
 
 class Group(BaseModel, TimeStampMixin, db.Model):
@@ -169,7 +169,7 @@ class Group(BaseModel, TimeStampMixin, db.Model):
 
     def __repr__(self):
         zone_name = self.zone.name if self.zone else "None"
-        return (f'<{self.__class__.__name__} {zone_name}/{self.name}>')
+        return f'<{self.__class__.__name__} {zone_name}/{self.name}>'
 
 
 class HostGroupMapping(BaseModel, TimeStampMixin, db.Model):

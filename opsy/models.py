@@ -39,9 +39,10 @@ class OpsyQuery(BaseQuery):
                     descriptor, value, local_descriptor))
             else:
                 filters.append(descriptor == value)
+        new_self = self
         for descriptor in joins:
-            self = self.outerjoin(descriptor)
-        return self.filter(*filters)
+            new_self = new_self.outerjoin(descriptor)
+        return new_self.filter(*filters)
 
     def _get_filters_list(self, descriptor, items, local_descriptor):
 

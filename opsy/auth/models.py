@@ -1,9 +1,9 @@
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
-from opsy.flask_extensions import db
-from opsy.models import TimeStampMixin, OpsyQuery, NamedModel, BaseModel
-from opsy.exceptions import DuplicateError
 from opsy.auth.utils import create_token
+from opsy.exceptions import DuplicateError
+from opsy.flask_extensions import db
+from opsy.models import BaseModel, NamedModel, OpsyQuery, TimeStampMixin
 
 ###############################################################################
 # Auth models

@@ -8,6 +8,7 @@ from itsdangerous import (TimedJSONWebSignatureSerializer
 from opsy.flask_extensions import ldap_manager
 
 
+# pylint: disable=too-many-branches
 def login(username, password, remember=False, force=False, fresh=True):
     from opsy.auth.models import User, Role
     if current_app.config.opsy['enable_ldap']:
@@ -29,7 +30,7 @@ def login(username, password, remember=False, force=False, fresh=True):
             user.update(email=email, full_name=full_name)
         groups = []
         for group in result.user_groups:
-            if type(group[group_name_attr]) == list:
+            if isinstance(group[group_name_attr], list):
                 groups.append(group[group_name_attr][0])
             else:
                 groups.append(group[group_name_attr])

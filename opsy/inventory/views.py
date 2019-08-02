@@ -42,8 +42,11 @@ def create_inventory_views(app):
 ###############################################################################
 
 
+# pylint: disable=invalid-name
 zones_blueprint = Blueprint('inventory_zones', __name__)
+# pylint: disable=invalid-name
 hosts_blueprint = Blueprint('inventory_hosts', __name__)
+# pylint: disable=invalid-name
 groups_blueprint = Blueprint('inventory_groups', __name__)
 
 ###############################################################################
