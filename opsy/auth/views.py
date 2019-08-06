@@ -33,6 +33,7 @@ login_blueprint = Blueprint('auth_login', __name__)
 @login_blueprint.route('/', methods=['GET'])
 @marshal_with(UserTokenSchema(), code=200)
 @doc(
+    operationId='show_login',
     summary='Get auth token.',
     description='',
     tags=['login'],
@@ -47,6 +48,7 @@ def login_get():
 @use_kwargs(UserLoginSchema)
 @marshal_with(UserTokenSchema(), code=200)
 @doc(
+    operationId='create_login',
     summary='Login.',
     description='',
     tags=['login'])
@@ -61,6 +63,7 @@ def login_post(**kwargs):
 @login_blueprint.route('/', methods=['DELETE'])
 @marshal_with(None, code=205)
 @doc(
+    operationId='delete_login',
     summary='Logout.',
     description='',
     tags=['login'],
