@@ -5,7 +5,7 @@ from flask_login import current_user
 from opsy.auth.schema import UserLoginSchema, UserTokenSchema
 from opsy.auth.utils import login, logout, create_token
 from opsy.flask_extensions import apispec
-from opsy.schema import use_kwargs
+from opsy.schema import use_kwargs, EmptySchema
 from opsy.rbac import is_logged_in
 
 
@@ -61,7 +61,7 @@ def login_post(**kwargs):
 
 
 @login_blueprint.route('/', methods=['DELETE'])
-@marshal_with(None, code=205)
+@marshal_with(EmptySchema, code=205)
 @doc(
     operationId='delete_login',
     summary='Logout.',

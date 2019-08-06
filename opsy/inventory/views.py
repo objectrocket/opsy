@@ -2,7 +2,7 @@ from flask import abort, Blueprint
 from flask_apispec import marshal_with, doc
 from opsy.flask_extensions import apispec
 from opsy.rbac import need_permission
-from opsy.schema import use_kwargs
+from opsy.schema import use_kwargs, EmptySchema
 from opsy.inventory.schema import (
     ZoneSchema, ZoneQuerySchema,
     HostSchema, HostQuerySchema,
@@ -120,7 +120,7 @@ def zones_patch(id_or_name, **kwargs):
 
 
 @zones_blueprint.route('/<id_or_name>', methods=['DELETE'])
-@marshal_with(None, code=204)
+@marshal_with(EmptySchema, code=204)
 @doc(
     operationId='delete_zone',
     summary='Delete a zone.',
@@ -206,7 +206,7 @@ def hosts_patch(id_or_name, **kwargs):
 
 
 @hosts_blueprint.route('/<id_or_name>', methods=['DELETE'])
-@marshal_with(None, code=204)
+@marshal_with(EmptySchema, code=204)
 @doc(
     operationId='delete_host',
     summary='Delete a host.',
@@ -304,7 +304,7 @@ def host_group_mappings_patch(id_or_name, mapping_id, **kwargs):
 @hosts_blueprint.route(
     '/<id_or_name>/group_mappings/<mapping_id>',
     methods=['DELETE'])
-@marshal_with(None, code=204)
+@marshal_with(EmptySchema, code=204)
 @doc(
     operationId='delete_group_mapping',
     summary='Delete a group mapping.',
@@ -391,7 +391,7 @@ def groups_patch(id_or_name, **kwargs):
 
 
 @groups_blueprint.route('/<id_or_name>', methods=['DELETE'])
-@marshal_with(None, code=204)
+@marshal_with(EmptySchema, code=204)
 @doc(
     operationId='delete_group',
     summary='Delete a group.',
