@@ -58,11 +58,12 @@ groups_blueprint = Blueprint('inventory_groups', __name__)
 @use_kwargs(ZoneQuerySchema, locations=['query'])
 @marshal_with(ZoneSchema(many=True), code=200)
 @doc(
+    operationId='list_zones',
     summary='List zones.',
     description='',
     tags=['zones'],
     security=[{'api_key': []}])
-@need_permission('zones_list')
+@need_permission('list_zones')
 def zones_list(**kwargs):
     return Zone.query.filter_in(**kwargs).all()
 
@@ -71,11 +72,12 @@ def zones_list(**kwargs):
 @use_kwargs(ZoneSchema)
 @marshal_with(ZoneSchema(), code=201)
 @doc(
+    operationId='create_zone',
     summary='Create a new zone.',
     description='',
     tags=['zones'],
     security=[{'api_key': []}])
-@need_permission('zones_post')
+@need_permission('create_zone')
 def zones_post(**kwargs):
     try:
         return Zone.create(**kwargs), 201
@@ -86,11 +88,12 @@ def zones_post(**kwargs):
 @zones_blueprint.route('/<id_or_name>', methods=['GET'])
 @marshal_with(ZoneSchema(), code=200)
 @doc(
+    operationId='show_zone',
     summary='Show a zone.',
     description='',
     tags=['zones'],
     security=[{'api_key': []}])
-@need_permission('zones_get')
+@need_permission('show_zone')
 def zones_get(id_or_name):
     zone = Zone.get_by_id_or_name(id_or_name)
     if not zone:
@@ -102,11 +105,12 @@ def zones_get(id_or_name):
 @use_kwargs(ZoneSchema)
 @marshal_with(ZoneSchema(), code=200)
 @doc(
+    operationId='update_zone',
     summary='Update a zone.',
     description='',
     tags=['zones'],
     security=[{'api_key': []}])
-@need_permission('zones_patch')
+@need_permission('update_zone')
 def zones_patch(id_or_name, **kwargs):
     zone = Zone.get_by_id_or_name(id_or_name)
     if not zone:
@@ -118,11 +122,12 @@ def zones_patch(id_or_name, **kwargs):
 @zones_blueprint.route('/<id_or_name>', methods=['DELETE'])
 @marshal_with(None, code=204)
 @doc(
+    operationId='delete_zone',
     summary='Delete a zone.',
     description='',
     tags=['zones'],
     security=[{'api_key': []}])
-@need_permission('zones_delete')
+@need_permission('delete_zone')
 def zones_delete(id_or_name):
     zone = Zone.get_by_id_or_name(id_or_name)
     if not zone:
@@ -139,11 +144,12 @@ def zones_delete(id_or_name):
 @use_kwargs(HostQuerySchema, locations=['query'])
 @marshal_with(HostSchema(many=True), code=200)
 @doc(
+    operationId='list_hosts',
     summary='List hosts.',
     description='',
     tags=['hosts'],
     security=[{'api_key': []}])
-@need_permission('hosts_list')
+@need_permission('list_hosts')
 def hosts_list(**kwargs):
     return Host.query.filter_in(**kwargs).all()
 
@@ -152,11 +158,12 @@ def hosts_list(**kwargs):
 @use_kwargs(HostSchema)
 @marshal_with(HostSchema(), code=201)
 @doc(
+    operationId='create_host',
     summary='Create a new host.',
     description='',
     tags=['hosts'],
     security=[{'api_key': []}])
-@need_permission('hosts_post')
+@need_permission('create_host')
 def hosts_post(**kwargs):
     try:
         return Host.create(**kwargs), 201
@@ -167,11 +174,12 @@ def hosts_post(**kwargs):
 @hosts_blueprint.route('/<id_or_name>', methods=['GET'])
 @marshal_with(HostSchema(), code=200)
 @doc(
+    operationId='show_host',
     summary='Show a host.',
     description='',
     tags=['hosts'],
     security=[{'api_key': []}])
-@need_permission('hosts_get')
+@need_permission('show_host')
 def hosts_get(id_or_name):
     host = Host.get_by_id_or_name(id_or_name)
     if not host:
@@ -183,11 +191,12 @@ def hosts_get(id_or_name):
 @use_kwargs(HostSchema)
 @marshal_with(HostSchema(), code=200)
 @doc(
-    summary='Update a hosts.',
+    operationId='update_host',
+    summary='Update a host.',
     description='',
     tags=['hosts'],
     security=[{'api_key': []}])
-@need_permission('hosts_patch')
+@need_permission('update_host')
 def hosts_patch(id_or_name, **kwargs):
     host = Host.get_by_id_or_name(id_or_name)
     if not host:
@@ -199,11 +208,12 @@ def hosts_patch(id_or_name, **kwargs):
 @hosts_blueprint.route('/<id_or_name>', methods=['DELETE'])
 @marshal_with(None, code=204)
 @doc(
-    summary='Delete a hosts.',
+    operationId='delete_host',
+    summary='Delete a host.',
     description='',
     tags=['hosts'],
     security=[{'api_key': []}])
-@need_permission('hosts_delete')
+@need_permission('delete_host')
 def hosts_delete(id_or_name):
     host = Host.get_by_id_or_name(id_or_name)
     if not host:
@@ -220,11 +230,12 @@ def hosts_delete(id_or_name):
 @use_kwargs(HostGroupMappingQuerySchema, locations=['query'])
 @marshal_with(HostGroupMappingSchema(many=True), code=200)
 @doc(
+    operationId='list_group_mappings',
     summary='List group mappings.',
     description='',
     tags=['hosts'],
     security=[{'api_key': []}])
-@need_permission('hosts_patch')
+@need_permission('update_host')
 def host_group_mappings_list(id_or_name, **kwargs):
     host = Host.get_by_id_or_name(id_or_name)
     if not host:
@@ -237,11 +248,12 @@ def host_group_mappings_list(id_or_name, **kwargs):
 @use_kwargs(HostGroupMappingSchema)
 @marshal_with(HostGroupMappingSchema(), code=201)
 @doc(
+    operationId='create_group_mapping',
     summary='Create a group mapping.',
     description='',
     tags=['hosts'],
     security=[{'api_key': []}])
-@need_permission('hosts_patch')
+@need_permission('update_host')
 def host_group_mappings_post(id_or_name, **kwargs):
     host = Host.get_by_id_or_name(id_or_name)
     group = Group.get_by_id(kwargs['group_id'])
@@ -256,11 +268,12 @@ def host_group_mappings_post(id_or_name, **kwargs):
     methods=['GET'])
 @marshal_with(HostGroupMappingSchema(), code=200)
 @doc(
+    operationId='show_group_mapping',
     summary='Show a group mapping.',
     description='',
     tags=['hosts'],
     security=[{'api_key': []}])
-@need_permission('hosts_patch')
+@need_permission('update_host')
 def host_group_mappings_get(id_or_name, mapping_id):
     host_group_mapping = HostGroupMapping.get_by_id(mapping_id)
     if not host_group_mapping:
@@ -274,11 +287,12 @@ def host_group_mappings_get(id_or_name, mapping_id):
 @use_kwargs(HostGroupMappingSchema)
 @marshal_with(HostGroupMappingSchema(), code=200)
 @doc(
+    operationId='update_group_mapping',
     summary='Update a group mapping.',
     description='',
     tags=['hosts'],
     security=[{'api_key': []}])
-@need_permission('hosts_patch')
+@need_permission('update_host')
 def host_group_mappings_patch(id_or_name, mapping_id, **kwargs):
     host_group_mapping = HostGroupMapping.get_by_id(mapping_id)
     if not host_group_mapping:
@@ -292,11 +306,12 @@ def host_group_mappings_patch(id_or_name, mapping_id, **kwargs):
     methods=['DELETE'])
 @marshal_with(None, code=204)
 @doc(
+    operationId='delete_group_mapping',
     summary='Delete a group mapping.',
     description='',
     tags=['hosts'],
     security=[{'api_key': []}])
-@need_permission('hosts_patch')
+@need_permission('update_host')
 def host_group_mappings_delete(id_or_name, mapping_id):
     host_group_mapping = HostGroupMapping.get_by_id(mapping_id)
     if not host_group_mapping:
@@ -314,11 +329,12 @@ def host_group_mappings_delete(id_or_name, mapping_id):
 @use_kwargs(GroupQuerySchema, locations=['query'])
 @marshal_with(GroupSchema(many=True), code=200)
 @doc(
+    operationId='list_groups',
     summary='List groups.',
     description='',
     tags=['groups'],
     security=[{'api_key': []}])
-@need_permission('groups_list')
+@need_permission('list_groups')
 def groups_list(**kwargs):
     return Group.query.filter_in(**kwargs).all()
 
@@ -327,11 +343,12 @@ def groups_list(**kwargs):
 @use_kwargs(GroupSchema)
 @marshal_with(GroupSchema(), code=201)
 @doc(
+    operationId='create_group',
     summary='Create a group.',
     description='',
     tags=['groups'],
     security=[{'api_key': []}])
-@need_permission('groups_post')
+@need_permission('create_group')
 def groups_post(**kwargs):
     try:
         return Group.create(**kwargs), 201
@@ -342,11 +359,12 @@ def groups_post(**kwargs):
 @groups_blueprint.route('/<id_or_name>', methods=['GET'])
 @marshal_with(GroupSchema(), code=200)
 @doc(
+    operationId='show_group',
     summary='Show a group.',
     description='',
     tags=['groups'],
     security=[{'api_key': []}])
-@need_permission('groups_get')
+@need_permission('show_group')
 def groups_get(id_or_name):
     group = Group.get_by_id_or_name(id_or_name)
     if not group:
@@ -358,11 +376,12 @@ def groups_get(id_or_name):
 @use_kwargs(GroupSchema)
 @marshal_with(GroupSchema(), code=200)
 @doc(
+    operationId='update_group',
     summary='Update a group.',
     description='',
     tags=['groups'],
     security=[{'api_key': []}])
-@need_permission('groups_patch')
+@need_permission('update_group')
 def groups_patch(id_or_name, **kwargs):
     group = Group.get_by_id_or_name(id_or_name)
     if not group:
@@ -374,11 +393,12 @@ def groups_patch(id_or_name, **kwargs):
 @groups_blueprint.route('/<id_or_name>', methods=['DELETE'])
 @marshal_with(None, code=204)
 @doc(
+    operationId='delete_group',
     summary='Delete a group.',
     description='',
     tags=['groups'],
     security=[{'api_key': []}])
-@need_permission('groups_delete')
+@need_permission('delete_group')
 def groups_delete(id_or_name):
     group = Group.get_by_id_or_name(id_or_name)
     if not group:
