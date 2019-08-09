@@ -132,20 +132,22 @@ class GroupSchema(BaseSchema):
     class Meta:
         model = Group
         fields = ('id', 'zone_id', 'parent_id', 'name', 'default_priority',
-                  'vars', 'compiled_vars', 'zone', 'parent', 'created_at',
+                  'vars', 'compiled_vars', 'created_at',
                   'updated_at', '_links')
         ordered = True
         unknown = RAISE
 
     id = field_for(Group, 'id', dump_only=True)
+    zone_id = field_for(Group, 'zone_id', allow_none=True)
+    parent_id = field_for(Group, 'parent_id', allow_none=True)
     created_at = field_for(Group, 'created_at', dump_only=True)
     updated_at = field_for(Group, 'updated_at', dump_only=True)
     vars = field_for(Group, 'vars', field_class=ma_fields.Dict)
     compiled_vars = ma_fields.Dict(dump_only=True)
-    zone = ma.Nested(  # pylint: disable=no-member
-        'ZoneRefSchema', dump_only=True)
-    parent = ma.Nested(  # pylint: disable=no-member
-        'GroupRefSchema', dump_only=True)
+#    zone = ma.Nested(  # pylint: disable=no-member
+#        'ZoneRefSchema', dump_only=True)
+#    parent = ma.Nested(  # pylint: disable=no-member
+#        'GroupRefSchema', dump_only=True)
 
     _links = Hyperlinks(
         {"self": ma.URLFor("inventory_groups.groups_get", id_or_name="<id>"),
