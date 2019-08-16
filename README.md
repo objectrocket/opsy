@@ -22,9 +22,10 @@ Initialize the DB, the example config uses sqlite by default for development:
 
     $ opsy init-db
 
-You can now create your first user and role, then add the user to the role:
+You can now create your first user and set its password, create a role, then add the user to the role:
 
     $ opsy user create admin
+    $ opsy user password admin
     $ opsy role create admins
     $ opsy role add-user admins admin
 

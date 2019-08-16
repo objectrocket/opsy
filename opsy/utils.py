@@ -1,40 +1,8 @@
 import copy
-import uuid
 import sys
 from collections import Mapping
-from datetime import date
 from operator import attrgetter
-from flask import json, current_app
-from flask._compat import text_type
-from itsdangerous import json as _json
-from dateutil.tz import tzutc
-from stevedore import driver
-
-
-class OpsyJSONEncoder(json.JSONEncoder):
-
-    def default(self, o):  # pylint: disable=method-hidden
-        if isinstance(o, date):
-            # TODO (testeddoughnut): proper timezone support
-            o = o.replace(tzinfo=tzutc())
-            return o.isoformat()
-        if isinstance(o, uuid.UUID):
-            return str(o)
-        if hasattr(o, '__html__'):
-            return text_type(o.__html__())
-        return _json.JSONEncoder.default(self, o)
-
-
-def load_plugins(app):
-    if not app.config.opsy['enabled_plugins']:
-        return
-    for plugin in app.config.opsy['enabled_plugins']:
-        plugin_manager = driver.DriverManager(
-            namespace='opsy.plugin',
-            name=plugin,
-            invoke_args=(app,),
-            invoke_on_load=True)
-        yield plugin_manager.driver
+from flask import current_app
 
 
 def gwrap(some_string):
@@ -76,27 +44,25 @@ def merge_dict(dest, upd, recursive_update=True, merge_lists=False):
     .. versionchanged: 2016.11.6
         When merging lists, duplicate values are removed. Values already
         present in the ``dest`` list are not added from the ``upd`` list.
+
+    Taken from https://github.com/saltstack/salt/blob/develop/salt/utils/dictupdate.py
     """
     if (not isinstance(dest, Mapping)) \
             or (not isinstance(upd, Mapping)):
         raise TypeError(
-            'Cannot update using non-dict types in dictupdate.update()')
+            'Cannot update using non-dict types in merge_dict()')
     updkeys = list(upd.keys())
     if not set(list(dest.keys())) & set(updkeys):
         recursive_update = False
     if recursive_update:
         for key in updkeys:
             val = upd[key]
-            try:
-                dest_subkey = dest.get(key, None)
-            except AttributeError:
-                dest_subkey = None
+            dest_subkey = dest.get(key, None)
             if isinstance(dest_subkey, Mapping) \
                     and isinstance(val, Mapping):
                 ret = merge_dict(dest_subkey, val, merge_lists=merge_lists)
                 dest[key] = ret
-            elif isinstance(dest_subkey, list) \
-                    and isinstance(val, list):
+            elif isinstance(dest_subkey, list) and isinstance(val, list):
                 if merge_lists:
                     merged = copy.deepcopy(dest_subkey)
                     merged.extend([x for x in val if x not in merged])
@@ -106,19 +72,14 @@ def merge_dict(dest, upd, recursive_update=True, merge_lists=False):
             else:
                 dest[key] = upd[key]
         return dest
-    try:
-        for k in upd:
-            dest[k] = upd[k]
-    except AttributeError:
-        # this mapping is not a dict
-        for k in upd:
-            dest[k] = upd[k]
+    for k in upd:
+        dest[k] = upd[k]
     return dest
 
 
 def get_protected_routes(ignored_methods=None):
-    if ignored_methods is None:
-        ignored_methods = ["HEAD", "OPTIONS"]
+    if not ignored_methods:
+        ignored_methods = []
     permissions = []
     rules = list(current_app.url_map.iter_rules())
     if not rules:

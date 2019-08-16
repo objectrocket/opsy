@@ -95,10 +95,10 @@ def zones_post(**kwargs):
     security=[{'api_key': []}])
 @need_permission('show_zone')
 def zones_get(id_or_name):
-    zone = Zone.get_by_id_or_name(id_or_name)
-    if not zone:
-        abort(404)
-    return zone
+    try:
+        return Zone.get_by_id_or_name(id_or_name)
+    except ValueError as error:
+        abort(404, str(error))
 
 
 @zones_blueprint.route('/<id_or_name>', methods=['PATCH'])
@@ -112,11 +112,10 @@ def zones_get(id_or_name):
     security=[{'api_key': []}])
 @need_permission('update_zone')
 def zones_patch(id_or_name, **kwargs):
-    zone = Zone.get_by_id_or_name(id_or_name)
-    if not zone:
-        abort(404)
-    zone.update(**kwargs)
-    return zone
+    try:
+        return Zone.update_by_id_or_name(id_or_name, **kwargs)
+    except ValueError as error:
+        abort(404, str(error))
 
 
 @zones_blueprint.route('/<id_or_name>', methods=['DELETE'])
@@ -129,11 +128,11 @@ def zones_patch(id_or_name, **kwargs):
     security=[{'api_key': []}])
 @need_permission('delete_zone')
 def zones_delete(id_or_name):
-    zone = Zone.get_by_id_or_name(id_or_name)
-    if not zone:
-        abort(404)
-    zone.delete()
-    return ('', 204)
+    try:
+        Zone.delete_by_id_or_name(id_or_name)
+        return ('', 204)
+    except ValueError as error:
+        abort(404, str(error))
 
 ###############################################################################
 # Host Views
@@ -181,10 +180,10 @@ def hosts_post(**kwargs):
     security=[{'api_key': []}])
 @need_permission('show_host')
 def hosts_get(id_or_name):
-    host = Host.get_by_id_or_name(id_or_name)
-    if not host:
-        abort(404)
-    return host
+    try:
+        return Host.get_by_id_or_name(id_or_name)
+    except ValueError as error:
+        abort(404, str(error))
 
 
 @hosts_blueprint.route('/<id_or_name>', methods=['PATCH'])
@@ -198,11 +197,10 @@ def hosts_get(id_or_name):
     security=[{'api_key': []}])
 @need_permission('update_host')
 def hosts_patch(id_or_name, **kwargs):
-    host = Host.get_by_id_or_name(id_or_name)
-    if not host:
-        abort(404)
-    host.update(**kwargs)
-    return host
+    try:
+        return Host.update_by_id_or_name(id_or_name, **kwargs)
+    except ValueError as error:
+        abort(404, str(error))
 
 
 @hosts_blueprint.route('/<id_or_name>', methods=['DELETE'])
@@ -215,18 +213,19 @@ def hosts_patch(id_or_name, **kwargs):
     security=[{'api_key': []}])
 @need_permission('delete_host')
 def hosts_delete(id_or_name):
-    host = Host.get_by_id_or_name(id_or_name)
-    if not host:
-        abort(404)
-    host.delete()
-    return ('', 204)
+    try:
+        Host.delete_by_id_or_name(id_or_name)
+        return ('', 204)
+    except ValueError as error:
+        abort(404, str(error))
+
 
 ###############################################################################
 # Host Group Mapping Views
 ###############################################################################
 
 
-@hosts_blueprint.route('/<id_or_name>/group_mappings', methods=['GET'])
+@hosts_blueprint.route('/<id_or_name>/group_mappings/', methods=['GET'])
 @use_kwargs(HostGroupMappingQuerySchema, locations=['query'])
 @marshal_with(HostGroupMappingSchema(many=True), code=200)
 @doc(
@@ -237,14 +236,15 @@ def hosts_delete(id_or_name):
     security=[{'api_key': []}])
 @need_permission('update_host')
 def host_group_mappings_list(id_or_name, **kwargs):
-    host = Host.get_by_id_or_name(id_or_name)
-    if not host:
-        abort(404)
-    return HostGroupMapping.query.join(Host).filter(
-        Host.id == host.id).filter_in(**kwargs)
+    try:
+        host = Host.get_by_id_or_name(id_or_name)
+    except ValueError as error:
+        abort(404, str(error))
+    return HostGroupMapping.query.filter_by(
+        host_id=host.id).filter_in(**kwargs).all()
 
 
-@hosts_blueprint.route('/<id_or_name>/group_mappings', methods=['POST'])
+@hosts_blueprint.route('/<id_or_name>/group_mappings/', methods=['POST'])
 @use_kwargs(HostGroupMappingSchema)
 @marshal_with(HostGroupMappingSchema(), code=201)
 @doc(
@@ -255,8 +255,11 @@ def host_group_mappings_list(id_or_name, **kwargs):
     security=[{'api_key': []}])
 @need_permission('update_host')
 def host_group_mappings_post(id_or_name, **kwargs):
-    host = Host.get_by_id_or_name(id_or_name)
-    group = Group.get_by_id(kwargs['group_id'])
+    try:
+        host = Host.get_by_id_or_name(id_or_name)
+        group = Group.get_by_id(kwargs['group_id'])
+    except ValueError as error:
+        abort(404, str(error))
     try:
         return host.add_group(group, priority=kwargs.get('priority')), 201
     except (DuplicateError, ValueError) as error:
@@ -264,7 +267,7 @@ def host_group_mappings_post(id_or_name, **kwargs):
 
 
 @hosts_blueprint.route(
-    '/<id_or_name>/group_mappings/<mapping_id>',
+    '/<id_or_name>/group_mappings/<group_id_or_name>',
     methods=['GET'])
 @marshal_with(HostGroupMappingSchema(), code=200)
 @doc(
@@ -274,15 +277,16 @@ def host_group_mappings_post(id_or_name, **kwargs):
     tags=['hosts'],
     security=[{'api_key': []}])
 @need_permission('update_host')
-def host_group_mappings_get(id_or_name, mapping_id):
-    host_group_mapping = HostGroupMapping.get_by_id(mapping_id)
-    if not host_group_mapping:
-        abort(404)
-    return host_group_mapping
+def host_group_mappings_get(id_or_name, group_id_or_name):
+    try:
+        return HostGroupMapping.get_by_host_and_group(
+            id_or_name, group_id_or_name)
+    except ValueError as error:
+        abort(404, str(error))
 
 
 @hosts_blueprint.route(
-    '/<id_or_name>/group_mappings/<mapping_id>',
+    '/<id_or_name>/group_mappings/<group_id_or_name>',
     methods=['PATCH'])
 @use_kwargs(HostGroupMappingSchema)
 @marshal_with(HostGroupMappingSchema(), code=200)
@@ -293,16 +297,16 @@ def host_group_mappings_get(id_or_name, mapping_id):
     tags=['hosts'],
     security=[{'api_key': []}])
 @need_permission('update_host')
-def host_group_mappings_patch(id_or_name, mapping_id, **kwargs):
-    host_group_mapping = HostGroupMapping.get_by_id(mapping_id)
-    if not host_group_mapping:
-        abort(404)
-    host_group_mapping.update(**kwargs)
-    return host_group_mapping
+def host_group_mappings_patch(id_or_name, group_id_or_name, **kwargs):
+    try:
+        return HostGroupMapping.get_by_host_and_group(
+            id_or_name, group_id_or_name).update(**kwargs)
+    except ValueError as error:
+        abort(404, str(error))
 
 
 @hosts_blueprint.route(
-    '/<id_or_name>/group_mappings/<mapping_id>',
+    '/<id_or_name>/group_mappings/<group_id_or_name>',
     methods=['DELETE'])
 @marshal_with(EmptySchema, code=204)
 @doc(
@@ -312,12 +316,13 @@ def host_group_mappings_patch(id_or_name, mapping_id, **kwargs):
     tags=['hosts'],
     security=[{'api_key': []}])
 @need_permission('update_host')
-def host_group_mappings_delete(id_or_name, mapping_id):
-    host_group_mapping = HostGroupMapping.get_by_id(mapping_id)
-    if not host_group_mapping:
-        abort(404)
-    host_group_mapping.delete()
-    return ('', 204)
+def host_group_mappings_delete(id_or_name, group_id_or_name):
+    try:
+        HostGroupMapping.get_by_host_and_group(
+            id_or_name, group_id_or_name).delete()
+        return ('', 204)
+    except ValueError as error:
+        abort(404, str(error))
 
 
 ###############################################################################
@@ -356,7 +361,7 @@ def groups_post(**kwargs):
         abort(400, str(error))
 
 
-@groups_blueprint.route('/<id_or_name>', methods=['GET'])
+@groups_blueprint.route('/<group_id>', methods=['GET'])
 @marshal_with(GroupSchema(), code=200)
 @doc(
     operationId='show_group',
@@ -365,14 +370,14 @@ def groups_post(**kwargs):
     tags=['groups'],
     security=[{'api_key': []}])
 @need_permission('show_group')
-def groups_get(id_or_name):
-    group = Group.get_by_id_or_name(id_or_name)
-    if not group:
-        abort(404)
-    return group
+def groups_get(group_id):
+    try:
+        return Group.get_by_id(group_id)
+    except ValueError as error:
+        abort(404, str(error))
 
 
-@groups_blueprint.route('/<id_or_name>', methods=['PATCH'])
+@groups_blueprint.route('/<group_id>', methods=['PATCH'])
 @use_kwargs(GroupSchema)
 @marshal_with(GroupSchema(), code=200)
 @doc(
@@ -382,15 +387,14 @@ def groups_get(id_or_name):
     tags=['groups'],
     security=[{'api_key': []}])
 @need_permission('update_group')
-def groups_patch(id_or_name, **kwargs):
-    group = Group.get_by_id_or_name(id_or_name)
-    if not group:
-        abort(404)
-    group.update(**kwargs)
-    return group
+def groups_patch(group_id, **kwargs):
+    try:
+        return Group.update_by_id(group_id, **kwargs)
+    except ValueError as error:
+        abort(404, str(error))
 
 
-@groups_blueprint.route('/<id_or_name>', methods=['DELETE'])
+@groups_blueprint.route('/<group_id>', methods=['DELETE'])
 @marshal_with(EmptySchema, code=204)
 @doc(
     operationId='delete_group',
@@ -399,9 +403,9 @@ def groups_patch(id_or_name, **kwargs):
     tags=['groups'],
     security=[{'api_key': []}])
 @need_permission('delete_group')
-def groups_delete(id_or_name):
-    group = Group.get_by_id_or_name(id_or_name)
-    if not group:
-        abort(404)
-    group.delete()
-    return ('', 204)
+def groups_delete(group_id):
+    try:
+        Group.delete_by_id(group_id)
+        return ('', 204)
+    except ValueError as error:
+        abort(404, str(error))

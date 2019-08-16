@@ -1,9 +1,7 @@
 import logging
 from logging.handlers import WatchedFileHandler
 from flask import Flask
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from opsy.flask_extensions import configure_extensions, apispec
-from opsy.utils import OpsyJSONEncoder, load_plugins
 from opsy.config import load_config
 from opsy.auth.views import create_auth_views
 from opsy.inventory.views import create_inventory_views
@@ -15,8 +13,6 @@ def create_app(config_file):
     create_logging(app)
     configure_extensions(app)
     create_views(app)
-    app.jobs = []  # FIXME: Need to handle scheduled jobs better.
-    app.json_encoder = OpsyJSONEncoder
     return app
 
 
@@ -46,15 +42,3 @@ def create_views(app):
             for inner_key, inner_value in value.items()
             if inner_key != 'options'
         }
-
-
-def create_scheduler(app, scheduler_class=AsyncIOScheduler):
-    job_defaults = {
-        'misfire_grace_time': app.config.opsy['scheduler_grace_time']
-    }
-    scheduler = scheduler_class(job_defaults=job_defaults)
-    for plugin in load_plugins(app):
-        plugin.register_scheduler_jobs(app)
-    for args, kwargs in app.jobs:
-        scheduler.add_job(*args, **kwargs)
-    return scheduler

@@ -1,9 +1,8 @@
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from opsy.auth.utils import create_token
-from opsy.exceptions import DuplicateError
 from opsy.flask_extensions import db
-from opsy.models import BaseModel, NamedModel, OpsyQuery, TimeStampMixin
+from opsy.models import BaseModel, NamedModel, TimeStampMixin
 
 ###############################################################################
 # Auth models
@@ -20,9 +19,6 @@ class User(UserMixin, NamedModel, TimeStampMixin, db.Model):
     session_token = db.Column(db.String(255), index=True)
     session_token_expires_at = db.Column(db.DateTime)
     enabled = db.Column(db.Boolean, default=False)
-    settings = db.relationship('UserSetting', cascade='all, delete-orphan',
-                               backref='user', lazy='joined',
-                               query_class=OpsyQuery, )
     roles = db.relationship('Role', secondary='role_mappings',
                             lazy='joined', backref='users')
     permissions = db.relationship('Permission', lazy='joined',
@@ -75,41 +71,6 @@ class User(UserMixin, NamedModel, TimeStampMixin, db.Model):
         if not self.password_hash:
             return False
         return check_password_hash(self.password_hash, password)
-
-    def add_setting(self, key, value):
-        if not key:
-            raise ValueError('Setting must have a key.')
-        if self.get_setting(key):
-            raise DuplicateError('Setting already exists with key "%s".' % key)
-        return UserSetting.create(user_id=self.id, key=key, value=value).save()
-
-    def remove_setting(self, key):
-        return self.get_setting(key, error_on_none=True).delete()
-
-    def modify_setting(self, key, value):
-        return self.get_setting(key, error_on_none=True).update(
-            value=value)
-
-    def get_setting(self, key, error_on_none=False):
-        setting = UserSetting.query.filter(UserSetting.user_id == self.id,
-                                           UserSetting.key == key).first()
-        if not setting and error_on_none:
-            raise ValueError('No setting found with key "%s".' % key)
-        return setting
-
-
-class UserSetting(BaseModel, TimeStampMixin, db.Model):
-
-    __tablename__ = 'user_settings'
-
-    user_id = db.Column(db.String(36), db.ForeignKey('users.id',
-                                                     ondelete='CASCADE'))
-    key = db.Column(db.String(128), index=True, nullable=False)
-    value = db.Column(db.String(128), nullable=False)
-
-    __table_args__ = (
-        db.UniqueConstraint('user_id', 'key'),
-    )
 
 
 class Role(NamedModel, TimeStampMixin, db.Model):
@@ -182,4 +143,4 @@ class Permission(BaseModel, TimeStampMixin, db.Model):
     )
 
     def __repr__(self):
-        return '<%s %s>' % (self.__class__.__name__, self.name)
+        return f'<{self.__class__.__name__} {self.name}>'

@@ -65,12 +65,9 @@ class HostSchema(BaseSchema):
 
     class Meta:
         model = Host
-        fields = ('id', 'zone_id', 'name', 'domain', 'manufacturer', 'model',
-                  'cpu_arch', 'cpu_model', 'cpu_count', 'cpu_flags', 'memory',
-                  'swap', 'kernel', 'os', 'os_family', 'os_version',
-                  'os_codename', 'os_arch', 'init_system', 'disks',
-                  'networking', 'vars', 'compiled_vars', 'facts', 'zone',
-                  'group_mappings', 'created_at', 'updated_at', '_links')
+        fields = ('id', 'zone_id', 'name', 'vars', 'compiled_vars',
+                  'zone', 'group_mappings', 'created_at', 'updated_at',
+                  '_links')
         ordered = True
         unknown = RAISE
 
@@ -79,9 +76,6 @@ class HostSchema(BaseSchema):
     zone_id = field_for(Host, 'zone_id', required=True)
     created_at = field_for(Host, 'created_at', dump_only=True)
     updated_at = field_for(Host, 'updated_at', dump_only=True)
-    cpu_flags = field_for(Host, 'cpu_flags', field_class=ma_fields.Dict)
-    disks = field_for(Host, 'disks', field_class=ma_fields.Dict)
-    networking = field_for(Host, 'networking', field_class=ma_fields.Dict)
     vars = field_for(Host, 'vars', field_class=ma_fields.Dict)
     compiled_vars = ma_fields.Dict(dump_only=True)
 
@@ -103,10 +97,7 @@ class HostQuerySchema(HostSchema):
     class Meta:
         model = Host
         fields = ('id', 'zone_id', 'zone_name', 'group_id', 'group_name',
-                  'name', 'domain', 'manufacturer', 'model', 'cpu_arch',
-                  'cpu_model', 'cpu_count', 'memory', 'swap', 'kernel', 'os',
-                  'os_family', 'os_version', 'os_codename', 'os_arch',
-                  'init_system')
+                  'name')
         ordered = True
         unknown = RAISE
 
@@ -150,7 +141,7 @@ class GroupSchema(BaseSchema):
 #        'GroupRefSchema', dump_only=True)
 
     _links = Hyperlinks(
-        {"self": ma.URLFor("inventory_groups.groups_get", id_or_name="<id>"),
+        {"self": ma.URLFor("inventory_groups.groups_get", group_id="<id>"),
          "collection": ma.URLFor("inventory_groups.groups_list")},
         dump_only=True
     )
@@ -193,7 +184,7 @@ class HostGroupMappingSchema(BaseSchema):
         unknown = RAISE
 
     id = field_for(Host, 'id', dump_only=True)
-    host_id = field_for(HostGroupMapping, 'id', dump_only=True)
+    host_id = field_for(HostGroupMapping, 'host_id', dump_only=True)
     created_at = field_for(HostGroupMapping, 'created_at', dump_only=True)
     updated_at = field_for(HostGroupMapping, 'updated_at', dump_only=True)
     host = ma.Nested(  # pylint: disable=no-member
@@ -203,7 +194,8 @@ class HostGroupMappingSchema(BaseSchema):
 
     _links = Hyperlinks({
         "self": ma.URLFor("inventory_hosts.host_group_mappings_get",
-                          id_or_name="<host_id>", mapping_id="<id>"),
+                          id_or_name="<host_id>",
+                          group_id_or_name="<group_id>"),
         "collection": ma.URLFor("inventory_hosts.host_group_mappings_list",
                                 id_or_name="<host_id>")}, dump_only=True)
 

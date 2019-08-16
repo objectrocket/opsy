@@ -1,8 +1,7 @@
 from marshmallow import fields as ma_fields
 from marshmallow import RAISE
 from marshmallow_sqlalchemy import field_for
-from prettytable import PrettyTable
-from opsy.auth.models import User, UserSetting, Role, Permission
+from opsy.auth.models import User, Role, Permission
 from opsy.flask_extensions import ma
 from opsy.schema import BaseSchema
 
@@ -41,44 +40,9 @@ class UserSchema(BaseSchema):
     class Meta:
         model = User
         fields = ('id', 'name', 'full_name', 'email', 'enabled', 'created_at',
-                  'updated_at', 'settings', 'roles', 'permissions')
+                  'updated_at', 'roles', 'permissions')
         ordered = True
         unknown = RAISE
-
-    def pt_dumps(self, obj, many=None):
-        """Returns a prettytable representation of the data."""
-        many = self.many if many is None else bool(many)
-        data = self.dump(obj, many=many)
-        if many:
-            columns = []
-            for attr_name, field_obj in self.fields.items():
-                if getattr(field_obj, 'load_only', False):
-                    continue
-                if field_obj.data_key or attr_name == 'settings':
-                    continue
-                columns.append(field_obj.data_key or attr_name)
-            table = PrettyTable(columns, align='l')
-            for entity in data:
-                table.add_row([entity.get(x) for x in columns])
-            return_data = str(table)
-        else:
-            user_table = PrettyTable(['Property', 'Value'], align='l')
-            settings = None
-            for key, value in data.items():
-                if key == 'settings':
-                    settings = value
-                    continue
-                user_table.add_row([key, value])
-            return_data = f'{user_table}\n\nSettings:'
-            try:
-                columns = settings[0].keys()
-                settings_table = PrettyTable(columns, align='l')
-                for setting in settings:
-                    settings_table.add_row(setting.values())
-                return_data = f'{return_data}\n{settings_table}'
-            except IndexError:
-                return_data = f'{return_data} No user settings found.'
-        return return_data
 
     id = field_for(User, 'id', dump_only=True)
     name = field_for(User, 'name', required=True)
@@ -87,8 +51,6 @@ class UserSchema(BaseSchema):
     created_at = field_for(User, 'created_at', dump_only=True)
     updated_at = field_for(User, 'updated_at', dump_only=True)
 
-    settings = ma_fields.Nested(
-        'UserSettingSchema', many=True, dump_only=True)
     permissions = ma_fields.Pluck(
         'RolePermissionSchema', 'name', many=True, dump_only=True)
     roles = ma_fields.Pluck(
@@ -114,25 +76,6 @@ class UserTokenSchema(BaseSchema):
         User, 'session_token_expires_at', data_key='expires_at',
         dump_only=True)
     submit = ma_fields.String(load_only=True)  # submit button on login
-
-
-class UserSettingSchema(BaseSchema):
-
-    class Meta:
-        model = UserSetting
-        fields = ('id', 'user_name', 'key', 'value', 'created_at',
-                  'updated_at')
-        ordered = True
-        unknown = RAISE
-
-    id = field_for(UserSetting, 'id', dump_only=True)
-    key = field_for(UserSetting, 'key', required=True)
-    value = field_for(UserSetting, 'value', required=True)
-    created_at = field_for(UserSetting, 'created_at', dump_only=True)
-    updated_at = field_for(UserSetting, 'updated_at', dump_only=True)
-
-    user_name = ma_fields.Pluck(
-        'UserSchema', 'name', dump_only=True)
 
 
 class RoleSchema(BaseSchema):

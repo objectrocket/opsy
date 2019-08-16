@@ -24,7 +24,6 @@ def configure_extensions(app):
     # Make SQLAlchemy aware of models
     from opsy.auth import models as am  # noqa: F401
     from opsy.inventory import models as im  # noqa: F401
-    from opsy.monitoring import models as mm  # noqa: F401
     db.init_app(app)
     ma.init_app(app)
     jsglue.init_app(app)
@@ -47,18 +46,6 @@ def configure_extensions(app):
     app.config['APISPEC_SPEC'].components.security_scheme(
         'api_key', {'type': 'apiKey', 'in': 'header', 'name': 'X-AUTH-TOKEN'})
     apispec.init_app(app)
-
-    @login_manager.user_loader
-    def load_user(session_token):  # pylint: disable=unused-variable
-        from opsy.auth.models import User
-        from opsy.auth.utils import verify_token
-        user = User.get_by_token(session_token)
-        return verify_token(user)
-
-    @login_manager.request_loader
-    def load_user_from_request(request):  # pylint: disable=unused-variable
-        session_token = request.headers.get('X-AUTH-TOKEN')
-        from opsy.auth.models import User
-        from opsy.auth.utils import verify_token
-        user = User.get_by_token(session_token)
-        return verify_token(user)
+    from opsy.auth.utils import load_user, load_user_from_request
+    login_manager.user_loader(load_user)
+    login_manager.request_loader(load_user_from_request)

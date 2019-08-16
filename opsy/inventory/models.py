@@ -1,3 +1,4 @@
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import validates
 from opsy.exceptions import DuplicateError
@@ -8,10 +9,6 @@ from opsy.utils import merge_dict
 ###############################################################################
 # Inventory models
 ###############################################################################
-
-
-class VarsMixin:
-    vars = db.Column(MutableDict.as_mutable(db.JSON))
 
 
 class Zone(NamedModel, TimeStampMixin, db.Model):
@@ -35,25 +32,6 @@ class Host(NamedModel, TimeStampMixin, db.Model):
     zone_id = db.Column(
         db.String(36), db.ForeignKey('zones.id', ondelete='CASCADE'),
         index=True, nullable=False)
-    domain = db.Column(db.String(128))
-    manufacturer = db.Column(db.String(128))
-    model = db.Column(db.String(128))
-    cpu_arch = db.Column(db.String(128))
-    cpu_model = db.Column(db.String(128))
-    cpu_count = db.Column(db.BigInteger)
-    cpu_flags = db.Column(MutableDict.as_mutable(db.JSON))
-    memory = db.Column(db.BigInteger)
-    swap = db.Column(db.BigInteger)
-    disks = db.Column(MutableDict.as_mutable(db.JSON))
-    networking = db.Column(MutableDict.as_mutable(db.JSON))
-    kernel = db.Column(db.String(128))
-    os = db.Column(db.String(128))
-    os_family = db.Column(db.String(128))
-    os_version = db.Column(db.String(128))
-    os_codename = db.Column(db.String(128))
-    os_arch = db.Column(db.String(128))
-    init_system = db.Column(db.String(128))
-    facts = db.Column(MutableDict.as_mutable(db.JSON))
     vars = db.Column(MutableDict.as_mutable(db.JSON))
 
     groups = db.relationship('Group',
@@ -75,13 +53,17 @@ class Host(NamedModel, TimeStampMixin, db.Model):
 
     @property
     def compiled_vars(self):
+        return self.compile_vars()
+
+    def compile_vars(self):
         compiled_dict = {}
         if self.zone.vars:
             merge_dict(compiled_dict, self.zone.vars, merge_lists=True)
         for group in self.groups:
             if group.compiled_vars:
                 merge_dict(
-                    compiled_dict, group.compiled_vars, merge_lists=True)
+                    compiled_dict, group.compile_vars(include_zone=False),
+                    merge_lists=True)
         if self.vars:
             merge_dict(compiled_dict, self.vars, merge_lists=True)
         return compiled_dict
@@ -108,24 +90,52 @@ class Group(BaseModel, TimeStampMixin, db.Model):
 
     __table_args__ = (
         db.UniqueConstraint('name', 'zone_id'),
+        db.UniqueConstraint(
+            'name', 'zone_id'),
+        db.Index(
+            'groups_name_zone_id_key_not_null', 'name', 'zone_id', unique=True,
+            postgresql_where=(db.not_(zone_id.is_(None))),
+            sqlite_where=(db.not_(zone_id.is_(None)))),
+        db.Index(
+            'groups_name_zone_id_key_null', 'name', unique=True,
+            postgresql_where=(zone_id.is_(None)),
+            sqlite_where=(zone_id.is_(None)))
     )
 
-    @validates('parent')
-    def validate_parent(self, key, parent):
+    @classmethod
+    def create(cls, name, *args, **kwargs):
+        try:
+            return cls(*args, name=name, **kwargs).save()
+        except IntegrityError:
+            db.session.rollback()
+            raise DuplicateError(
+                f'{cls.__name__} already exists with name "{name}" in '
+                'requested zone.')
+
+    @validates('parent_id')
+    def validate_parent_id(self, key, parent_id):
+        parent = Group.query.filter_by(id=parent_id).first()
         if not (parent.zone == self.zone or parent.zone is None):
             raise ValueError('Parent Group must either be in the same '
                              'Zone as child Group or not in a Zone.')
-        return parent
+        return parent_id
+
+    @validates('zone_id')
+    def validate_zone_id(self, key, zone_id):
+        if self.hosts:
+            raise ValueError('Cannot change the zone of a group with hosts.')
+        return zone_id
 
     @property
     def compiled_vars(self):
+        return self.compile_vars()
+
+    def compile_vars(self, include_zone=True):
         compiled_dict = {}
-        if self.zone:
-            if self.zone.vars:
-                merge_dict(compiled_dict, self.zone.vars, merge_lists=True)
-        if self.parent:
-            if self.parent.vars:
-                merge_dict(compiled_dict, self.parent.vars, merge_lists=True)
+        if self.zone and include_zone and self.zone.vars:
+            merge_dict(compiled_dict, self.zone.vars, merge_lists=True)
+        if self.parent and self.parent.vars:
+            merge_dict(compiled_dict, self.parent.vars, merge_lists=True)
         if self.vars:
             merge_dict(compiled_dict, self.vars, merge_lists=True)
         return compiled_dict
@@ -133,10 +143,10 @@ class Group(BaseModel, TimeStampMixin, db.Model):
     def add_host(self, host, priority=None):
         if host in self.hosts:
             raise DuplicateError(
-                'Host "{host.id}" already added to host group "{self.id}".')
+                'Host "{host.id}" already added to group "{self.id}".')
         if host.zone != self.zone:
             raise ValueError(
-                f'Host "{host.id}" not in same zone as host group '
+                f'Host "{host.id}" not in same zone as group '
                 f'"{self.id}".')
         if not priority:
             priority = self.default_priority
@@ -146,14 +156,14 @@ class Group(BaseModel, TimeStampMixin, db.Model):
     def remove_host(self, host):
         if host not in self.hosts:
             raise ValueError(
-                'Host "{host.id}" not in host group "{self.id}".')
-        self.hosts.remove(host)
-        self.save()
+                'Host "{host.id}" not in group "{self.id}".')
+        HostGroupMapping.query.filter_by(
+            host_id=host.id, group_id=self.id).first().delete()
 
     def get_host_priority(self, host):
         if host not in self.hosts:
             raise ValueError(
-                'Host "{host.id}" not in host group "{self.id}".')
+                'Host "{host.id}" not in group "{self.id}".')
         mapping = HostGroupMapping.query.filter_by(
             host_id=host.id, group_id=self.id).first()
         return mapping.priority
@@ -161,11 +171,10 @@ class Group(BaseModel, TimeStampMixin, db.Model):
     def change_host_priority(self, host, priority):
         if host not in self.hosts:
             raise ValueError(
-                'Host "{host.id}" not in host group "{self.id}".')
+                'Host "{host.id}" not in group "{self.id}".')
         mapping = HostGroupMapping.query.filter_by(
             host_id=host.id, group_id=self.id).first()
-        mapping.priority = priority
-        mapping.save()
+        mapping.update(priority=priority)
 
     def __repr__(self):
         zone_name = self.zone.name if self.zone else "None"
@@ -184,8 +193,18 @@ class HostGroupMapping(BaseModel, TimeStampMixin, db.Model):
         index=True, nullable=False)
     priority = db.Column(db.BigInteger, default=100)
 
-    host = db.relationship('Host', backref='group_mappings')
-    group = db.relationship('Group', backref='host_mappings')
+    host = db.relationship(
+        'Host',
+        backref=db.backref('group_mappings', cascade='all, delete-orphan',
+                           order_by='HostGroupMapping.priority'))
+    group = db.relationship(
+        'Group',
+        backref=db.backref('host_mappings', cascade='all, delete-orphan',
+                           order_by='HostGroupMapping.priority'))
+
+    __mapper_args__ = {
+        'confirm_deleted_rows': False
+    }
 
     @property
     def host_name(self):
@@ -196,28 +215,20 @@ class HostGroupMapping(BaseModel, TimeStampMixin, db.Model):
         return self.group.name
 
     @classmethod
-    def get_by_host_id_or_name(cls, host_id_or_name, group_id_or_name=None,
-                               error_on_none=False):
-        if group_id_or_name:
-            obj = cls.query.join(Host).join(Group).filter(
-                db.and_(
-                    db.or_(Host.name == host_id_or_name,
-                           Host.id == host_id_or_name),
-                    db.or_(Group.name == group_id_or_name,
-                           Group.id == group_id_or_name))).first()
-        else:
-            obj = cls.query.join(Host).filter(
-                db.or_(Host.name == host_id_or_name,
-                       Host.id == host_id_or_name)).all()
-        if not obj and error_on_none:
-            raise ValueError('No group mapping found with provided criteria.')
-        return obj
-
-    @classmethod
-    def get_by_group_id_or_name(cls, group_id_or_name, error_on_none=False):
-        obj = cls.query.filter(db.or_(
-            cls.name == group_id_or_name, cls.id == group_id_or_name)).first()
-        if not obj and error_on_none:
-            raise ValueError('No %s found with name or id "%s".' %
-                             (cls.__name__, group_id_or_name))
+    def get_by_host_and_group(cls, host_id_or_name, group_id_or_name):
+        obj = cls.query.join(Host).join(Group).filter(
+            db.and_(
+                db.or_(
+                    Host.name == host_id_or_name,
+                    Host.id == host_id_or_name),
+                db.or_(
+                    Group.name == group_id_or_name,
+                    Group.id == group_id_or_name),
+                Group.zone_id == Host.zone_id)
+        ).first()
+        if not obj:
+            raise ValueError(
+                f'No mapping found with host name or id of '
+                f'"{host_id_or_name}" and group name or id of '
+                f'"{group_id_or_name}".')
         return obj

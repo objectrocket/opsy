@@ -63,7 +63,7 @@ class OpsyQuery(BaseQuery):
                 exclude_list.extend([descriptor.like(x) for x in not_like])
             if exclude_list:
                 if local_descriptor and isinstance(
-                        local_descriptor, CollectionAttributeImpl):
+                        local_descriptor.impl, CollectionAttributeImpl):
                     # If this is a join we want to also include things that
                     # don't match the join condition on negation. So like
                     # if the foreign key is null, for example.
@@ -74,19 +74,16 @@ class OpsyQuery(BaseQuery):
         return filters_list
 
     def _parse_filters(self, items):
-        if items:
-            item_list = items.split(',')
-            # Wrap in a set to remove duplicates
-            include = list({x for x in item_list
-                            if not x.startswith('!') and '*' not in x})
-            exclude = list({x[1:] for x in item_list
-                            if x.startswith('!') and '*' not in x})
-            like = list({x.replace('*', '%') for x in item_list
-                         if not x.startswith('!') and '*' in x})
-            not_like = list({x[1:].replace('*', '%') for x in item_list
-                             if x.startswith('!') and '*' in x})
-        else:
-            include, exclude, like, not_like = [], [], [], []
+        item_list = items.split(',')
+        # Wrap in a set to remove duplicates
+        include = list({x for x in item_list
+                        if not x.startswith('!') and '*' not in x})
+        exclude = list({x[1:] for x in item_list
+                        if x.startswith('!') and '*' not in x})
+        like = list({x.replace('*', '%') for x in item_list
+                     if not x.startswith('!') and '*' in x})
+        not_like = list({x[1:].replace('*', '%') for x in item_list
+                         if x.startswith('!') and '*' in x})
         return include, exclude, like, not_like
 
     def get_or_fail(self, ident):
@@ -147,7 +144,7 @@ class BaseModel:
             db.session.commit()
 
     def __repr__(self):
-        return '<%s %s>' % (self.__class__.__name__, self.id)
+        return f'<{self.__class__.__name__} {self.id}>'
 
 
 class NamedModel(BaseModel):
@@ -164,42 +161,26 @@ class NamedModel(BaseModel):
         if cls.query.filter_by(name=name).first():
             raise DuplicateError('%s already exists with name "%s".' % (
                 cls.__name__, name))
-        if obj_class:
-            obj = obj_class(name, *args, **kwargs)
-        else:
-            obj = cls(name, *args, **kwargs)
-        return obj.save()
+        return cls(name, *args, **kwargs).save()
 
     @classmethod
-    def delete_by_name(cls, obj_name, **kwargs):
-        return cls.query.filter_by(name=obj_name).first_or_fail().delete(
-            **kwargs)
-
-    @classmethod
-    def update_by_name(cls, obj_name, **kwargs):
-        return cls.query.filter_by(name=obj_name).first_or_fail().update(
-            **kwargs)
-
-    @classmethod
-    def get_by_id_or_name(cls, obj_id_or_name, error_on_none=False):
+    def get_by_id_or_name(cls, obj_id_or_name):
         obj = cls.query.filter(db.or_(
             cls.name == obj_id_or_name, cls.id == obj_id_or_name)).first()
-        if not obj and error_on_none:
+        if not obj:
             raise ValueError('No %s found with name or id "%s".' %
                              (cls.__name__, obj_id_or_name))
         return obj
 
     @classmethod
-    def delete_by_id_or_name(cls, obj_id_or_name, error_on_none=True,
-                             **kwargs):
+    def delete_by_id_or_name(cls, obj_id_or_name, **kwargs):
         return cls.get_by_id_or_name(
-            obj_id_or_name, error_on_none=error_on_none).delete(**kwargs)
+            obj_id_or_name).delete(**kwargs)
 
     @classmethod
-    def update_by_id_or_name(cls, obj_id_or_name, error_on_none=True,
-                             **kwargs):
+    def update_by_id_or_name(cls, obj_id_or_name, **kwargs):
         return cls.get_by_id_or_name(
-            obj_id_or_name, error_on_none=error_on_none).update(**kwargs)
+            obj_id_or_name).update(**kwargs)
 
     def __repr__(self):
-        return '<%s %s>' % (self.__class__.__name__, self.name)
+        return f'<{self.__class__.__name__} {self.name}>'

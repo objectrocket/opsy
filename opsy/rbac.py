@@ -1,6 +1,6 @@
 from functools import wraps
 from flask import current_app, request, abort
-from flask_allows import allows, Or, Requirement
+from flask_allows import allows, Or
 
 
 def is_logged_in(user):
@@ -16,13 +16,35 @@ def is_same_user(user):
     return user.name == user_name
 
 
+def has_permission(permission):
+
+    def permission_checker(user):
+        if current_app.config.get('LOGIN_DISABLED'):
+            return True
+        permissions = []
+        # Everyone gets base permissions
+        permissions.extend(current_app.config.opsy['base_permissions'])
+        if user.is_authenticated and user.is_active:
+            # Logged in users get logged in permissions
+            permissions.extend(
+                current_app.config.opsy['logged_in_permissions'])
+            # And a user gets their own permissions from their roles
+            if hasattr(user, 'permissions'):
+                permissions.extend([x.name for x in user.permissions])
+        else:
+            abort(401)
+        return permission in permissions
+
+    return permission_checker
+
+
 def need_permission(permission_name, *requirements, identity=None,
                     on_fail=None, throws=None):
     """Modified version of flask_allows requires decorator to tie into RBAC."""
 
     def decorator(func):
 
-        permission = HasPermission(permission_name)
+        permission = has_permission(permission_name)
         if requirements:
             new_requirements = (Or(permission, requirements))
         else:
@@ -50,29 +72,3 @@ def need_permission(permission_name, *requirements, identity=None,
         allower.__rbac__ = rbac_info
         return allower
     return decorator
-
-
-class HasPermission(Requirement):
-    """Checks if the user has the necessary permission to access resource."""
-
-    def __init__(self, permission):
-        self.permission = permission
-
-    def fulfill(self, user):
-        if current_app.config.get('LOGIN_DISABLED'):
-            return True
-        # Everyone gets base permissions
-        permissions = current_app.config.opsy['base_permissions']
-        if user.is_authenticated and user.is_active:
-            # Logged in users get logged in permissions
-            permissions.extend(
-                current_app.config.opsy['logged_in_permissions'])
-            # And a user gets their own permissions from their roles
-            if hasattr(user, 'permissions'):
-                permissions.extend([x.name for x in user.permissions])
-        else:
-            abort(401)
-        return self.permission in permissions
-
-    def __repr__(self):
-        return '<{}(\'{}\')>'.format(self.__class__.__name__, self.permission)

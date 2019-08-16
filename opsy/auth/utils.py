@@ -106,3 +106,16 @@ def verify_token(user):  # pylint: disable=R0911
             header.get('exp')):
         return None  # expire times don't match
     return user
+
+
+def load_user(session_token):
+    from opsy.auth.models import User
+    user = User.get_by_token(session_token)
+    return verify_token(user)
+
+
+def load_user_from_request(request):
+    from opsy.auth.models import User
+    session_token = request.headers.get('X-AUTH-TOKEN')
+    user = User.get_by_token(session_token)
+    return verify_token(user)

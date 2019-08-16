@@ -1,10 +1,12 @@
 #Opsy files
 /opsy.ini
 /opsy.db
+/tests/opsy.db
 *fakeapi*
 
 #PBR
 ChangeLog
+AUTHORS
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

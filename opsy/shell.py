@@ -1,18 +1,15 @@
-import asyncio
 import os
 from functools import partial, wraps
 import click
 from flask import current_app
 from flask.cli import AppGroup, run_command, routes_command, ScriptInfo
 from opsy.flask_extensions import db
-from opsy.app import create_app, create_scheduler
+from opsy.app import create_app
 from opsy.exceptions import DuplicateError
-from opsy.utils import (load_plugins, print_error, print_notice,
-                        get_protected_routes)
+from opsy.utils import print_error, print_notice, get_protected_routes
 from opsy.auth.schema import UserSchema, RoleSchema, PermissionSchema
 from opsy.auth.models import Role, User, Permission
 from opsy.inventory.models import Zone, Host, Group, HostGroupMapping
-from opsy.monitoring.models import Event, MonitoringService, Dashboard
 
 
 DEFAULT_CONFIG = os.environ.get(
@@ -43,19 +40,6 @@ cli.add_command(run_command)
 cli.add_command(routes_command)
 
 
-@cli.command('run-scheduler')
-def run_scheduler():
-    """Run the scheduler."""
-    scheduler = create_scheduler(current_app)
-    try:
-        current_app.logger.info('Starting the scheduler...')
-        scheduler.start()
-        asyncio.get_event_loop().run_forever()
-    except (KeyboardInterrupt, SystemExit):
-        scheduler.shutdown()
-        current_app.logger.info('Stopping the scheduler...')
-
-
 @cli.command('shell')
 def shell():
     """Run a shell in the app context."""
@@ -63,7 +47,6 @@ def shell():
     banner = 'Welcome to Opsy!'
     app = _app_ctx_stack.top.app
     shell_ctx = {'create_app': create_app,
-                 'create_scheduler': create_scheduler,
                  'db': db,
                  'User': User,
                  'Role': Role,
@@ -71,12 +54,7 @@ def shell():
                  'Zone': Zone,
                  'Host': Host,
                  'Group': Group,
-                 'HostGroupMapping': HostGroupMapping,
-                 'Event': Event,
-                 'MonitoringService': MonitoringService,
-                 'Dashboard': Dashboard}
-    for plugin in load_plugins(current_app):
-        plugin.register_shell_context(shell_ctx)
+                 'HostGroupMapping': HostGroupMapping}
     shell_ctx.update(app.make_shell_context())
     try:
         from IPython import embed
@@ -98,19 +76,14 @@ def init_db():
     db.session.commit()
 
 
-# @cli.group('auth')
-# def auth_cli():
-#     """Commands related to auth."""
-#     pass
-
-
 @cli.command('permission-list')
 @click_option('--resource', type=click.STRING)
 @click_option('--method', type=click.STRING)
 @common_params
 def permission_list(json, **kwargs):
     """List all permissions the app is aware of."""
-    PermissionSchema(many=True).print(get_protected_routes(), json=json)
+    PermissionSchema(many=True).print(
+        get_protected_routes(ignored_methods=["HEAD", "OPTIONS"]), json=json)
 
 
 @cli.group('user')
@@ -141,7 +114,7 @@ def user_create(user_name, json=None, **kwargs):
 def user_password(user_id_or_name, password):
     """Change a user's password interactively."""
     try:
-        user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
+        user = User.get_by_id_or_name(user_id_or_name)
     except ValueError as error:
         print_error(error)
     user.password = password
@@ -162,7 +135,7 @@ def user_show(user_id_or_name, json):
     """Show a user."""
     try:
         UserSchema().print(User.get_by_id_or_name(
-            user_id_or_name, error_on_none=True), json=json)
+            user_id_or_name), json=json)
     except ValueError as error:
         print_error(error)
 
@@ -195,53 +168,6 @@ def user_modify(user_id_or_name, json=None, **kwargs):
             json=json)
     except ValueError as error:
         print_error(error)
-
-
-@user_cli.command('add-setting')
-@click.argument('user_id_or_name', type=click.STRING)
-@click.argument('key', type=click.STRING)
-@click.argument('value', type=click.STRING)
-@common_params
-def user_add_setting(user_id_or_name, key, value, json=None):
-    """Add a setting to a user."""
-    try:
-        user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
-    except ValueError as error:
-        print_error(error)
-    try:
-        user.add_setting(key, value)
-    except DuplicateError as error:
-        print_error(error)
-    UserSchema().print(user, json=json)
-
-
-@user_cli.command('remove-setting')
-@click.argument('user_id_or_name', type=click.STRING)
-@click.argument('key', type=click.STRING)
-@common_params
-def user_remove_setting(user_id_or_name, key, json):
-    """Remove a user's setting."""
-    try:
-        user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
-        user.remove_setting(key)
-    except ValueError as error:
-        print_error(error)
-    UserSchema().print(user, json=json)
-
-
-@user_cli.command('modify-setting')
-@click.argument('user_id_or_name', type=click.STRING)
-@click.argument('key', type=click.STRING)
-@click.argument('value', type=click.STRING)
-@common_params
-def user_modify_setting(user_id_or_name, key, value, json):
-    """Modify a user's setting."""
-    try:
-        user = User.get_by_id_or_name(user_id_or_name, error_on_none=True)
-        user.modify_setting(key)
-    except ValueError as error:
-        print_error(error)
-    UserSchema().print(user, json=json)
 
 
 @cli.group('role')
@@ -277,7 +203,7 @@ def role_show(role_id_or_name, json):
     """Show a role."""
     try:
         RoleSchema().print(Role.get_by_id_or_name(
-            role_id_or_name, error_on_none=True), json=json)
+            role_id_or_name), json=json)
     except ValueError as error:
         print_error(error)
 
@@ -316,10 +242,9 @@ def role_modify(role_id_or_name, json=None, **kwargs):
 def role_add_user(role_id_or_name, user_ids_or_names, json):
     """Add a users to a role."""
     try:
-        role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
+        role = Role.get_by_id_or_name(role_id_or_name)
         for user_id_or_name in user_ids_or_names:
-            user = User.get_by_id_or_name(user_id_or_name,
-                                          error_on_none=True)
+            user = User.get_by_id_or_name(user_id_or_name)
             role.add_user(user)
     except ValueError as error:
         print_error(error)
@@ -333,10 +258,9 @@ def role_add_user(role_id_or_name, user_ids_or_names, json):
 def role_remove_user(role_id_or_name, user_ids_or_names, json):
     """Remove a users from a role."""
     try:
-        role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
+        role = Role.get_by_id_or_name(role_id_or_name)
         for user_id_or_name in user_ids_or_names:
-            user = User.get_by_id_or_name(user_id_or_name,
-                                          error_on_none=True)
+            user = User.get_by_id_or_name(user_id_or_name)
             role.remove_user(user)
     except ValueError as error:
         print_error(error)
@@ -350,7 +274,7 @@ def role_remove_user(role_id_or_name, user_ids_or_names, json):
 def role_add_permission(role_id_or_name, permission_names, json):
     """Add a permissions to a role."""
     try:
-        role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
+        role = Role.get_by_id_or_name(role_id_or_name)
         for permission_name in permission_names:
             role.add_permission(permission_name)
     except ValueError as error:
@@ -365,7 +289,7 @@ def role_add_permission(role_id_or_name, permission_names, json):
 def role_remove_permission(role_id_or_name, permission_names, json):
     """Remove a permissions from a role."""
     try:
-        role = Role.get_by_id_or_name(role_id_or_name, error_on_none=True)
+        role = Role.get_by_id_or_name(role_id_or_name)
         for permission_name in permission_names:
             role.remove_permission(permission_name)
     except ValueError as error:
