@@ -8,4 +8,5 @@ pytest==5.0.1
 pytest-cov==2.7.1
 pytest-flask==0.15.0
 pytest-flask-sqlalchemy==1.0.2
+pytest-mock==1.11.0
 tox==3.13.2
