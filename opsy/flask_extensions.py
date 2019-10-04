@@ -7,10 +7,12 @@ from flask_jsglue import JSGlue
 from flask_ldap3_login import LDAP3LoginManager
 from flask_login import LoginManager, current_user
 from flask_marshmallow import Marshmallow
+from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 
 allows = Allows()  # pylint: disable=invalid-name
 db = SQLAlchemy()  # pylint: disable=invalid-name
+migrate = Migrate()  # pylint: disable=invalid-name
 iniconfig = INIConfig()  # pylint: disable=invalid-name
 jsglue = JSGlue()  # pylint: disable=invalid-name
 ldap_manager = LDAP3LoginManager()  # pylint: disable=invalid-name
@@ -25,6 +27,7 @@ def configure_extensions(app):
     from opsy.auth import models as am  # noqa: F401
     from opsy.inventory import models as im  # noqa: F401
     db.init_app(app)
+    migrate.init_app(app, db=db)
     ma.init_app(app)
     jsglue.init_app(app)
     login_manager.init_app(app)
