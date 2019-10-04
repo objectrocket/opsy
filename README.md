@@ -20,7 +20,7 @@ Create opsy.ini by copying the example config:
 
 Initialize the DB, the example config uses sqlite by default for development:
 
-    $ opsy init-db
+    $ opsy db init-db
 
 You can now create your first user and set its password, create a role, then add the user to the role:
 
@@ -38,3 +38,16 @@ We are now ready to start opsy for the first time:
     $ opsy run
 
 By default it listens on `http://127.0.0.1:5000/`. You can access the auto generated swagger docs by navigating to `http://127.0.0.1:5000/docs/`.
+
+# Dealing with schema changes
+
+If you are introducing a change that requires a schema change you must create a schema revision. This can be done like so:
+
+    $ opsy db migrate
+
+This will autogenerate a new revision file under `migrations/versions/`. Please review the resulting file and make any changes necessary to account for changes that Alembic doesn't do a good job of detecting (things like table renames). Please review the following documentation for more information:
+https://alembic.sqlalchemy.org/en/latest/autogenerate.html#what-does-autogenerate-detect-and-what-does-it-not-detect
+
+If you are upgrading Opsy and need to migrate to a newer version of the schema you can run the following:
+
+    $ opsy db upgrade
