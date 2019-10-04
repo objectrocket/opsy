@@ -110,6 +110,12 @@ def test_hosts(db_session):
 
 
 @pytest.fixture(scope="function")
-def test_inventory_bootstrap(db_session):
+def test_inventory_bootstrap(db_session, mocker):
     """Creates a test inventory environment."""
+
+    # This is to workaround the race condition outlined in this issue:
+    # https://github.com/jeancochrane/pytest-flask-sqlalchemy/issues/18
+    # Seems to only really bite us with the inventory tests, so just putting
+    # here.
+    mocker.patch.object(db_session, "remove", lambda: None)
     return inventory.test_inventory_bootstrap()
