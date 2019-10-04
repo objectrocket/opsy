@@ -2,7 +2,9 @@ import os
 from functools import partial, wraps
 import click
 from flask import current_app
-from flask.cli import AppGroup, run_command, routes_command, ScriptInfo
+from flask.cli import (AppGroup, run_command, routes_command, ScriptInfo,
+                       with_appcontext)
+from flask_migrate.cli import db as db_command
 from opsy.flask_extensions import db
 from opsy.app import create_app
 from opsy.exceptions import DuplicateError
@@ -38,6 +40,7 @@ def cli(ctx, config):
 
 cli.add_command(run_command)
 cli.add_command(routes_command)
+cli.add_command(db_command)
 
 
 @cli.command('shell')
@@ -65,9 +68,10 @@ def shell():
         code.interact(banner, local=shell_ctx)
 
 
-@cli.command('init-db')
+@db_command.command('init-db')
 @click.confirmation_option(
     prompt='This will delete everything. Do you want to continue?')
+@with_appcontext
 def init_db():
     """Drop everything in database and rebuild the schema."""
     current_app.logger.info('Creating database...')
