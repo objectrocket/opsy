@@ -163,7 +163,7 @@ class RolePermissionSchema(BaseSchema):
         'RoleRefSchema', dump_only=True)
 
 
-class RolePermissionsQuerySchema(RolePermissionSchema):
+class RolePermissionQuerySchema(RolePermissionSchema):
 
     class Meta:
         model = Permission
@@ -176,7 +176,7 @@ class RolePermissionsQuerySchema(RolePermissionSchema):
     role_id = field_for(Permission, 'role_id')
 
 
-class RolePermissionsRefSchema(RolePermissionSchema):
+class RolePermissionRefSchema(RolePermissionSchema):
 
     class Meta:
         model = Permission
