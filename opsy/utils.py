@@ -1,6 +1,6 @@
 import copy
 import sys
-from collections import Mapping
+from collections.abc import Mapping
 from operator import attrgetter
 from flask import current_app
 
