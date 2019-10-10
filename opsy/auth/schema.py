@@ -51,10 +51,34 @@ class UserSchema(BaseSchema):
     created_at = field_for(User, 'created_at', dump_only=True)
     updated_at = field_for(User, 'updated_at', dump_only=True)
 
-    permissions = ma_fields.Pluck(
-        'RolePermissionSchema', 'name', many=True, dump_only=True)
-    roles = ma_fields.Pluck(
-        'RoleSchema', 'name', many=True, dump_only=True)
+    permissions = ma.Nested(  # pylint: disable=no-member
+        'RolePermissionRefSchema', 'name', many=True, dump_only=True)
+    roles = ma.Nested(  # pylint: disable=no-member
+        'RoleRefSchema', 'name', many=True, dump_only=True)
+
+
+class UserQuerySchema(UserSchema):
+
+    class Meta:
+        model = User
+        fields = ('id', 'name', 'email', 'permission_name', 'enabled')
+        ordered = True
+        unknown = RAISE
+
+    id = field_for(User, 'id')
+    name = field_for(User, 'name', required=False)
+    email = field_for(User, 'email')
+    permission_name = ma_fields.String(attribute='permissions___name')
+    enabled = field_for(User, 'enabled')
+
+
+class UserRefSchema(UserSchema):
+
+    class Meta:
+        model = User
+        fields = ('id', 'name', '_links')
+        ordered = True
+        unknown = RAISE
 
 
 class UserTokenSchema(BaseSchema):
@@ -98,6 +122,31 @@ class RoleSchema(BaseSchema):
         'UserSchema', 'name', many=True, dump_only=True)
 
 
+class RoleQuerySchema(RoleSchema):
+
+    class Meta:
+        model = Role
+        fields = ('id', 'name', 'ldap_group', 'permissions', 'users')
+        ordered = True
+        unknown = RAISE
+
+    id = field_for(Role, 'id')
+    name = field_for(Role, 'name', required=False)
+    ldap_group = field_for(Role, 'ldap_group')
+    permission_name = ma_fields.String(attribute='permissions___name')
+    user_name = ma_fields.String(attribute='users___name')
+    user_id = ma_fields.String(attribute='users___id')
+
+
+class RoleRefSchema(RoleSchema):
+
+    class Meta:
+        model = Role
+        fields = ('id', 'name', '_links')
+        ordered = True
+        unknown = RAISE
+
+
 class RolePermissionSchema(BaseSchema):
 
     class Meta:
@@ -111,4 +160,26 @@ class RolePermissionSchema(BaseSchema):
     updated_at = field_for(Permission, 'updated_at', dump_only=True)
 
     role = ma.Nested(  # pylint: disable=no-member
-        'RoleSchema', dump_only=True, only=['id', 'name'])
+        'RoleRefSchema', dump_only=True)
+
+
+class RolePermissionsQuerySchema(RolePermissionSchema):
+
+    class Meta:
+        model = Permission
+        fields = ('id', 'name', 'role_id')
+        ordered = True
+        uknown = RAISE
+
+    id = field_for(Permission, 'id')
+    name = field_for(Permission, 'name', required=False)
+    role_id = field_for(Permission, 'role_id')
+
+
+class RolePermissionsRefSchema(RolePermissionSchema):
+
+    class Meta:
+        model = Permission
+        fields = ('id', 'name', '_links')
+        ordered = True
+        unknown = RAISE
