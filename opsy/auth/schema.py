@@ -116,10 +116,10 @@ class RoleSchema(BaseSchema):
     created_at = field_for(Role, 'created_at', dump_only=True)
     updated_at = field_for(Role, 'updated_at', dump_only=True)
 
-    permissions = ma_fields.Pluck(
-        'RolePermissionSchema', 'name', many=True, dump_only=True)
-    users = ma_fields.Pluck(
-        'UserSchema', 'name', many=True, dump_only=True)
+    permissions = ma.Nested(  # pylint: disable=no-member
+        'RolePermissionRefSchema', many=True, dump_only=True)
+    users = ma.Nested(  # pylint: disable=no-member
+        'UserRefSchema', many=True, dump_only=True)
 
 
 class RoleQuerySchema(RoleSchema):
