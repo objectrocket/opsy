@@ -52,9 +52,9 @@ class UserSchema(BaseSchema):
     updated_at = field_for(User, 'updated_at', dump_only=True)
 
     permissions = ma.Nested(  # pylint: disable=no-member
-        'RolePermissionRefSchema', 'name', many=True, dump_only=True)
+        'RolePermissionRefSchema', many=True, dump_only=True)
     roles = ma.Nested(  # pylint: disable=no-member
-        'RoleRefSchema', 'name', many=True, dump_only=True)
+        'RoleRefSchema', many=True, dump_only=True)
 
 
 class UserQuerySchema(UserSchema):
