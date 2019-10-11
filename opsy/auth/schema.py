@@ -61,7 +61,8 @@ class UserQuerySchema(UserSchema):
 
     class Meta:
         model = User
-        fields = ('id', 'name', 'email', 'permission_name', 'enabled')
+        fields = ('id', 'name', 'email', 'permission_name',
+            'role_id', 'role_name', 'enabled')
         ordered = True
         unknown = RAISE
 
@@ -69,6 +70,8 @@ class UserQuerySchema(UserSchema):
     name = field_for(User, 'name', required=False)
     email = field_for(User, 'email')
     permission_name = ma_fields.String(attribute='permissions___name')
+    role_id = ma_fields.String(attribute='role___id')
+    role_name = ma_fields.String(attribute='role___name')
     enabled = field_for(User, 'enabled')
 
 
@@ -126,7 +129,8 @@ class RoleQuerySchema(RoleSchema):
 
     class Meta:
         model = Role
-        fields = ('id', 'name', 'ldap_group', 'permissions', 'users')
+        fields = ('id', 'name', 'ldap_group', 'permssion_name',
+            'user_name', 'user_id')
         ordered = True
         unknown = RAISE
 
@@ -167,13 +171,12 @@ class RolePermissionQuerySchema(RolePermissionSchema):
 
     class Meta:
         model = Permission
-        fields = ('id', 'name', 'role_id')
+        fields = ('id', 'name')
         ordered = True
         uknown = RAISE
 
     id = field_for(Permission, 'id')
     name = field_for(Permission, 'name', required=False)
-    role_id = field_for(Permission, 'role_id')
 
 
 class RolePermissionRefSchema(RolePermissionSchema):
