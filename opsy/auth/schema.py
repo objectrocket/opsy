@@ -62,7 +62,7 @@ class UserQuerySchema(UserSchema):
     class Meta:
         model = User
         fields = ('id', 'name', 'email', 'permission_name',
-            'role_id', 'role_name', 'enabled')
+                  'role_id', 'role_name', 'enabled')
         ordered = True
         unknown = RAISE
 
@@ -130,7 +130,7 @@ class RoleQuerySchema(RoleSchema):
     class Meta:
         model = Role
         fields = ('id', 'name', 'ldap_group', 'permssion_name',
-            'user_name', 'user_id')
+                  'user_name', 'user_id')
         ordered = True
         unknown = RAISE
 
