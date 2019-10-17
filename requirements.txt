@@ -11,7 +11,7 @@ Flask-Login==0.4.1
 flask-marshmallow==0.10.1
 Flask-Migrate==2.5.2
 Flask-SQLAlchemy==2.4.0
-marshmallow==3.0.0rc8
+marshmallow==3.2.1
 marshmallow-sqlalchemy==0.17.0
 pbr==5.1.1
 psycopg2-binary==2.8.2
