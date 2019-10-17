@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from time import time
-from flask import current_app
+from flask import current_app, g
+from flask.sessions import SecureCookieSessionInterface
 from flask_ldap3_login import AuthenticationResponseStatus
 from flask_login import login_user, logout_user
 from itsdangerous import (TimedJSONWebSignatureSerializer
@@ -8,20 +9,34 @@ from itsdangerous import (TimedJSONWebSignatureSerializer
 from opsy.flask_extensions import ldap_manager
 
 
+class APISessionInterface(SecureCookieSessionInterface):
+    """Prevent creating session from API requests."""
+
+    def save_session(self, *args, **kwargs):
+        if g.get('login_via_header'):
+            return
+        return super(APISessionInterface, self).save_session(*args, **kwargs)
+
+
 # pylint: disable=too-many-branches
 def login(username, password, remember=False, force=False, fresh=True):
     from opsy.auth.models import User, Role
-    if current_app.config.opsy['enable_ldap']:
+    if current_app.config.opsy['auth']['ldap_enabled']:
         current_app.logger.info(f'Attempting LDAP login for {username}...')
         result = ldap_manager.authenticate(username, password)
         if not result.status == AuthenticationResponseStatus.success:
             current_app.logger.info(
                 f'LDAP login failed for {username}. Incorrect password?')
             return False
-        full_name_attr = current_app.config.opsy['ldap_user_full_name_attr']
-        email_attr = current_app.config.opsy['ldap_user_email_attr']
-        group_name_attr = current_app.config.opsy['ldap_group_name_attr']
-        email = result.user_info[email_attr]
+        full_name_attr = \
+            current_app.config.opsy['auth']['ldap_user_full_name_attr']
+        email_attr = current_app.config.opsy['auth']['ldap_user_email_attr']
+        group_name_attr = \
+            current_app.config.opsy['auth']['ldap_group_name_attr']
+        if isinstance(result.user_info[email_attr], list):
+            email = result.user_info[email_attr][0]
+        else:
+            email = result.user_info[email_attr]
         full_name = result.user_info[full_name_attr]
         user = User.query.filter_by(name=result.user_id).first()
         if not user:
@@ -73,7 +88,7 @@ def logout(user):
 def create_token(user, force_renew=False):
     if not force_renew and verify_token(user):
         return
-    ttl = current_app.config.opsy['session_token_ttl']
+    ttl = current_app.config.opsy['auth']['session_token_ttl']
     seri = Serializer(
         current_app.config['SECRET_KEY'], expires_in=ttl)
     user.session_token = seri.dumps({'id': user.id}).decode('ascii')
@@ -86,7 +101,7 @@ def create_token(user, force_renew=False):
 def verify_token(user):  # pylint: disable=R0911
     if user is None:
         return None
-    ttl = current_app.config.opsy['session_token_ttl']
+    ttl = current_app.config.opsy['auth']['session_token_ttl']
     seri = Serializer(current_app.config['SECRET_KEY'])
     try:
         data, header = seri.loads(user.session_token, return_header=True)
@@ -117,5 +132,6 @@ def load_user(session_token):
 def load_user_from_request(request):
     from opsy.auth.models import User
     session_token = request.headers.get('X-AUTH-TOKEN')
-    user = User.get_by_token(session_token)
-    return verify_token(user)
+    user = verify_token(User.get_by_token(session_token))
+    g.login_via_header = True
+    return user

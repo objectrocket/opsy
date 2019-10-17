@@ -1,34 +1,21 @@
-import logging
-from logging.handlers import WatchedFileHandler
 from flask import Flask
+from opsy.config import configure_app
 from opsy.flask_extensions import configure_extensions, apispec
-from opsy.config import load_config
+from opsy.logging import (configure_logging, log_before_request,
+                          log_after_request)
 from opsy.auth.views import create_auth_views
 from opsy.inventory.views import create_inventory_views
 
 
-def create_app(config_file):
-    app = Flask(__name__)
-    load_config(app, config_file)
-    create_logging(app)
+def create_app(config):
+    configure_logging(config)
+    app = Flask('opsy')
+    app.before_request(log_before_request)
+    app.after_request(log_after_request)
+    configure_app(app, config)
     configure_extensions(app)
     create_views(app)
     return app
-
-
-def create_logging(app):
-    if not app.debug:
-        log_handlers = []
-        log_file = app.config.opsy['log_file']
-        if log_file:
-            log_handlers.append(WatchedFileHandler(log_file))
-        formatter = logging.Formatter(
-            "%(asctime)s %(process)d %(levelname)s %(module)s - %(message)s")
-        for log_handler in log_handlers:
-            app.logger.addHandler(log_handler)
-        for log_handler in app.logger.handlers:
-            log_handler.setFormatter(formatter)
-        app.logger.setLevel(logging.INFO)
 
 
 def create_views(app):

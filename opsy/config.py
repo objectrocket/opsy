@@ -1,77 +1,122 @@
 import os.path
-from collections import namedtuple
-from functools import partial
-from opsy.flask_extensions import iniconfig
-from opsy.exceptions import NoConfigFile, NoConfigSection, MissingConfigOption
-
-MappedFlaskConfigOption = namedtuple(  # pylint: disable=invalid-name
-    'ConfigOption', ['flask_mapping', 'name', 'type', 'required', 'default'])
-'''
-flask_mapping: map this config option to this global level flask config.
-name: the name of the config option.
-type: expected type from the config file.
-required: will complain if true and the option is missing from the config.
-default: the default value to set this to if it is missing from the config.
-'''
-
-ConfigOption = partial(  # pylint: disable=invalid-name
-    MappedFlaskConfigOption, None)
-
-DEFAULT_FLASK_CONFIG = {
-    'SQLALCHEMY_TRACK_MODIFICATIONS': False,
-    'JSON_SORT_KEYS': False
-}
-
-CONFIG_OPTIONS = [
-    MappedFlaskConfigOption('SECRET_KEY', 'secret_key', str, True, None),
-    MappedFlaskConfigOption('SQLALCHEMY_DATABASE_URI', 'database_uri', str,
-                            True, None),
-    ConfigOption('log_file', str, False, None),
-    ConfigOption('session_token_ttl', int, False, 86400),
-    ConfigOption('base_permissions', list, False, []),
-    ConfigOption('logged_in_permissions', list, False, []),
-    ConfigOption('enable_ldap', bool, False, False),
-    ConfigOption('ldap_user_full_name_attr', str, False, 'displayName'),
-    ConfigOption('ldap_user_email_attr', str, False, 'mail'),
-    ConfigOption('ldap_group_name_attr', str, False, 'cn')
-]
+import toml
+from marshmallow import (Schema, fields, validate, validates_schema,
+                         ValidationError)
+from opsy.exceptions import NoConfigFile
 
 
-def validate_config(app):
-    section_name = 'opsy'
-    config_options = CONFIG_OPTIONS
-    if not hasattr(app.config, section_name):
-        if any([x.required for x in config_options]):
-            raise NoConfigSection(
-                f'Config section "{section_name}" does not exist in config '
-                f'file "{app.config_file}".')
-        setattr(app.config, section_name, {})
-    section_config = getattr(app.config, section_name)
-    for option in config_options:
-        if not section_config.get(option.name):
-            if option.required:
-                raise MissingConfigOption(
-                    f'Required config option "{option.name}" missing from '
-                    f'config section "{section_name}" in config file '
-                    f'"{app.config_file}".')
-            section_config[option.name] = option.default
-        if (section_config[option.name] is not None and not
-                isinstance(section_config[option.name], option.type)):
-            raise TypeError(
-                f'Expected "{option.type.__name__}" type for config option '
-                f'"{option}" from config section "{section_name}" in config '
-                f'file "{app.config_file}".')
-        if option.flask_mapping:
-            app.config[option.flask_mapping] = section_config[option.name]
-            section_config.pop(option.name)
+class ConfigAppSchema(Schema):
+    database_uri = fields.Url(schemes=['postgresql', 'sqlite'], required=True)
+    secret_key = fields.Str(required=True)
 
 
-def load_config(app, config_file):
-    for key, value in DEFAULT_FLASK_CONFIG.items():
-        app.config[key] = value
-    iniconfig.init_app(app)
+class ConfigAuthSchema(Schema):
+    base_permissions = fields.List(fields.Str(), missing=[])
+    logged_in_permissions = fields.List(fields.Str(), missing=[])
+    session_token_ttl = fields.Integer(missing=86400)
+    ldap_enabled = fields.Boolean(missing=False)
+    ldap_host = fields.Str(missing=None)
+    ldap_port = fields.Integer(missing=389)
+    ldap_use_ssl = fields.Boolean(missing=False)
+    ldap_bind_user_dn = fields.Str(missing=None)
+    ldap_bind_user_password = fields.Str(missing=None)
+    ldap_base_dn = fields.Str(missing='')
+    ldap_user_dn = fields.Str(missing='')
+    ldap_user_login_attr = fields.Str(missing='uid')
+    ldap_user_rdn_attr = fields.Str(missing='uid')
+    ldap_user_full_name_attr = fields.Str(missing='displayName')
+    ldap_user_email_attr = fields.Str(missing='mail')
+    ldap_user_search_scope = fields.Str(
+        validate=validate.OneOf(['LEVEL', 'SUBTREE']), missing='LEVEL')
+    ldap_group_dn = fields.Str(missing='')
+    ldap_group_object_filter = fields.Str(missing='(objectclass=groupOfNames)')
+    ldap_group_members_attr = fields.Str(missing='Member')
+    ldap_group_name_attr = fields.Str(missing='cn')
+    ldap_group_search_scope = fields.Str(
+        validate=validate.OneOf(['LEVEL', 'SUBTREE']), missing='LEVEL')
+
+    @validates_schema
+    def validate_ldap(self, data, **kwargs):
+        if data.get('ldap_enabled') and not data.get('ldap_host'):
+            raise ValidationError(
+                'Auth option "ldap_host" is required when "ldap_enabled" is '
+                'set to true.')
+
+
+class ConfigLoggingSchema(Schema):
+    log_file = fields.Str(missing=None)
+    access_log_file = fields.Str(missing=None)
+    log_level = fields.Str(
+        validate=validate.OneOf(
+            ['CRITICAL', 'ERROR', 'WARNING', 'INFO', 'DEBUG']),
+        missing='INFO')
+
+
+class ConfigServerSchema(Schema):
+    host = fields.Str(missing='0.0.0.0')
+    port = fields.Integer(missing=5000)
+    threads = fields.Integer(missing=10)
+    ssl_enabled = fields.Boolean(missing=False)
+    certificate = fields.Str(missing=None)
+    private_key = fields.Str(missing=None)
+    ca_certificate = fields.Str(missing=None)
+
+    @validates_schema
+    def validate_ssl(self, data, **kwargs):
+        if data.get('ssl_enabled'):
+            certificate = data.get('certificate')
+            private_key = data.get('private_key')
+            ca_certificate = data.get('ca_certificate')
+            if not all([certificate, private_key]):
+                raise ValidationError(
+                    'Server options "certificate" and "private_key" are '
+                    'required when "ssl_enabled" is set to true.')
+            if not os.path.exists(certificate):
+                raise ValidationError(f'File "{certificate}" does not exist.')
+            if not os.path.exists(private_key):
+                raise ValidationError(f'File "{private_key}" does not exist.')
+            if ca_certificate and not os.path.exists(ca_certificate):
+                raise ValidationError(
+                    f'File "{ca_certificate}" does not exist.')
+
+
+class ConfigSchema(Schema):
+    app = fields.Nested(ConfigAppSchema(), required=True)
+    auth = fields.Nested(
+        ConfigAuthSchema(), missing=ConfigAuthSchema().load({}))
+    logging = fields.Nested(
+        ConfigLoggingSchema(), missing=ConfigLoggingSchema().load({}))
+    server = fields.Nested(
+        ConfigServerSchema(), missing=ConfigServerSchema().load({}))
+
+
+def load_config(config_file):
     if not os.path.exists(config_file):
-        raise NoConfigFile(f'Config file "{config_file}" does not exist.')
-    app.config_file = config_file
-    app.config.from_inifile(app.config_file, objectify=True)
-    validate_config(app)
+        raise NoConfigFile(f'File {config_file} does not exist.')
+    with open(config_file, 'r') as file_handler:
+        config = ConfigSchema().load(toml.load(file_handler))
+    return config
+
+
+def configure_app(app, config):
+    app.config.update({
+        'SQLALCHEMY_TRACK_MODIFICATIONS': False,
+        'JSON_SORT_KEYS': False,
+        'SECRET_KEY': config['app']['secret_key'],
+        'SQLALCHEMY_DATABASE_URI': config['app']['database_uri'],
+        'LDAP_HOST': config['auth']['ldap_host'],
+        'LDAP_PORT': config['auth']['ldap_port'],
+        'LDAP_USE_SSL': config['auth']['ldap_use_ssl'],
+        'LDAP_BIND_USER_DN': config['auth']['ldap_bind_user_dn'],
+        'LDAP_BIND_USER_PASSWORD': config['auth']['ldap_bind_user_password'],
+        'LDAP_BASE_DN': config['auth']['ldap_base_dn'],
+        'LDAP_USER_DN': config['auth']['ldap_user_dn'],
+        'LDAP_USER_LOGIN_ATTR': config['auth']['ldap_user_login_attr'],
+        'LDAP_USER_RDN_ATTR': config['auth']['ldap_user_rdn_attr'],
+        'LDAP_USER_SEARCH_SCOPE': config['auth']['ldap_user_search_scope'],
+        'LDAP_GROUP_DN': config['auth']['ldap_group_dn'],
+        'LDAP_GROUP_OBJECT_FILTER': config['auth']['ldap_group_object_filter'],
+        'LDAP_GROUP_MEMBERS_ATTR': config['auth']['ldap_group_members_attr'],
+        'LDAP_GROUP_SEARCH_SCOPE': config['auth']['ldap_group_search_scope']
+    })
+    setattr(app.config, 'opsy', config)

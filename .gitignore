@@ -1,5 +1,6 @@
 #Opsy files
 /opsy.ini
+/opsy.toml
 /opsy.db
 /tests/opsy.db
 *fakeapi*
