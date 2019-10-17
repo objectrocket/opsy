@@ -15,7 +15,7 @@ class APISessionInterface(SecureCookieSessionInterface):
     def save_session(self, *args, **kwargs):
         if g.get('login_via_header'):
             return
-        return super(APISessionInterface, self).save_session(*args, **kwargs)
+        super(APISessionInterface, self).save_session(*args, **kwargs)
 
 
 # pylint: disable=too-many-branches
