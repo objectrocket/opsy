@@ -9,6 +9,7 @@ from opsy.flask_extensions import db
 from opsy.app import create_app
 from opsy.config import load_config
 from opsy.exceptions import DuplicateError
+from opsy.server import create_server
 from opsy.utils import print_error, print_notice, get_protected_routes
 from opsy.auth.schema import UserSchema, RoleSchema, PermissionSchema
 from opsy.auth.models import Role, User, Permission
@@ -44,17 +45,34 @@ cli.add_command(db_command)
 
 
 @cli.command('run')
-@click_option('--port', '-p', type=click.INT, help='Port number to listen on.')
 @click_option('--host', type=click.STRING, help='Host address.')
+@click_option('--port', '-p', type=click.INT, help='Port number to listen on.')
 @click_option('--ssl_enabled', type=click.BOOL, is_flag=True)
 @click_option('--certificate', type=click.Path(), help='SSL cert.')
 @click_option('--private_key', type=click.Path(), help='SSL key.')
 @click_option('--ca_certificate', type=click.Path(), help='SSL CA cert.')
 @pass_script_info
-def run(script_info, **kwargs):
+def run(script_info, host, port, ssl_enabled, certificate, private_key,
+        ca_certificate):
     """Run the Opsy server."""
-    from opsy.server import run_opsy
-    run_opsy(script_info, **kwargs)
+    app = script_info.load_app()
+    host = host or app.config.opsy['server']['host']
+    port = port or app.config.opsy['server']['port']
+    ssl_enabled = ssl_enabled or app.config.opsy['server']['ssl_enabled']
+    certificate = certificate or app.config.opsy['server']['certificate']
+    private_key = private_key or app.config.opsy['server']['private_key']
+    ca_certificate = ca_certificate or \
+        app.config.opsy['server']['ca_certificate']
+    server = create_server(app, host, port, ssl_enabled, certificate,
+                           private_key, ca_certificate)
+    try:
+        proto = 'https' if server.ssl_adapter else 'http'
+        app.logger.info(f'Starting Opsy server at {proto}://{host}:{port}/...')
+        server.start()
+    except KeyboardInterrupt:
+        app.logger.info('Stopping Opsy server...')
+    finally:
+        server.stop()
 
 
 @cli.command('shell')

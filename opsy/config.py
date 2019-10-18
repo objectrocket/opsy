@@ -6,7 +6,7 @@ from opsy.exceptions import NoConfigFile
 
 
 class ConfigAppSchema(Schema):
-    database_uri = fields.Url(schemes=['postgresql', 'sqlite'], required=True)
+    database_uri = fields.Str(required=True)
     secret_key = fields.Str(required=True)
 
 
@@ -22,6 +22,7 @@ class ConfigAuthSchema(Schema):
     ldap_bind_user_password = fields.Str(missing=None)
     ldap_base_dn = fields.Str(missing='')
     ldap_user_dn = fields.Str(missing='')
+    ldap_user_object_filter = fields.Str(missing='(objectclass=person)')
     ldap_user_login_attr = fields.Str(missing='uid')
     ldap_user_rdn_attr = fields.Str(missing='uid')
     ldap_user_full_name_attr = fields.Str(missing='displayName')
@@ -53,7 +54,7 @@ class ConfigLoggingSchema(Schema):
 
 
 class ConfigServerSchema(Schema):
-    host = fields.Str(missing='0.0.0.0')
+    host = fields.Str(missing='localhost')
     port = fields.Integer(missing=5000)
     threads = fields.Integer(missing=10)
     ssl_enabled = fields.Boolean(missing=False)
@@ -66,18 +67,10 @@ class ConfigServerSchema(Schema):
         if data.get('ssl_enabled'):
             certificate = data.get('certificate')
             private_key = data.get('private_key')
-            ca_certificate = data.get('ca_certificate')
             if not all([certificate, private_key]):
                 raise ValidationError(
                     'Server options "certificate" and "private_key" are '
                     'required when "ssl_enabled" is set to true.')
-            if not os.path.exists(certificate):
-                raise ValidationError(f'File "{certificate}" does not exist.')
-            if not os.path.exists(private_key):
-                raise ValidationError(f'File "{private_key}" does not exist.')
-            if ca_certificate and not os.path.exists(ca_certificate):
-                raise ValidationError(
-                    f'File "{ca_certificate}" does not exist.')
 
 
 class ConfigSchema(Schema):

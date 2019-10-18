@@ -38,12 +38,13 @@ def test_verify_token(test_user):
     # Test data
     expired_serializer = Serializer(
         current_app.config['SECRET_KEY'], expires_in=-1)
-    expired_token = expired_serializer.dumps({'id': test_user.id}).decode('ascii')
+    expired_token = expired_serializer.dumps(
+        {'id': test_user.id}).decode('ascii')
     bad_serializer = Serializer('12345')
     bad_token = bad_serializer.dumps({'id': test_user.id}).decode('ascii')
     good_serializer = Serializer(
         current_app.config['SECRET_KEY'],
-        expires_in=current_app.config.opsy['session_token_ttl'])
+        expires_in=current_app.config.opsy['auth']['session_token_ttl'])
     bad_id_token = good_serializer.dumps({'id': '12345'}).decode('ascii')
     # Testing the null case
     assert verify_token(None) is None
@@ -57,10 +58,10 @@ def test_verify_token(test_user):
     assert verify_token(test_user) is None
     # Test reducing the TTL
     create_token(test_user)
-    current_ttl = current_app.config.opsy['session_token_ttl']
-    current_app.config.opsy['session_token_ttl'] = -1
+    current_ttl = current_app.config.opsy['auth']['session_token_ttl']
+    current_app.config.opsy['auth']['session_token_ttl'] = -1
     assert verify_token(test_user) is None
-    current_app.config.opsy['session_token_ttl'] = current_ttl
+    current_app.config.opsy['auth']['session_token_ttl'] = current_ttl
     # Test the happy path before we mess with the session token
     assert verify_token(test_user) == test_user
     # Test mismatch in token id and user.id

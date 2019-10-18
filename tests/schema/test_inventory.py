@@ -1,6 +1,4 @@
-import datetime as dt
 from collections import OrderedDict
-import pytest
 from opsy.inventory.schema import (
     ZoneSchema, ZoneQuerySchema, ZoneRefSchema,
     HostSchema, HostQuerySchema, HostRefSchema,
@@ -22,10 +20,8 @@ def test_zone_schema(test_zone, test_zones):
         ('name', test_zone.name),
         ('description', test_zone.description),
         ('vars', test_zone.vars),
-        ('created_at', test_zone.created_at.replace(
-            tzinfo=dt.timezone.utc).isoformat()),
-        ('updated_at', test_zone.updated_at.replace(
-            tzinfo=dt.timezone.utc).isoformat()),
+        ('created_at', test_zone.created_at.isoformat()),
+        ('updated_at', test_zone.updated_at.isoformat()),
         ('_links', {
             'self': f'/api/v1/zones/{test_zone.id}',
             'collection': '/api/v1/zones/'})])
@@ -70,10 +66,8 @@ def test_host_schema(test_host, test_hosts):
             ('_links', {'self': f'/api/v1/zones/{test_host.zone_id}',
                         'collection': '/api/v1/zones/'})])),
         ('group_mappings', []),
-        ('created_at', test_host.created_at.replace(
-            tzinfo=dt.timezone.utc).isoformat()),
-        ('updated_at', test_host.updated_at.replace(
-            tzinfo=dt.timezone.utc).isoformat()),
+        ('created_at', test_host.created_at.isoformat()),
+        ('updated_at', test_host.updated_at.isoformat()),
         ('_links',
             {'self': f'/api/v1/hosts/{test_host.id}',
              'collection': '/api/v1/hosts/'})])
@@ -116,10 +110,8 @@ def test_group_schema(test_group, test_groups):
         ('default_priority', test_group.default_priority),
         ('vars', test_group.vars),
         ('compiled_vars', test_group.compiled_vars),
-        ('created_at', test_group.created_at.replace(
-            tzinfo=dt.timezone.utc).isoformat()),
-        ('updated_at', test_group.updated_at.replace(
-            tzinfo=dt.timezone.utc).isoformat()),
+        ('created_at', test_group.created_at.isoformat()),
+        ('updated_at', test_group.updated_at.isoformat()),
         ('_links',
             {'self': f'/api/v1/groups/{test_group.id}',
              'collection': '/api/v1/groups/'})])
@@ -172,10 +164,8 @@ def test_host_group_mapping_schema(test_inventory_bootstrap):
             ('_links',
                 {'self': f'/api/v1/groups/{test_mapping.group.id}',
                  'collection': '/api/v1/groups/'})])),
-        ('created_at', test_mapping.created_at.replace(
-            tzinfo=dt.timezone.utc).isoformat()),
-        ('updated_at', test_mapping.updated_at.replace(
-            tzinfo=dt.timezone.utc).isoformat()),
+        ('created_at', test_mapping.created_at.isoformat()),
+        ('updated_at', test_mapping.updated_at.isoformat()),
         ('_links',
             {'self': f'/api/v1/hosts/{test_mapping.host.id}'
                 f'/group_mappings/{test_mapping.group.id}',

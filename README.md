@@ -14,9 +14,9 @@ Install opsy for development (ensure you are in your previously created virtuale
 
     $ pip install --editable .
 
-Create opsy.ini by copying the example config:
+Create opsy.toml by copying the example config:
 
-    $ cp opsy.ini.example opsy.ini
+    $ cp opsy.toml.example opsy.toml
 
 Initialize the DB, the example config uses sqlite by default for development:
 
