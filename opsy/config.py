@@ -104,6 +104,7 @@ def configure_app(app, config):
         'LDAP_BIND_USER_PASSWORD': config['auth']['ldap_bind_user_password'],
         'LDAP_BASE_DN': config['auth']['ldap_base_dn'],
         'LDAP_USER_DN': config['auth']['ldap_user_dn'],
+        'LDAP_USER_OBJECT_FILTER': config['auth']['ldap_user_object_filter'],
         'LDAP_USER_LOGIN_ATTR': config['auth']['ldap_user_login_attr'],
         'LDAP_USER_RDN_ATTR': config['auth']['ldap_user_rdn_attr'],
         'LDAP_USER_SEARCH_SCOPE': config['auth']['ldap_user_search_scope'],
