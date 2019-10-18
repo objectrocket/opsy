@@ -1,0 +1,34 @@
+[app]
+database_uri = 'sqlite:///../tests/opsy.db'
+secret_key = 'this should be changed'
+
+[server]
+host = 'localhost'
+port = 5000
+threads = 10
+ssl_enabled = false
+certificate = ''
+private_key = ''
+ca_certificate = ''
+
+[logging]
+log_file = '/tmp/opsy.log'
+access_log_file = '/tmp/opsy_access.log'
+log_level = 'INFO'
+
+[auth]
+base_permissions = ['list_zones']
+logged_in_permissions = ['list_zones', 'list_hosts']
+session_token_ttl = 86400
+ldap_enabled = true
+ldap_host = 'my.test.ldap.server.example.com'
+ldap_port = 636
+ldap_use_ssl = true
+ldap_bind_user_dn = 'uid=svc_opsy,cn=users,cn=accounts,dc=example,dc=com'
+ldap_bind_user_password = 'password'
+ldap_base_dn = 'dc=example,dc=com'
+ldap_user_dn = 'cn=users,cn=accounts'
+ldap_group_dn = 'cn=groups,cn=accounts'
+ldap_group_object_filter = '(objectclass=groupOfNames)'
+ldap_group_members_attr = 'Member'
+ldap_group_name_attr = 'cn'

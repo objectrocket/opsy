@@ -2,7 +2,6 @@ from apispec import APISpec
 from apispec.ext.marshmallow import MarshmallowPlugin
 from flask_allows import Allows
 from flask_apispec.extension import FlaskApiSpec
-from flask_iniconfig import INIConfig
 from flask_jsglue import JSGlue
 from flask_ldap3_login import LDAP3LoginManager
 from flask_login import LoginManager, current_user
@@ -13,7 +12,6 @@ from flask_sqlalchemy import SQLAlchemy
 allows = Allows()  # pylint: disable=invalid-name
 db = SQLAlchemy()  # pylint: disable=invalid-name
 migrate = Migrate()  # pylint: disable=invalid-name
-iniconfig = INIConfig()  # pylint: disable=invalid-name
 jsglue = JSGlue()  # pylint: disable=invalid-name
 ldap_manager = LDAP3LoginManager()  # pylint: disable=invalid-name
 login_manager = LoginManager()  # pylint: disable=invalid-name
@@ -31,7 +29,7 @@ def configure_extensions(app):
     ma.init_app(app)
     jsglue.init_app(app)
     login_manager.init_app(app)
-    if app.config.opsy['enable_ldap']:
+    if app.config.opsy['auth']['ldap_enabled']:
         ldap_manager.init_app(app)
     allows.init_app(app)
     allows.identity_loader(lambda: current_user)
@@ -41,7 +39,7 @@ def configure_extensions(app):
             version='v1',
             openapi_version='2.0',
             info={'description': "It's Opsy!"},
-            plugins=[MarshmallowPlugin()],
+            plugins=[MarshmallowPlugin()]
         ),
         'APISPEC_SWAGGER_URL': '/docs/swagger.json',
         'APISPEC_SWAGGER_UI_URL': '/docs/',
@@ -49,6 +47,8 @@ def configure_extensions(app):
     app.config['APISPEC_SPEC'].components.security_scheme(
         'api_key', {'type': 'apiKey', 'in': 'header', 'name': 'X-AUTH-TOKEN'})
     apispec.init_app(app)
-    from opsy.auth.utils import load_user, load_user_from_request
+    from opsy.auth.utils import (load_user, load_user_from_request,
+                                 APISessionInterface)
     login_manager.user_loader(load_user)
     login_manager.request_loader(load_user_from_request)
+    app.session_interface = APISessionInterface()

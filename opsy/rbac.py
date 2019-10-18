@@ -23,11 +23,11 @@ def has_permission(permission):
             return True
         permissions = []
         # Everyone gets base permissions
-        permissions.extend(current_app.config.opsy['base_permissions'])
+        permissions.extend(current_app.config.opsy['auth']['base_permissions'])
         if user.is_authenticated and user.is_active:
             # Logged in users get logged in permissions
             permissions.extend(
-                current_app.config.opsy['logged_in_permissions'])
+                current_app.config.opsy['auth']['logged_in_permissions'])
             # And a user gets their own permissions from their roles
             if hasattr(user, 'permissions'):
                 permissions.extend([x.name for x in user.permissions])

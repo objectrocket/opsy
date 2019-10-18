@@ -1,4 +1,3 @@
-import datetime as dt
 import pytest
 from collections import OrderedDict
 from opsy.auth.schema import (
@@ -67,10 +66,8 @@ def test_user_schema(test_user):
         ('full_name', 'Test User'),
         ('email', None),
         ('enabled', True),
-        ('created_at', test_user.created_at.replace(
-            tzinfo=dt.timezone.utc).isoformat()),
-        ('updated_at', test_user.updated_at.replace(
-            tzinfo=dt.timezone.utc).isoformat()),
+        ('created_at', test_user.created_at.isoformat()),
+        ('updated_at', test_user.updated_at.isoformat()),
         ('roles', []),
         ('permissions', [])])
 
@@ -90,8 +87,7 @@ def test_user_token_schema(test_user):
         ('user_id', test_user.id),
         ('user_name', test_user.name),
         ('token', test_user.session_token),
-        ('expires_at', test_user.session_token_expires_at.replace(
-            tzinfo=dt.timezone.utc).isoformat())])
+        ('expires_at', test_user.session_token_expires_at.isoformat())])
 
     assert UserTokenSchema().dump(test_user) == expected_zone_schema_output
 
@@ -108,10 +104,8 @@ def test_role_schema(test_role):
         ('name', test_role.name),
         ('ldap_group', test_role.ldap_group),
         ('description', test_role.description),
-        ('created_at', test_role.created_at.replace(
-            tzinfo=dt.timezone.utc).isoformat()),
-        ('updated_at', test_role.updated_at.replace(
-            tzinfo=dt.timezone.utc).isoformat()),
+        ('created_at', test_role.created_at.isoformat()),
+        ('updated_at', test_role.updated_at.isoformat()),
         ('permissions', test_role.permissions),
         ('users', test_role.users)])
 
@@ -133,10 +127,8 @@ def test_role_permission_schema(admin_user):
             ('id', test_perm.role.id),
             ('name', test_perm.role.name)])),
         ('name', test_perm.name),
-        ('created_at', test_perm.created_at.replace(
-            tzinfo=dt.timezone.utc).isoformat()),
-        ('updated_at', test_perm.updated_at.replace(
-            tzinfo=dt.timezone.utc).isoformat())])
+        ('created_at', test_perm.created_at.isoformat()),
+        ('updated_at', test_perm.updated_at.isoformat())])
 
     assert RolePermissionSchema().dump(test_perm) \
         == expected_role_permission_schema_output
