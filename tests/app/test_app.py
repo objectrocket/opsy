@@ -1,14 +1,11 @@
 import logging
 import os
-import threading
-import time
 import pytest
 import requests
 from flask import Flask
 from marshmallow import ValidationError
 from opsy.config import load_config
 from opsy.exceptions import NoConfigFile
-from opsy.server import create_server
 
 CURRENT_DIR = os.path.dirname(os.path.realpath(__file__))
 
