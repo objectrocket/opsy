@@ -2,7 +2,6 @@ import flask
 import pytest
 from flask_login import AnonymousUserMixin
 from werkzeug.exceptions import Forbidden
-from opsy.flask_extensions import allows
 from opsy.rbac import (is_logged_in, is_same_user, has_permission,
                        need_permission)
 
