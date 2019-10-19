@@ -1,11 +1,12 @@
 from functools import wraps
-from flask import current_app, request, abort
+from flask import current_app, request
 from flask_allows import allows, Or
 
 
 def is_logged_in(user):
     """Checks if the user is logged in."""
-    if current_app.config.get('LOGIN_DISABLED') or user.is_authenticated:
+    if current_app.config.get('LOGIN_DISABLED') or \
+            (user.is_authenticated and user.is_active):
         return True
     return False
 
@@ -31,8 +32,6 @@ def has_permission(permission):
             # And a user gets their own permissions from their roles
             if hasattr(user, 'permissions'):
                 permissions.extend([x.name for x in user.permissions])
-        else:
-            abort(401)
         return permission in permissions
 
     return permission_checker
@@ -46,7 +45,7 @@ def need_permission(permission_name, *requirements, identity=None,
 
         permission = has_permission(permission_name)
         if requirements:
-            new_requirements = (Or(permission, requirements))
+            new_requirements = (Or(permission, *requirements),)
         else:
             new_requirements = (permission,)
 
