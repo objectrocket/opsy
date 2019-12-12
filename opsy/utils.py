@@ -1,6 +1,6 @@
 import copy
 import sys
-from collections import Mapping
+from collections.abc import Mapping
 from operator import attrgetter
 from flask import current_app
 
@@ -101,3 +101,9 @@ def get_protected_routes(ignored_methods=None):
                         'permission_needed']
                 })
     return permissions
+
+
+def get_valid_permissions():
+    # We use set comprehension to de-dup.
+    return sorted(list(
+        {x['permission_needed'] for x in get_protected_routes()}))

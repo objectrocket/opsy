@@ -18,57 +18,88 @@ class APISessionInterface(SecureCookieSessionInterface):
         super(APISessionInterface, self).save_session(*args, **kwargs)
 
 
-# pylint: disable=too-many-branches
-def login(username, password, remember=False, force=False, fresh=True):
-    from opsy.auth.models import User, Role
-    if current_app.config.opsy['auth']['ldap_enabled']:
-        current_app.logger.info(f'Attempting LDAP login for {username}...')
-        result = ldap_manager.authenticate(username, password)
-        if not result.status == AuthenticationResponseStatus.success:
-            current_app.logger.info(
-                f'LDAP login failed for {username}. Incorrect password?')
-            return False
-        full_name_attr = \
-            current_app.config.opsy['auth']['ldap_user_full_name_attr']
-        email_attr = current_app.config.opsy['auth']['ldap_user_email_attr']
-        group_name_attr = \
-            current_app.config.opsy['auth']['ldap_group_name_attr']
-        if isinstance(result.user_info[email_attr], list):
-            email = result.user_info[email_attr][0]
-        else:
-            email = result.user_info[email_attr]
-        full_name = result.user_info[full_name_attr]
-        user = User.query.filter_by(name=result.user_id).first()
-        if not user:
-            user = User.create(username, email=email, full_name=full_name)
-        else:
-            user.update(email=email, full_name=full_name)
-        groups = []
-        for group in result.user_groups:
-            if isinstance(group[group_name_attr], list):
-                groups.append(group[group_name_attr][0])
-            else:
-                groups.append(group[group_name_attr])
-        for role in user.roles:
-            if role.ldap_group:
-                user.roles.remove(role)
-        for role in Role.query.filter(Role.ldap_group.in_(groups)).all():
-            user.roles.append(role)
-        user.save()
-    else:
-        current_app.logger.info(f'Attempting local login for {username}...')
-        user = User.query.filter_by(name=username).first()
-        if not user:
-            current_app.logger.info(f'User {username} does not exist.')
-            return False
-        if not user.verify_password(password):
-            current_app.logger.info(f'Incorrect password for {username}.')
-            return False
-    if not login_user(user, remember=remember, force=force, fresh=fresh):
-        current_app.logger.info(f'Login for {username} failed. Disabled?')
+def login(user_name, password, force_renew=False):
+    # First we try local login
+    user = local_login(user_name, password)
+    # If that failed we try ldap
+    if not user:
+        user = ldap_login(user_name, password)
+    # If that failed we bail out
+    if not user:
+        current_app.logger.info(
+            f'All login methods failed for user {user_name}.')
         return False
-    current_app.logger.info(f'{username} logged in successfully.')
+    if not login_user(user):
+        current_app.logger.info(f'Login for user {user_name} failed. Disabled?')
+        return False
+    current_app.logger.info(f'User {user_name} logged in successfully.')
+    # Force renewal of the token if it was requested.
+    return create_token(user, force_renew=force_renew)
+
+
+def local_login(user_name, password):
+    from opsy.auth.models import User
+    current_app.logger.info(f'Attempting local login for user {user_name}...')
+    user = User.query.filter_by(name=user_name).first()
+    if not user:
+        current_app.logger.info(
+            f'User {user_name} does not exist, skipping local login.')
+        return False
+    if user.ldap_user:
+        current_app.logger.info(
+            f'User {user_name} is an LDAP user, skipping local login.')
+        return False
+    if not user.verify_password(password):
+        current_app.logger.info(f'Incorrect password for user {user_name}.')
+        return False
     return user
+
+
+def ldap_login(user_name, password):  # pylint: disable=too-many-branches
+    from opsy.auth.models import User, Role
+    current_app.logger.info(f'Attempting LDAP login for user {user_name}...')
+    if not current_app.config.opsy['auth']['ldap_enabled']:
+        current_app.logger.info(
+            f'LDAP login disabled, unable to login user {user_name}.')
+        return False
+    user = User.query.filter_by(name=user_name).first()
+    if user and not user.ldap_user:
+        current_app.logger.info(
+            f'User {user_name} is a local user, skipping LDAP login.')
+        return False
+    result = ldap_manager.authenticate(user_name, password)
+    if not result.status == AuthenticationResponseStatus.success:
+        current_app.logger.info(
+            f'LDAP login failed for user {user_name}. Incorrect password?')
+        return False
+    full_name_attr = \
+        current_app.config.opsy['auth']['ldap_user_full_name_attr']
+    email_attr = current_app.config.opsy['auth']['ldap_user_email_attr']
+    group_name_attr = \
+        current_app.config.opsy['auth']['ldap_group_name_attr']
+    if isinstance(result.user_info[email_attr], list):
+        email = result.user_info[email_attr][0]
+    else:
+        email = result.user_info[email_attr]
+    full_name = result.user_info[full_name_attr]
+    user = User.query.filter_by(name=result.user_id).first()
+    if not user:
+        user = User.create(
+            user_name, email=email, full_name=full_name, ldap_user=True)
+    else:
+        user.update(email=email, full_name=full_name)
+    groups = []
+    for group in result.user_groups:
+        if isinstance(group[group_name_attr], list):
+            groups.append(group[group_name_attr][0])
+        else:
+            groups.append(group[group_name_attr])
+    for role in user.roles:
+        if role.ldap_group:
+            user.roles.remove(role)
+    for role in Role.query.filter(Role.ldap_group.in_(groups)).all():
+        user.roles.append(role)
+    return user.save()
 
 
 def logout(user):
@@ -86,16 +117,16 @@ def logout(user):
 
 
 def create_token(user, force_renew=False):
-    if not force_renew and verify_token(user):
-        return
+    if not force_renew and verify_token(user) is not None:
+        return user
     ttl = current_app.config.opsy['auth']['session_token_ttl']
     seri = Serializer(
         current_app.config['SECRET_KEY'], expires_in=ttl)
     user.session_token = seri.dumps({'id': user.id}).decode('ascii')
     _, header = seri.loads(user.session_token, return_header=True)
-    user.session_token_expires_at = datetime.utcfromtimestamp(
-        header.get('exp'))
-    user.save()
+    user.session_token_expires_at = datetime.fromtimestamp(
+        header.get('exp'), tz=timezone.utc)
+    return user.save()
 
 
 def verify_token(user):  # pylint: disable=R0911
@@ -108,17 +139,22 @@ def verify_token(user):  # pylint: disable=R0911
     except TypeError:
         return None  # we don't currently have a token
     except SignatureExpired:
+        current_app.logger.info(f'Expired token for user {user.name}.')
         return None  # valid token, but expired
     except BadSignature:
+        current_app.logger.info(f'Invalid token for user {user.name}.')
         return None  # invalid token
     if int(user.session_token_expires_at.replace(
             tzinfo=timezone.utc).timestamp()) > time() + ttl:
+        current_app.logger.info(f'Invalid token ttl for user {user.name}.')
         return None  # ttl in config has been reduced
     # These next two shouldn't ever happen
     if data.get('id') != user.id:
+        current_app.logger.info(f'Invalid token id for user {user.name}.')
         return None  # user id doesn't match token payload
-    if user.session_token_expires_at != datetime.utcfromtimestamp(
-            header.get('exp')):
+    if user.session_token_expires_at != datetime.fromtimestamp(
+            header.get('exp'), tz=timezone.utc):
+        current_app.logger.info(f'Invalid token exp for user {user.name}.')
         return None  # expire times don't match
     return user
 

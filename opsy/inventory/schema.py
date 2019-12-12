@@ -33,6 +33,18 @@ class ZoneSchema(BaseSchema):
     )
 
 
+class ZoneUpdateSchema(ZoneSchema):
+
+    class Meta:
+        model = Zone
+        fields = ('name', 'description', 'vars')
+        ordered = True
+        unknown = RAISE
+
+    name = field_for(Zone, 'name', required=False,
+                     description='The name of the zone.')
+
+
 class ZoneQuerySchema(ZoneSchema):
 
     class Meta:
@@ -92,6 +104,17 @@ class HostSchema(BaseSchema):
     )
 
 
+class HostUpdateSchema(HostSchema):
+
+    class Meta:
+        model = Host
+        fields = ('zone_id', 'name', 'vars')
+        ordered = True
+        unknown = RAISE
+
+    name = field_for(Host, 'name', required=False)
+
+
 class HostQuerySchema(HostSchema):
 
     class Meta:
@@ -129,6 +152,7 @@ class GroupSchema(BaseSchema):
         unknown = RAISE
 
     id = field_for(Group, 'id', dump_only=True)
+    name = field_for(Group, 'name', required=True)
     zone_id = field_for(Group, 'zone_id', allow_none=True)
     parent_id = field_for(Group, 'parent_id', allow_none=True)
     created_at = field_for(Group, 'created_at', dump_only=True)
@@ -145,6 +169,17 @@ class GroupSchema(BaseSchema):
          "collection": ma.URLFor("inventory_groups.groups_list")},
         dump_only=True
     )
+
+
+class GroupUpdateSchema(GroupSchema):
+
+    class Meta:
+        model = Group
+        fields = ('zone_id', 'parent_id', 'name', 'default_priority', 'vars')
+        ordered = True
+        unknown = RAISE
+
+    name = field_for(Group, 'name', required=False)
 
 
 class GroupQuerySchema(GroupSchema):
@@ -183,7 +218,7 @@ class HostGroupMappingSchema(BaseSchema):
         ordered = True
         unknown = RAISE
 
-    id = field_for(Host, 'id', dump_only=True)
+    id = field_for(HostGroupMapping, 'id', dump_only=True)
     host_id = field_for(HostGroupMapping, 'host_id', dump_only=True)
     created_at = field_for(HostGroupMapping, 'created_at', dump_only=True)
     updated_at = field_for(HostGroupMapping, 'updated_at', dump_only=True)
@@ -200,7 +235,16 @@ class HostGroupMappingSchema(BaseSchema):
                                 id_or_name="<host_id>")}, dump_only=True)
 
 
-class HostGroupMappingQuerySchema(BaseSchema):
+class HostGroupMappingUpdateSchema(HostGroupMappingSchema):
+
+    class Meta:
+        model = HostGroupMapping
+        fields = ('priority', )
+        ordered = True
+        unknown = RAISE
+
+
+class HostGroupMappingQuerySchema(HostGroupMappingSchema):
 
     class Meta:
         model = HostGroupMapping
@@ -208,7 +252,8 @@ class HostGroupMappingQuerySchema(BaseSchema):
         ordered = True
         unknown = RAISE
 
-        group_name = ma_fields.String(attribute='group___name')
+    id = field_for(HostGroupMapping, 'id')
+    group_name = ma_fields.String(attribute='group___name')
 
 
 class HostGroupMappingRefSchema(HostGroupMappingSchema):

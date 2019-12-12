@@ -4,10 +4,11 @@ from opsy.flask_extensions import apispec
 from opsy.rbac import need_permission
 from opsy.schema import use_kwargs, EmptySchema
 from opsy.inventory.schema import (
-    ZoneSchema, ZoneQuerySchema,
-    HostSchema, HostQuerySchema,
-    GroupSchema, GroupQuerySchema,
-    HostGroupMappingSchema, HostGroupMappingQuerySchema)
+    ZoneSchema, ZoneUpdateSchema, ZoneQuerySchema,
+    HostSchema, HostUpdateSchema, HostQuerySchema,
+    GroupSchema, GroupUpdateSchema, GroupQuerySchema,
+    HostGroupMappingSchema, HostGroupMappingUpdateSchema,
+    HostGroupMappingQuerySchema)
 from opsy.inventory.models import Zone, Host, Group, HostGroupMapping
 from opsy.exceptions import DuplicateError
 
@@ -30,7 +31,7 @@ def create_inventory_views(app):
                  host_group_mappings_get, host_group_mappings_patch,
                  host_group_mappings_delete]:
         apispec.register(view, blueprint='inventory_hosts')
-    app.config['APISPEC_SPEC'].tag(
+    apispec.spec.tag(
         {'name': 'groups',
          'description': 'Groups are logical groupings of your hosts.'})
     for view in [groups_list, groups_post, groups_get, groups_patch,
@@ -102,7 +103,7 @@ def zones_get(id_or_name):
 
 
 @zones_blueprint.route('/<id_or_name>', methods=['PATCH'])
-@use_kwargs(ZoneSchema)
+@use_kwargs(ZoneUpdateSchema)
 @marshal_with(ZoneSchema(), code=200)
 @doc(
     operationId='update_zone',
@@ -187,7 +188,7 @@ def hosts_get(id_or_name):
 
 
 @hosts_blueprint.route('/<id_or_name>', methods=['PATCH'])
-@use_kwargs(HostSchema)
+@use_kwargs(HostUpdateSchema)
 @marshal_with(HostSchema(), code=200)
 @doc(
     operationId='update_host',
@@ -234,7 +235,7 @@ def hosts_delete(id_or_name):
     description='',
     tags=['hosts'],
     security=[{'api_key': []}])
-@need_permission('update_host')
+@need_permission('show_host')
 def host_group_mappings_list(id_or_name, **kwargs):
     try:
         host = Host.get_by_id_or_name(id_or_name)
@@ -276,7 +277,7 @@ def host_group_mappings_post(id_or_name, **kwargs):
     description='',
     tags=['hosts'],
     security=[{'api_key': []}])
-@need_permission('update_host')
+@need_permission('show_host')
 def host_group_mappings_get(id_or_name, group_id_or_name):
     try:
         return HostGroupMapping.get_by_host_and_group(
@@ -288,7 +289,7 @@ def host_group_mappings_get(id_or_name, group_id_or_name):
 @hosts_blueprint.route(
     '/<id_or_name>/group_mappings/<group_id_or_name>',
     methods=['PATCH'])
-@use_kwargs(HostGroupMappingSchema)
+@use_kwargs(HostGroupMappingUpdateSchema)
 @marshal_with(HostGroupMappingSchema(), code=200)
 @doc(
     operationId='update_group_mapping',
@@ -378,7 +379,7 @@ def groups_get(group_id):
 
 
 @groups_blueprint.route('/<group_id>', methods=['PATCH'])
-@use_kwargs(GroupSchema)
+@use_kwargs(GroupUpdateSchema)
 @marshal_with(GroupSchema(), code=200)
 @doc(
     operationId='update_group',

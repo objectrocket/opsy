@@ -16,6 +16,21 @@ def test_login(test_user, disabled_user):
     assert login('disabled', 'banhammer') is False
 
 
+def test_local_login(test_user, disabled_user):
+    # Test that test_user can login
+    assert login('test', 'weakpass') == test_user
+    # Now let's set this to be an ldap user and make sure it rejects it
+    test_user.update(ldap_user=True)
+    assert login('test', 'weakpass') is False
+    test_user.update(ldap_user=False)
+    # Test that invalid username is rejected
+    assert login('invalid_user', 'password') is False
+    # Test that invalid password is rejected
+    assert login('test', 'password') is False
+    # Test invalid user cannot login
+    assert login('disabled', 'banhammer') is False
+
+
 def test_logout(test_user):
     # Test that logout is processed successfully
     create_token(test_user)
@@ -26,12 +41,14 @@ def test_logout(test_user):
 
 
 def test_create_token(test_user):
+    assert test_user.session_token is None
+    assert test_user.session_token_expires_at is None
     # Test that a token is created successfully
     create_token(test_user)
     assert test_user.session_token is not None
     assert test_user.session_token_expires_at is not None
     # Testing force_renew returns as expected
-    assert create_token(test_user, force_renew=True) is None
+    assert create_token(test_user, force_renew=True) == test_user
 
 
 def test_verify_token(test_user):

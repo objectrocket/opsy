@@ -1,11 +1,14 @@
 from faker import Faker
 from opsy.auth.models import Role, User
-from opsy.utils import get_protected_routes
+from opsy.utils import get_valid_permissions
 
 
 def test_user():
-    return User.create(
+    test_user = User.create(
         name='test', full_name='Test User', password='weakpass')
+    test_role = Role.create(name='users')
+    test_role.add_user(test_user)
+    return test_user
 
 
 def disabled_user():
@@ -18,12 +21,8 @@ def admin_user():
     admin_user = User.create(
         name='admin', full_name='Admin User', password='password123')
     admin_role = Role.create(name='admins')
-    for route in get_protected_routes():
-        # Give admin role all known permissions
-        try:
-            admin_role.add_permission(route['permission_needed'])
-        except ValueError:
-            continue
+    for permission in get_valid_permissions():
+        admin_role.add_permission(permission)
     admin_role.add_user(admin_user)
     return admin_user
 
@@ -39,7 +38,10 @@ def test_users(number=10):
 
 
 def test_role():
-    return Role.create(name='test')
+    test_role = Role.create(name='test')
+    test_role.add_permission('test1')
+    test_role.add_permission('test2')
+    return test_role
 
 
 def test_roles(number=10):

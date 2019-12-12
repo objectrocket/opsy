@@ -2,7 +2,7 @@ from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
 from opsy.auth.utils import create_token
 from opsy.flask_extensions import db
-from opsy.models import BaseModel, NamedModel, TimeStampMixin
+from opsy.models import AwareDateTime, BaseModel, NamedModel, TimeStampMixin
 
 ###############################################################################
 # Auth models
@@ -17,28 +17,33 @@ class User(UserMixin, NamedModel, TimeStampMixin, db.Model):
     email = db.Column(db.String(64), index=True)
     password_hash = db.Column(db.String(128))
     session_token = db.Column(db.String(255), index=True)
-    session_token_expires_at = db.Column(db.DateTime)
+    session_token_expires_at = db.Column(AwareDateTime)
     enabled = db.Column(db.Boolean, default=False)
+    ldap_user = db.Column(db.Boolean, default=False)
     roles = db.relationship('Role', secondary='role_mappings',
                             lazy='joined', backref='users')
-    permissions = db.relationship('Permission', lazy='joined',
-                                  secondary='join(Permission, Role, '
-                                  'Permission.role_id == Role.id).join('
-                                  'role_mappings, '
-                                  'Role.id == role_mappings.c.role_id)')
 
     __table_args__ = (
         db.UniqueConstraint('session_token', name='sess_uc'),
     )
 
     def __init__(self, name, enabled=1, full_name=None, email=None,
-                 password=None):
+                 ldap_user=False, password=None):
         self.name = name
         self.enabled = enabled
         self.full_name = full_name
         self.email = email
+        self.ldap_user = ldap_user
         if password:
             self.password = password
+
+    @property
+    def permissions(self):
+        permissions = []
+        for role in self.roles:
+            for permission in role.permissions:
+                permissions.append(permission)
+        return permissions
 
     def get_id(self):
         create_token(self)
@@ -109,10 +114,7 @@ class Role(NamedModel, TimeStampMixin, db.Model):
         if permission_name not in [x.name for x in self.permissions]:
             raise ValueError('Permission "%s" not in role "%s".' % (
                 permission_name, self.name))
-        Permission.query.filter(
-            Permission.role_id == self.id,
-            Permission.name == permission_name).delete()
-        db.session.commit()
+        Permission.delete_by_role_and_id_or_name(self, permission_name)
 
 
 class RoleMappings(BaseModel, TimeStampMixin, db.Model):
@@ -141,6 +143,25 @@ class Permission(BaseModel, TimeStampMixin, db.Model):
     __table_args__ = (
         db.UniqueConstraint('role_id', 'name'),
     )
+
+    @classmethod
+    def get_by_role_and_id_or_name(cls, role, id_or_name):
+        obj = cls.query.filter(db.and_(cls.role_id == role.id, db.or_(
+            cls.name == id_or_name, cls.id == id_or_name))).first()
+        if not obj:
+            raise ValueError('No %s found with name or id "%s".' %
+                             (cls.__name__, id_or_name))
+        return obj
+
+    @classmethod
+    def delete_by_role_and_id_or_name(cls, role, id_or_name, **kwargs):
+        return cls.get_by_role_and_id_or_name(
+            role, id_or_name).delete(**kwargs)
+
+    @classmethod
+    def update_by_role_and_id_or_name(cls, role, id_or_name, **kwargs):
+        return cls.get_by_role_and_id_or_name(
+            role, id_or_name).update(**kwargs)
 
     def __repr__(self):
         return f'<{self.__class__.__name__} {self.name}>'
