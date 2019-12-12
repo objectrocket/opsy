@@ -193,5 +193,5 @@ def test_host_group_mapping_schema(test_inventory_bootstrap):
     assert HostGroupMappingRefSchema().dump(test_mapping) == \
         expected_host_group_mapping_ref_schema_output
     assert HostGroupMappingQuerySchema().dump(
-        {'group_name': 'mytestmapping'}) == \
+        {'group___name': 'mytestmapping'}) == \
         expected_host_group_mapping_query_schema_output

@@ -44,7 +44,8 @@ def test_role_model(test_user, test_users, test_role, test_roles):
     # Test add_permission
     test_permission = test_role.add_permission('permission-to-kill-9')
     assert test_permission in test_role.permissions
-    assert Permission.query.filter_by(role_id=test_role.id).first() == \
+    assert Permission.query.filter_by(
+        role_id=test_role.id, name='permission-to-kill-9').first() == \
         test_permission
     # Make sure it yells at us if the permission already exists
     with pytest.raises(ValueError):
@@ -59,7 +60,8 @@ def test_role_model(test_user, test_users, test_role, test_roles):
     test_role.remove_permission('permission-to-kill-9')
     assert 'permission-to-kill-9' not in \
         [x.name for x in test_role.permissions]
-    assert Permission.query.filter_by(role_id=test_role.id).first() is None
+    assert Permission.query.filter_by(
+        role_id=test_role.id, name='permission-to-kill-9').first() is None
     # Make sure it yells at us if the permission doesn't exists
     with pytest.raises(ValueError):
         test_role.remove_permission('permission-to-kill-9')

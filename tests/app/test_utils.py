@@ -2,7 +2,7 @@ import copy
 import pytest
 from flask import Flask
 from opsy.utils import (gwrap, rwrap, print_error, print_notice, merge_dict,
-                        get_protected_routes)
+                        get_protected_routes, get_valid_permissions)
 from opsy.rbac import need_permission
 
 
@@ -215,3 +215,32 @@ def test_get_protected_routes():
     with app.app_context():
         assert expected_output == get_protected_routes(
             ignored_methods=["HEAD", "OPTIONS"])
+
+
+def test_get_valid_permissions():
+    """Make sure get valid permissions is working right."""
+    # Make an empty app with no routes
+    app = Flask('test_app', static_folder=None)
+    # And make sure we get an empty response
+    with app.app_context():
+        assert get_valid_permissions() == []
+
+    # Let's add an unprotected route and make sure it's the same output
+
+    @app.route('/test_route')
+    def test_route():
+        pass
+
+    with app.app_context():
+        assert get_valid_permissions() == []
+
+    # Now let's add a protected route and make sure that's in there
+
+    @app.route('/test_protected_route')
+    @need_permission('test_protected_show')
+    def test_protected_route():
+        pass
+
+    expected_output = ['test_protected_show']
+    with app.app_context():
+        assert expected_output == get_valid_permissions()

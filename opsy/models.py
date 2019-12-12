@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from flask_sqlalchemy import BaseQuery
 from sqlalchemy import or_
 from sqlalchemy.orm.attributes import CollectionAttributeImpl
@@ -12,10 +12,23 @@ from opsy.exceptions import DuplicateError
 ###############################################################################
 
 
+class AwareDateTime(db.TypeDecorator):
+    """Results returned as aware datetimes, not naive ones."""
+
+    impl = db.DateTime
+
+    def process_result_value(self, value, dialect):
+        if not isinstance(value, datetime):
+            return value
+        return value.replace(tzinfo=timezone.utc)
+
+
 class TimeStampMixin:
-    created_at = db.Column(db.DateTime, default=datetime.utcnow())
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow(),
-                           onupdate=datetime.utcnow())
+    created_at = db.Column(AwareDateTime,
+                           default=datetime.now(timezone.utc))
+    updated_at = db.Column(AwareDateTime,
+                           default=datetime.now(timezone.utc),
+                           onupdate=datetime.now(timezone.utc))
 
 
 class OpsyQuery(BaseQuery):
@@ -128,7 +141,6 @@ class BaseModel:
         return cls.query.get_or_fail(obj_id).update(**kwargs)
 
     def update(self, commit=True, **kwargs):
-        kwargs.pop('id', None)
         for key, value in kwargs.items():
             setattr(self, key, value)
         return self.save() if commit else self

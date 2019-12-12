@@ -1,7 +1,7 @@
 import pytest
 from collections import OrderedDict
 from opsy.auth.schema import (
-    UserLoginSchema, PermissionSchema, UserTokenSchema, UserSchema,
+    UserLoginSchema, AppPermissionSchema, UserTokenSchema, UserSchema,
     RoleSchema, RolePermissionSchema)
 from opsy.auth.utils import create_token
 from opsy.auth.models import Permission
@@ -15,9 +15,9 @@ from marshmallow.exceptions import ValidationError
 
 def test_user_login_schema():
 
-    def make_payload(u='user', p='pass', r=False):
+    def make_payload(u='user', p='pass', f=False):
         """Return schema payload with all arguments."""
-        return {'user_name': u, 'password': p, 'remember_me': r}
+        return {'user_name': u, 'password': p, 'force_renew': f}
 
     payload = make_payload()
     expected_user_login_schema_input = payload
@@ -34,11 +34,11 @@ def test_user_login_schema():
 
 
 ###############################################################################
-# PermissionSchema Tests
+# AppPermissionSchema Tests
 ###############################################################################
 
 
-def test_permission_schema():
+def test_app_permission_schema():
 
     expected_permission_schema_input = {
         'endpoint': 'test',
@@ -49,7 +49,7 @@ def test_permission_schema():
         ('method', 'test'),
         ('permission_needed', 'test')])
 
-    assert PermissionSchema().dump(expected_permission_schema_input) \
+    assert AppPermissionSchema().dump(expected_permission_schema_input) \
         == expected_permission_schema_output
 
 
@@ -63,13 +63,18 @@ def test_user_schema(test_user):
     expected_user_schema_output = OrderedDict([
         ('id', test_user.id),
         ('name', test_user.name),
-        ('full_name', 'Test User'),
-        ('email', None),
-        ('enabled', True),
+        ('full_name', test_user.full_name),
+        ('email', test_user.email),
+        ('enabled', test_user.enabled),
+        ('ldap_user', test_user.ldap_user),
         ('created_at', test_user.created_at.isoformat()),
         ('updated_at', test_user.updated_at.isoformat()),
-        ('roles', []),
-        ('permissions', [])])
+        ('roles', [
+            OrderedDict([('id', x.id), ('name', x.name)])
+            for x in test_user.roles]),
+        ('permissions', [
+            OrderedDict([('id', x.id), ('name', x.name)])
+            for x in test_user.permissions])])
 
     assert UserSchema().dump(test_user) == expected_user_schema_output
 
@@ -86,6 +91,9 @@ def test_user_token_schema(test_user):
     expected_zone_schema_output = OrderedDict([
         ('user_id', test_user.id),
         ('user_name', test_user.name),
+        ('full_name', test_user.full_name),
+        ('email', test_user.email),
+        ('ldap_user', test_user.ldap_user),
         ('token', test_user.session_token),
         ('expires_at', test_user.session_token_expires_at.isoformat())])
 
@@ -106,7 +114,9 @@ def test_role_schema(test_role):
         ('description', test_role.description),
         ('created_at', test_role.created_at.isoformat()),
         ('updated_at', test_role.updated_at.isoformat()),
-        ('permissions', test_role.permissions),
+        ('permissions', [
+            OrderedDict([('id', x.id), ('name', x.name)])
+            for x in test_role.permissions]),
         ('users', test_role.users)])
 
     assert RoleSchema().dump(test_role) == expected_role_schema_output
