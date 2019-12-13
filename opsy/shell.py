@@ -59,6 +59,7 @@ def run(script_info, host, port, ssl_enabled, certificate, private_key,
     try:
         proto = 'https' if server.ssl_adapter else 'http'
         app.logger.info(f'Starting Opsy server at {proto}://{host}:{port}/...')
+        app.logger.info(f'API docs available at {proto}://{host}:{port}/docs/')
         server.start()
     except KeyboardInterrupt:
         app.logger.info('Stopping Opsy server...')
