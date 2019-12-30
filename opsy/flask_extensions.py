@@ -8,6 +8,7 @@ from flask_login import LoginManager, current_user
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
+from prometheus_flask_exporter import PrometheusMetrics
 
 allows = Allows()  # pylint: disable=invalid-name
 db = SQLAlchemy()  # pylint: disable=invalid-name
@@ -17,6 +18,7 @@ ldap_manager = LDAP3LoginManager()  # pylint: disable=invalid-name
 login_manager = LoginManager()  # pylint: disable=invalid-name
 ma = Marshmallow()  # pylint: disable=invalid-name
 apispec = FlaskApiSpec()  # pylint: disable=invalid-name
+metrics = PrometheusMetrics(app=None) # pylint: disable=invalid-name
 
 
 # pylint: disable=unused-import
@@ -24,11 +26,20 @@ def configure_extensions(app):
     # Make SQLAlchemy aware of models
     from opsy.auth import models as am  # noqa: F401
     from opsy.inventory import models as im  # noqa: F401
+    from opsy import __version__ as opsy_version # noqa: F401
     db.init_app(app)
     migrate.init_app(app, db=db)
     ma.init_app(app)
     jsglue.init_app(app)
     login_manager.init_app(app)
+    metrics.init_app(app)
+    metrics.info('app_info', 'Application info', version=opsy_version)
+    metrics.register_default(
+        metrics.counter(
+            'by_path_counter', 'Request count by request paths',
+            labels={'path': lambda: request.path}
+        )
+    )
     if app.config.opsy['auth']['ldap_enabled']:
         ldap_manager.init_app(app)
     allows.init_app(app)

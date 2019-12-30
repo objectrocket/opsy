@@ -13,6 +13,7 @@ Flask-SQLAlchemy==2.4.0
 marshmallow==3.2.1
 marshmallow-sqlalchemy==0.17.0
 pbr==5.1.1
+prometheus-flask-exporter==0.12.1
 psycopg2-binary==2.8.2
 pyOpenSSL==19.0.0
 python-dateutil==2.7.5
