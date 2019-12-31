@@ -8,6 +8,7 @@ from flask_login import LoginManager, current_user
 from flask_marshmallow import Marshmallow
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
+from flask import request
 from prometheus_flask_exporter import PrometheusMetrics
 
 allows = Allows()  # pylint: disable=invalid-name
@@ -32,14 +33,6 @@ def configure_extensions(app):
     ma.init_app(app)
     jsglue.init_app(app)
     login_manager.init_app(app)
-    metrics.init_app(app)
-    metrics.info('app_info', 'Application info', version=opsy_version)
-    metrics.register_default(
-        metrics.counter(
-            'by_path_counter', 'Request count by request paths',
-            labels={'path': lambda: request.path}
-        )
-    )
     if app.config.opsy['auth']['ldap_enabled']:
         ldap_manager.init_app(app)
     allows.init_app(app)
@@ -63,3 +56,15 @@ def configure_extensions(app):
     login_manager.user_loader(load_user)
     login_manager.request_loader(load_user_from_request)
     app.session_interface = APISessionInterface()
+    metrics.init_app(app)
+    metrics.info('app_info', 'Application info', version=opsy_version)
+
+def finalize_extensions(app):
+    # Workaround for https://github.com/jmcarp/flask-apispec/issues/111
+    # pylint: disable=protected-access
+    for key, value in apispec.spec._paths.items():
+        apispec.spec._paths[key] = {
+            inner_key: inner_value
+            for inner_key, inner_value in value.items()
+            if inner_key != 'options'
+        }
