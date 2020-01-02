@@ -1,6 +1,6 @@
 from flask import Flask
 from opsy.config import configure_app
-from opsy.flask_extensions import configure_extensions, apispec, finalize_extensions
+from opsy.flask_extensions import configure_extensions, finalize_extensions
 from opsy.logging import (configure_logging, log_before_request,
                           log_after_request)
 from opsy.auth.views import create_auth_views
