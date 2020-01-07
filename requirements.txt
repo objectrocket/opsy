@@ -1,4 +1,4 @@
-Flask==0.12
+Flask==1.0
 aiohttp==0.21.6
 humanize==0.5.1
 Flask-INIConfig==0.1.0
