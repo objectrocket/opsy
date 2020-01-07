@@ -11,6 +11,23 @@ workflows:
       - test_python36
       - test_python37
       - test_python38
+      - build_release:
+          requires:
+            - test_python36
+            - test_python37
+            - test_python38
+          filters:
+            tags:
+              only: /[0-9]+(\.[0-9]+)*/
+            branches:
+              only: master
+      - hold:
+          type: approval
+          requires:
+           - build_release
+      - release:
+          requires:
+           - hold
 
 jobs:
   test_python36:
@@ -49,6 +66,19 @@ jobs:
       - common_setup:
           python_version: "3.8"
       - run_tests
+  build_release:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/repo
+    steps:
+      - build
+      - check_build
+  release:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/repo
+    steps:
+      - release_to_pypi
 
 commands:
   common_setup:
@@ -74,7 +104,6 @@ commands:
           paths:
             - ~/repo/.tox
           key: v1-dependencies-<< parameters.python_version >>-{{ checksum "requirements.txt" }}-{{ checksum "test-requirements.txt" }}
-
   run_tests:
     description: Run tests
     steps:
@@ -83,3 +112,50 @@ commands:
           command: |
             . ~/venv/bin/activate
             tox
+  build:
+    description: Setup release environment
+    steps:
+      - checkout
+      - run:
+          name: install dependencies
+          command: |
+            virtualenv ~/venv
+            . ~/venv/bin/activate
+            pip install --upgrade pip setuptools wheel pbr
+            echo "source ~/venv/bin/activate" >> $BASH_ENV
+      - run:
+          name: build
+          command: python setup.py sdist bdist_wheel
+  check_build:
+    description: Check the build
+    steps:
+      - run:
+          name: install
+          command: pip install dist/Opsy*.whl
+      - run:
+          name: verify version is marked for release
+          command: test $(pbr info opsy | awk '{print $3}') = 'released'
+      - run:
+          name: verify version matches tag
+          command: test $(pbr info opsy | awk '{print $2}') = $CIRCLE_TAG
+      - run:
+          name: run twine checks
+          command: twine check dist/*
+      - persist_to_workspace:
+          root: dist
+          paths: '*'
+  release_to_pypi:
+    description: Actually release
+    steps:
+      - attach_workspace:
+          at: /tmp/dist
+      - run:
+          name: install dependencies
+          command: |
+            virtualenv ~/venv
+            . ~/venv/bin/activate
+            pip install twine
+            echo "source ~/venv/bin/activate" >> $BASH_ENV
+      - run:
+          name: upload to pypi
+          command: twine upload --non-interactive /tmp/dist/*
