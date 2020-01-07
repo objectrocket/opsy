@@ -20,10 +20,20 @@ workflows:
             branches:
               only: master
       - hold:
+          filters:
+            tags:
+              only: /[0-9]+(\.[0-9]+)*/
+            branches:
+              only: master
           type: approval
           requires:
             - build_release
       - release:
+          filters:
+            tags:
+              only: /[0-9]+(\.[0-9]+)*/
+            branches:
+              only: master
           requires:
            - hold
 
