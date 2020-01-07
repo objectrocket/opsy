@@ -119,7 +119,7 @@ commands:
           command: |
             virtualenv ~/venv
             . ~/venv/bin/activate
-            pip install --upgrade pip setuptools wheel pbr
+            pip install --upgrade pip setuptools wheel pbr twine
             echo "source ~/venv/bin/activate" >> $BASH_ENV
       - run:
           name: build
