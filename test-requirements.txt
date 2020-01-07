@@ -1,4 +1,13 @@
-pylint
-pylint-flask
-pycodestyle
-pep257
+coverage==4.5.4
+Faker==2.0.0
+pycodestyle==2.4.0
+pydocstyle==3.0.0
+pylint==2.3.0
+pylint-flask==0.6
+pytest==5.0.1
+pytest-cov==2.7.1
+pytest-flask==0.15.0
+pytest-flask-sqlalchemy==1.0.2
+pytest-mock==1.11.0
+requests==2.22.0
+tox==3.13.2

@@ -1,35 +1,103 @@
 import uuid
-from collections import OrderedDict
-from datetime import datetime
+from datetime import datetime, timezone
 from flask_sqlalchemy import BaseQuery
-from flask import abort, json
-from prettytable import PrettyTable
+from sqlalchemy import or_
+from sqlalchemy.orm.attributes import CollectionAttributeImpl
 from sqlalchemy.orm.base import _entity_descriptor
 from opsy.flask_extensions import db
-from opsy.utils import get_filters_list, print_property_table
 from opsy.exceptions import DuplicateError
 
+###############################################################################
+# Base models
+###############################################################################
 
-class TimeStampMixin(object):
-    created_at = db.Column(db.DateTime, default=datetime.utcnow())
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow(),
-                           onupdate=datetime.utcnow())
+
+class AwareDateTime(db.TypeDecorator):
+    """Results returned as aware datetimes, not naive ones."""
+
+    impl = db.DateTime
+
+    def process_result_value(self, value, dialect):
+        if not isinstance(value, datetime):
+            return value
+        return value.replace(tzinfo=timezone.utc)
+
+
+class TimeStampMixin:
+    created_at = db.Column(AwareDateTime,
+                           default=datetime.now(timezone.utc))
+    updated_at = db.Column(AwareDateTime,
+                           default=datetime.now(timezone.utc),
+                           onupdate=datetime.now(timezone.utc))
 
 
 class OpsyQuery(BaseQuery):
 
-    def wtfilter_by(self, prune_none_values=False, **kwargs):
-        if prune_none_values:
-            kwargs = {k: v for k, v in kwargs.items() if v is not None}
+    def filter_in(self, ignore_none=False, **kwargs):
         filters = []
+        joins = []
         for key, value in kwargs.items():
+            local_descriptor = None  # for joins this is the local attribute
+            if '___' in key:
+                key, relationship_attr = key.split('___', 1)
+            else:
+                relationship_attr = None
             descriptor = _entity_descriptor(self._joinpoint_zero(), key)
+            if relationship_attr:
+                joins.append(descriptor)
+                local_descriptor = descriptor
+                descriptor = _entity_descriptor(descriptor, relationship_attr)
             if isinstance(value, str):
-                descriptor = _entity_descriptor(self._joinpoint_zero(), key)
-                filters.extend(get_filters_list([(value, descriptor)]))
+                filters.extend(self._get_filters_list(
+                    descriptor, value, local_descriptor))
             else:
                 filters.append(descriptor == value)
-        return self.filter(*filters)
+        new_self = self
+        for descriptor in joins:
+            new_self = new_self.outerjoin(descriptor)
+        return new_self.filter(*filters)
+
+    def _get_filters_list(self, descriptor, items, local_descriptor):
+
+        filters_list = []
+        if items:
+            include, exclude, like, not_like = self._parse_filters(items)
+            include_list = []
+            exclude_list = []
+            if include:
+                include_list.append(descriptor.in_(include))
+            if like:
+                include_list.extend([descriptor.like(x) for x in like])
+            if include_list:
+                filters_list.append(or_(*include_list))
+            if exclude:
+                exclude_list.append(descriptor.in_(exclude))
+            if not_like:
+                exclude_list.extend([descriptor.like(x) for x in not_like])
+            if exclude_list:
+                if local_descriptor and isinstance(
+                        local_descriptor.impl, CollectionAttributeImpl):
+                    # If this is a join we want to also include things that
+                    # don't match the join condition on negation. So like
+                    # if the foreign key is null, for example.
+                    filters_list.append(
+                        ~local_descriptor.any(or_(*exclude_list)))
+                else:
+                    filters_list.append(~or_(*exclude_list))
+        return filters_list
+
+    def _parse_filters(self, items):
+        item_list = items.split(',')
+        # Wrap in a set to remove duplicates
+        include = list({x for x in item_list
+                        if not x.startswith('!') and '*' not in x})
+        exclude = list({x[1:] for x in item_list
+                        if x.startswith('!') and '*' not in x})
+        like = list({x.replace('*', '%') for x in item_list
+                     if not x.startswith('!') and '*' in x})
+        not_like = list({x[1:].replace('*', '%') for x in item_list
+                         if x.startswith('!') and '*' in x})
+        return include, exclude, like, not_like
 
     def get_or_fail(self, ident):
         obj = self.get(ident)
@@ -43,26 +111,8 @@ class OpsyQuery(BaseQuery):
             raise ValueError
         return obj
 
-    def all_dict_out(self, **kwargs):
-        return [x.get_dict(**kwargs) for x in self]
 
-    def all_dict_out_or_404(self, **kwargs):
-        dict_list = self.all_dict_out(**kwargs)
-        if not dict_list:
-            abort(404)
-        return dict_list
-
-    def pretty_list(self, columns=None):
-        if not columns:
-            columns = self._joinpoint_zero().class_.__table__.columns.keys()
-        table = PrettyTable(columns)
-        for obj in self:
-            obj_dict = obj.get_dict(all_attrs=True)
-            table.add_row([obj_dict.get(x) for x in columns])
-        print(table)
-
-
-class BaseResource(object):
+class BaseModel:
 
     query_class = OpsyQuery
 
@@ -79,64 +129,39 @@ class BaseResource(object):
         return obj.save()
 
     @classmethod
-    def delete_by_id(cls, obj_id):
-        return cls.query.get(obj_id).first_or_fail().delete()
+    def get_by_id(cls, obj_id, **kwargs):
+        return cls.query.get_or_fail(obj_id)
 
     @classmethod
-    def update_by_id(cls, obj_id, prune_none_values=True, **kwargs):
-        return cls.query.get(obj_id).first_or_fail().update(
-            prune_none_values=prune_none_values, **kwargs)
+    def delete_by_id(cls, obj_id, **kwargs):
+        return cls.query.get_or_fail(obj_id).delete(**kwargs)
 
-    @property
-    def dict_out(self):
-        return OrderedDict([(key, getattr(self, key))
-                            for key in self.__table__.columns.keys()])  # pylint: disable=no-member
+    @classmethod
+    def update_by_id(cls, obj_id, **kwargs):
+        return cls.query.get_or_fail(obj_id).update(**kwargs)
 
-    def pretty_print(self, all_attrs=False, ignore_attrs=None):
-        properties = [(key, value) for key, value in self.get_dict(  # pylint: disable=no-member
-            all_attrs=all_attrs).items()]  # pylint: disable=no-member
-        print_property_table(properties, ignore_attrs=ignore_attrs)
-
-    def update(self, commit=True, prune_none_values=True, **kwargs):
-        kwargs.pop('id', None)
+    def update(self, commit=True, **kwargs):
         for key, value in kwargs.items():
-            if value is None and prune_none_values is True:
-                continue
             setattr(self, key, value)
         return self.save() if commit else self
 
-    def save(self, commit=True):
+    def save(self):
         db.session.add(self)
-        if commit:
-            db.session.commit()
+        db.session.commit()
         return self
 
     def delete(self, commit=True):
         db.session.delete(self)
-        return commit and db.session.commit()
-
-    def get_dict(self, jsonify=False, serialize=False, pretty_print=False,
-                 all_attrs=False, **kwargs):
-        dict_out = self.dict_out
-        if all_attrs:
-            attr_dict = OrderedDict([(x.key, getattr(self, x.key))
-                                     for x in self.__table__.columns])  # pylint: disable=no-member
-            dict_out.update(attr_dict)
-        if jsonify:
-            if pretty_print:
-                return json.dumps(dict_out, indent=4)
-            return json.dumps(dict_out)
-        if serialize:
-            dict_out = json.loads(json.dumps(dict_out))
-        return dict_out
+        if commit:
+            db.session.commit()
 
     def __repr__(self):
-        return '<%s %s>' % (self.__class__.__name__, self.id)
+        return f'<{self.__class__.__name__} {self.id}>'
 
 
-class NamedResource(BaseResource):
+class NamedModel(BaseModel):
 
-    name = db.Column(db.String(128), unique=True, index=True)
+    name = db.Column(db.String(128), unique=True, index=True, nullable=False)
 
     def __init__(self, name, **kwargs):
         self.name = name
@@ -144,43 +169,30 @@ class NamedResource(BaseResource):
             setattr(self, key, value)
 
     @classmethod
-    def create(cls, name, obj_class=None, *args, **kwargs):
+    def create(cls, name, *args, obj_class=None, **kwargs):
         if cls.query.filter_by(name=name).first():
             raise DuplicateError('%s already exists with name "%s".' % (
                 cls.__name__, name))
-        if obj_class:
-            obj = obj_class(name, *args, **kwargs)
-        else:
-            obj = cls(name, *args, **kwargs)
-        return obj.save()
+        return cls(name, *args, **kwargs).save()
 
     @classmethod
-    def delete_by_name(cls, obj_name):
-        return cls.query.filter_by(name=obj_name).first_or_fail().delete()
-
-    @classmethod
-    def update_by_name(cls, obj_name, prune_none_values=True, **kwargs):
-        return cls.query.filter_by(name=obj_name).first_or_fail().update(
-            prune_none_values=prune_none_values, **kwargs)
-
-    @classmethod
-    def get_by_id_or_name(cls, obj_id_or_name, error_on_none=False):
+    def get_by_id_or_name(cls, obj_id_or_name):
         obj = cls.query.filter(db.or_(
             cls.name == obj_id_or_name, cls.id == obj_id_or_name)).first()
-        if not obj and error_on_none:
+        if not obj:
             raise ValueError('No %s found with name or id "%s".' %
                              (cls.__name__, obj_id_or_name))
         return obj
 
     @classmethod
-    def delete_by_id_or_name(cls, obj_id_or_name):
-        return cls.get_by_id_or_name(obj_id_or_name,
-                                     error_on_none=True).delete()
+    def delete_by_id_or_name(cls, obj_id_or_name, **kwargs):
+        return cls.get_by_id_or_name(
+            obj_id_or_name).delete(**kwargs)
 
     @classmethod
     def update_by_id_or_name(cls, obj_id_or_name, **kwargs):
-        return cls.get_by_id_or_name(obj_id_or_name,
-                                     error_on_none=True).update(**kwargs)
+        return cls.get_by_id_or_name(
+            obj_id_or_name).update(**kwargs)
 
     def __repr__(self):
-        return '<%s %s>' % (self.__class__.__name__, self.name)
+        return f'<{self.__class__.__name__} {self.name}>'

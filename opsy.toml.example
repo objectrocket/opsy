@@ -1,0 +1,192 @@
+[app]
+# This section contains configuration for the core functionality of Opsy.
+
+# The SQLAlchemy compatible database URI. DB must support JSON.
+# At this time Postgres is recommended but sqlite works for testing.
+# Required: true
+# database_uri = 'postgresql://opsy:password@localhost/opsy'
+database_uri = 'sqlite:///../opsy.db'
+
+# This key is used for crypto features, such as encoding the user id into
+# the session token. Think of it as an important password that you should
+# change and keep safe.
+# Required: true
+secret_key = 'this is a secret'
+
+[server]
+# This section contains configuration for the embedded WSGI server.
+
+# This is the host that Opsy's server will listen on.
+# Required: false
+# Default value: localhost
+host = 'localhost'
+
+# This is the port that Opsy's server will listen on.
+# Required: false
+# Default value: 5000
+port = 5000
+
+# This is how many threads the server will spin up.
+# Required: false
+# Default value: 10
+threads = 10
+
+# Set this to true to enable SSL support. A certificate and private key must
+# be provided with this turned on.
+# Required: false
+# Default value: false
+ssl_enabled = false
+
+# Path to the certificate to be used with SSL.
+# Required: false
+# Default value: None
+certificate = ''
+
+# Path to the key to be used with SSL.
+# Required: false
+# Default value: None
+private_key = ''
+
+# Path to the CA certificate to be used with SSL.
+# Required: false
+# Default value: None
+ca_certificate = ''
+
+[logging]
+# This section contains configuration relating to Opsy's logging.
+
+# Path to the log for the Opsy app. This will always log to stdout.
+# Required: false
+# Default value: None
+log_file = ''
+
+# Path to the HTTP access logs. This will always log to stdout.
+# Required: false
+# Default value: None
+access_log_file = ''
+
+# Log level. Can be one of 'CRITICAL', 'ERROR', 'WARNING', 'INFO', or 'DEBUG'.
+# Required: false
+# Default value: INFO
+log_level = 'INFO'
+
+[auth]
+# This section contains configuration relating to Opsy's auth system.
+
+# This is a list of any permissions that should be granted to all users, even
+# unauthenticated users. Really should only be basic read permissions.
+# Required: false
+# Default value: None
+base_permissions = []
+
+# This is a list of any permissions that should be granted to all logged in
+# users, but not unauthenticated users.
+# Required: false
+# Default value: None
+logged_in_permissions = ['list_zones', 'list_hosts', 'list_groups']
+
+# Number of seconds before a session token is forced to be refreshed.
+# Required: false
+# Default value: 86400
+session_token_ttl = 86400
+
+# This controls whether Opsy will use its internal user database or use LDAP.
+# An LDAP host must be specified when this is turned on.
+# Required: false
+# Default value: false
+ldap_enabled = false
+
+# The LDAP host.
+# Required: false
+# Default value: None
+ldap_host = ''
+
+# The LDAP host's port.
+# Required: false
+# Default value: None
+ldap_port = 389
+
+# Whether to use SSL for the LDAP connection or not.
+# Required: false
+# Default value: false
+ldap_use_ssl = false
+
+# Specifies the DN of the user to perform search requests with.
+# Required: false
+# Default value: None
+ldap_bind_user_dn = ''
+
+# Specifies the password for the bind user.
+# Required: false
+# Default value: None
+ldap_bind_user_password = ''
+
+# Specifies the base DN for searching.
+# Required: false
+# Default value: None
+ldap_base_dn = ''
+
+# Specifies the user DN for searching. Prepended to the base DN to limit the
+# scope when searching for users.
+# Required: false
+# Default value: None
+ldap_user_dn = ''
+
+# Specifies what object filter to apply when searching for users.
+# Required: false
+# Default value: (objectclass=person)
+ldap_user_object_filter = ''
+
+# Declares what ldap attribute corresponds to the username passed to any 
+# login method when performing a bind.
+# Required: false
+# Default value: uid
+ldap_user_login_attr = ''
+
+# Specifies the RDN attribute used in the directory.
+# Required: false
+# Default value: uid
+ldap_user_rdn_attr = ''
+
+# Specifies attribute for the user's full name in the directory.
+# Required: false
+# Default value: displayName
+ldap_user_full_name_attr = ''
+
+# Specifies attribute for the user's email address in the directory.
+# Required: false
+# Default value: mail
+ldap_user_email_attr = ''
+
+# Specifies what scope to search in when searching for a specific user.
+# Can be one of 'LEVEL' or 'SUBTREE'.
+# Required: false
+# Default value: LEVEL
+ldap_user_search_scope = 'LEVEL'
+
+# Specifies the group DN for searching. Prepended to the base DN to limit the
+# scope when searching for groups.
+# Required: false
+# Default value: None
+ldap_group_dn = ''
+
+# Specifies what object filter to apply when searching for groups.
+# Required: false
+# Default value: (objectclass=groupOfNames)
+ldap_group_object_filter = ''
+
+# Specifies the LDAP attribute where group members are declared.
+# Required: false
+# Default value: Member
+ldap_group_members_attr = ''
+
+# Specifies the LDAP attribute used for the group names.
+# Required: false
+# Default value: cn
+ldap_group_name_attr = ''
+
+# Specifies what scope to search in when searching for a specific group.
+# Can be one of 'LEVEL' or 'SUBTREE'.
+# Required: false
+# Default value: LEVEL
+ldap_group_search_scope = 'LEVEL'

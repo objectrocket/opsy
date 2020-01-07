@@ -1,0 +1,23 @@
+[app]
+database_uri = 'postgresql://opsy@localhost/opsy'
+secret_key = 'this should be changed'
+
+[server]
+host = 'localhost'
+port = 5000
+threads = 10
+ssl_enabled = false
+certificate = ''
+private_key = ''
+ca_certificate = ''
+
+[logging]
+log_file = '/tmp/opsy.log'
+access_log_file = '/tmp/opsy_access.log'
+log_level = 'INFO'
+
+[auth]
+base_permissions = []
+logged_in_permissions = []
+session_token_ttl = 86400
+ldap_enabled = false

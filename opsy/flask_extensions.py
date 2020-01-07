@@ -1,69 +1,70 @@
-from flask import current_app
-from flask_iniconfig import INIConfig
+from apispec import APISpec
+from apispec.ext.marshmallow import MarshmallowPlugin
+from flask_allows import Allows
+from flask_apispec.extension import FlaskApiSpec
 from flask_jsglue import JSGlue
 from flask_ldap3_login import LDAP3LoginManager
 from flask_login import LoginManager, current_user
-from flask_principal import Principal, Identity, identity_loaded, UserNeed, \
-    ActionNeed, AnonymousIdentity
+from flask_marshmallow import Marshmallow
+from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
+from prometheus_flask_exporter import PrometheusMetrics
 
-iniconfig = INIConfig()  # pylint: disable=invalid-name
+allows = Allows()  # pylint: disable=invalid-name
 db = SQLAlchemy()  # pylint: disable=invalid-name
+migrate = Migrate()  # pylint: disable=invalid-name
 jsglue = JSGlue()  # pylint: disable=invalid-name
-login_manager = LoginManager()  # pylint: disable=invalid-name
 ldap_manager = LDAP3LoginManager()  # pylint: disable=invalid-name
-principal = Principal()  # pylint: disable=invalid-name
+login_manager = LoginManager()  # pylint: disable=invalid-name
+ma = Marshmallow()  # pylint: disable=invalid-name
+apispec = FlaskApiSpec()  # pylint: disable=invalid-name
+metrics = PrometheusMetrics(app=None)  # pylint: disable=invalid-name
 
 
+# pylint: disable=unused-import
 def configure_extensions(app):
+    # Make SQLAlchemy aware of models
+    from opsy.auth import models as am  # noqa: F401
+    from opsy.inventory import models as im  # noqa: F401
+    from opsy import __version__ as opsy_version  # noqa: F401
     db.init_app(app)
+    migrate.init_app(app, db=db)
+    ma.init_app(app)
     jsglue.init_app(app)
     login_manager.init_app(app)
-    if app.config.opsy['enable_ldap']:
+    if app.config.opsy['auth']['ldap_enabled']:
         ldap_manager.init_app(app)
-    principal.init_app(app)
+    allows.init_app(app)
+    allows.identity_loader(lambda: current_user)
+    app.config.update({
+        'APISPEC_SPEC': APISpec(
+            title='opsy',
+            version='v1',
+            openapi_version='2.0',
+            info={'description': "It's Opsy!"},
+            plugins=[MarshmallowPlugin()]
+        ),
+        'APISPEC_SWAGGER_URL': '/docs/swagger.json',
+        'APISPEC_SWAGGER_UI_URL': '/docs/',
+    })
+    app.config['APISPEC_SPEC'].components.security_scheme(
+        'api_key', {'type': 'apiKey', 'in': 'header', 'name': 'X-AUTH-TOKEN'})
+    apispec.init_app(app)
+    from opsy.auth.utils import (load_user, load_user_from_request,
+                                 APISessionInterface)
+    login_manager.user_loader(load_user)
+    login_manager.request_loader(load_user_from_request)
+    app.session_interface = APISessionInterface()
+    metrics.init_app(app)
+    metrics.info('app_info', 'Application info', version=opsy_version)
 
-    @login_manager.user_loader
-    def load_user(session_token):  # pylint: disable=unused-variable
-        from opsy.auth.models import User
-        return User.get_by_token(current_app, session_token)
 
-    @login_manager.request_loader
-    def load_user_from_request(request):  # pylint: disable=unused-variable
-        session_token = request.headers.get('x-auth-token')
-        from opsy.auth.models import User
-        return User.get_by_token(current_app, session_token)
-
-    @principal.identity_loader
-    def read_identity_from_flask_login():  # pylint: disable=unused-variable
-        if current_user.is_authenticated and current_user.is_active:
-            return Identity(current_user.id)
-        return AnonymousIdentity()
-
-    @identity_loaded.connect_via(app)  # pylint: disable=no-member
-    def on_identity_loaded(sender, identity):  # pylint: disable=unused-variable,R0912
-        identity.user = current_user
-        all_needs = {}
-        for catalog in app.needs_catalog.values():
-            if catalog is None:
-                continue
-            for name, need in catalog.items():
-                all_needs[name] = need
-        if app.config.opsy['base_permissions']:
-            for permission_name in app.config.opsy['base_permissions']:
-                if all_needs.get(permission_name):
-                    identity.provides.add(all_needs.get(permission_name))
-        if current_user.is_authenticated and current_user.is_active:
-            if hasattr(current_user, 'id'):
-                identity.provides.add(UserNeed(current_user.id))
-            identity.provides.add(ActionNeed('logged_in'))
-            if app.config.opsy['logged_in_permissions']:
-                for permission_name in app.config.opsy['logged_in_permissions']:
-                    if all_needs.get(permission_name):
-                        identity.provides.add(all_needs.get(permission_name))
-            if hasattr(current_user, 'permissions'):
-                permissions = list(set([x.name for x in  # Dedup
-                                        current_user.permissions]))
-                for permission in permissions:
-                    if all_needs.get(permission):
-                        identity.provides.add(all_needs.get(permission))
+def finalize_extensions(app):
+    # Workaround for https://github.com/jmcarp/flask-apispec/issues/111
+    # pylint: disable=protected-access
+    for key, value in apispec.spec._paths.items():
+        apispec.spec._paths[key] = {
+            inner_key: inner_value
+            for inner_key, inner_value in value.items()
+            if inner_key != 'options'
+        }

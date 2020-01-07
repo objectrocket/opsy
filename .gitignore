@@ -1,16 +1,13 @@
 #Opsy files
 /opsy.ini
+/opsy.toml
+/opsy.db
+/tests/opsy.db
 *fakeapi*
-
-#Debian packaging
-debian/debhelper-build-stamp
-debian/files
-debian/opsy.postinst.debhelper
-debian/opst.substvars
-debian/opsy
 
 #PBR
 ChangeLog
+AUTHORS
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
