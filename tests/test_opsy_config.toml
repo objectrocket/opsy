@@ -1,5 +1,5 @@
 [app]
-database_uri = 'sqlite:///../tests/opsy.db'
+database_uri = 'postgresql://opsy@localhost/opsy'
 secret_key = 'this should be changed'
 
 [server]

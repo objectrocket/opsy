@@ -186,7 +186,7 @@ class GroupQuerySchema(GroupSchema):
 
     class Meta:
         model = Group
-        fields = ('id', 'name', 'zone_id', 'parent_id', 'parent_name',
+        fields = ('id', 'name', 'zone_id', 'zone_name', 'parent_id',
                   'parent_name', 'host_id', 'host_name', 'default_priority')
         ordered = True
         unknown = RAISE

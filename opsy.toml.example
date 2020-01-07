@@ -162,7 +162,7 @@ ldap_user_email_attr = ''
 # Can be one of 'LEVEL' or 'SUBTREE'.
 # Required: false
 # Default value: LEVEL
-ldap_user_search_scope = ''
+ldap_user_search_scope = 'LEVEL'
 
 # Specifies the group DN for searching. Prepended to the base DN to limit the
 # scope when searching for groups.
@@ -189,4 +189,4 @@ ldap_group_name_attr = ''
 # Can be one of 'LEVEL' or 'SUBTREE'.
 # Required: false
 # Default value: LEVEL
-ldap_group_search_scope = ''
+ldap_group_search_scope = 'LEVEL'

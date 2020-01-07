@@ -38,27 +38,30 @@ cli.add_command(db_command)
 @cli.command('run')
 @click_option('--host', type=click.STRING, help='Host address.')
 @click_option('--port', '-p', type=click.INT, help='Port number to listen on.')
+@click_option('--threads', '-t', type=click.INT, help='Amount of threads.')
 @click_option('--ssl_enabled', type=click.BOOL, is_flag=True)
 @click_option('--certificate', type=click.Path(), help='SSL cert.')
 @click_option('--private_key', type=click.Path(), help='SSL key.')
 @click_option('--ca_certificate', type=click.Path(), help='SSL CA cert.')
 @pass_script_info
-def run(script_info, host, port, ssl_enabled, certificate, private_key,
-        ca_certificate):
+def run(script_info, host, port, threads, ssl_enabled, certificate,
+        private_key, ca_certificate):
     """Run the Opsy server."""
     app = script_info.load_app()
     host = host or app.config.opsy['server']['host']
     port = port or app.config.opsy['server']['port']
+    threads = threads or app.config.opsy['server']['threads']
     ssl_enabled = ssl_enabled or app.config.opsy['server']['ssl_enabled']
     certificate = certificate or app.config.opsy['server']['certificate']
     private_key = private_key or app.config.opsy['server']['private_key']
     ca_certificate = ca_certificate or \
         app.config.opsy['server']['ca_certificate']
-    server = create_server(app, host, port, ssl_enabled, certificate,
+    server = create_server(app, host, port, threads, ssl_enabled, certificate,
                            private_key, ca_certificate)
     try:
         proto = 'https' if server.ssl_adapter else 'http'
         app.logger.info(f'Starting Opsy server at {proto}://{host}:{port}/...')
+        app.logger.info(f'API docs available at {proto}://{host}:{port}/docs/')
         server.start()
     except KeyboardInterrupt:
         app.logger.info('Stopping Opsy server...')
