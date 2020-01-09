@@ -1,0 +1,10 @@
+.circleci
+.gitignore
+.git
+tests
+Dockerfile
+LICENSE
+opsy.toml.example
+README.md
+test-requirements.txt
+tox.ini
