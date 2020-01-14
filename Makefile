@@ -29,10 +29,7 @@ ci-test:
 	@tox
 
 docker-build:
-	@docker build \
-		--build-arg github_user=${GITHUB_USER} \
-		--build-arg github_access_token=${GITHUB_ACCESS_TOKEN} \
-		-t objectrocket/opsy:latest .
+	@docker build -t objectrocket/opsy:latest .
 
 docker-deploy:
 	@docker tag objectrocket/opsy:latest objectrocket/backups-tidy:$(DOCKER_TAG)
