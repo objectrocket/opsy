@@ -32,6 +32,6 @@ docker-build:
 	@docker build -t objectrocket/opsy:latest .
 
 docker-deploy:
-	@docker tag objectrocket/opsy:latest objectrocket/backups-tidy:$(DOCKER_TAG)
+	@docker tag objectrocket/opsy:latest objectrocket/opsy:$(DOCKER_TAG)
 	@docker push objectrocket/opsy:$(DOCKER_TAG)
 	@docker push objectrocket/opsy:latest
