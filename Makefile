@@ -12,7 +12,9 @@ test-clean:
 	@docker kill backups-tidy-tester; docker rm -f backups-tidy-tester
 
 build:
-	pip install opsy
+	pip install --upgrade pip setuptools wheel pbr twine
+	python setup.py sdist bdist_wheel
+	pip install dist/Opsy*.whl
 
 run-tests:
 	tox

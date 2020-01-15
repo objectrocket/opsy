@@ -36,6 +36,14 @@ workflows:
               only: master
           requires:
            - hold
+      - build_deploy:
+          filters:
+            tags:
+              only: /[0-9]+(\.[0-9]+)*/
+            branches:
+              only: master
+          requires:
+            - release
 
 jobs:
   test_python36:
@@ -87,6 +95,15 @@ jobs:
     working_directory: ~/repo
     steps:
       - release_to_pypi
+  build_deploy:
+    docker:
+      - image: circleci/python:3.6
+    steps:
+      - setup_remote_docker
+      - attach_workspace:
+        at: /tmp/dist
+      - docker_build
+
 
 commands:
   common_setup:
@@ -120,10 +137,9 @@ commands:
           command: |
             . ~/venv/bin/activate
             tox
-  build:
-    description: Setup release environment
+  docker_build:
+    description: Docker build and deploy
     steps:
-      - setup_remote_docker
       - run:
           name: docker login
           command: |
@@ -134,6 +150,9 @@ commands:
           command: |
             make docker-build
             make docker-deploy DOCKER_TAG=${CIRCLE_TAG}
+  build:
+    description: Setup release environment
+    steps:
       - run:
           name: install dependencies
           command: |
