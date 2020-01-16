@@ -6,12 +6,12 @@ OS?=$(shell uname -s | tr A-Z a-z)
 default: build
 
 clean:
-	-rm -r ./bin/ > /dev/null 2>&1
+	-rm -rf dist
 
 test-clean:
-	@docker kill opsy; docker rm -f opsy
+	rm -rf .tox/
 
-build:
+build: clean
 	pip install --upgrade pip setuptools wheel pbr twine
 	python setup.py sdist bdist_wheel
 	pip install dist/Opsy*.whl
@@ -19,21 +19,16 @@ build:
 run-tests:
 	tox
 
-test:
+test: test-clean
 	tox
 
 test-verbose:
-	@docker run -d -p 5000:5000 --name opsy python:3.6-alpine;
 	tox -v
-	docker kill opsy; docker rm opsy
 
-ci-test:
-	@tox
+docker-build: build
+	docker build -t objectrocket/opsy:latest .
 
-docker-build:
-	@docker build -t objectrocket/opsy:latest .
-
-docker-deploy:
-	@docker tag objectrocket/opsy:latest objectrocket/opsy:$(DOCKER_TAG)
-	@docker push objectrocket/opsy:$(DOCKER_TAG)
-	@docker push objectrocket/opsy:latest
+docker-deploy: docker-build
+	docker tag objectrocket/opsy:latest objectrocket/opsy:$(DOCKER_TAG)
+	docker push objectrocket/opsy:$(DOCKER_TAG)
+	docker push objectrocket/opsy:latest
