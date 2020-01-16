@@ -9,7 +9,7 @@ clean:
 	-rm -r ./bin/ > /dev/null 2>&1
 
 test-clean:
-	@docker kill backups-tidy-tester; docker rm -f backups-tidy-tester
+	@docker kill opsy; docker rm -f opsy
 
 build:
 	pip install --upgrade pip setuptools wheel pbr twine
