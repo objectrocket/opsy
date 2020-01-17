@@ -1,4 +1,5 @@
 import os
+import sys
 from functools import partial
 import click
 from flask import current_app
@@ -11,7 +12,7 @@ from opsy.config import load_config
 from opsy.server import create_server
 from opsy.auth.schema import AppPermissionSchema, UserSchema, RoleSchema
 from opsy.utils import (
-    print_error, print_notice, get_protected_routes, get_valid_permissions)
+    print_notice, get_protected_routes, get_valid_permissions)
 from opsy.auth.models import Role, User, Permission
 from opsy.inventory.models import Zone, Host, Group, HostGroupMapping
 
@@ -20,7 +21,7 @@ DEFAULT_CONFIG = os.environ.get(
     'OPSY_CONFIG', '%s/opsy.toml' % os.path.abspath(os.path.curdir))
 
 click_option = partial(  # pylint: disable=invalid-name
-    click.option, show_default=True)
+    click.option, show_default=True, show_envvar=True)
 
 
 @click.group(cls=AppGroup, help='The Opsy management cli.')
@@ -117,6 +118,7 @@ def permission_list(**kwargs):
 
 @cli.command('create-admin-user')
 @click_option('--password', '-p', hide_input=True, confirmation_prompt=True,
+              envvar='OPSY_ADMIN_PASSWORD',
               prompt='Password for the new admin user',
               help='Password for the new admin user.')
 @click_option('--force', '-f', type=click.BOOL, is_flag=True,
@@ -126,11 +128,13 @@ def create_admin_user(password, force):
     admin_user = User.query.filter_by(name='admin').first()
     admin_role = Role.query.filter_by(name='admin').first()
     if admin_user and not force:
-        print_error('Admin user already found, exiting. '
-                    'Use "--force" to force recreation.')
+        print_notice('Admin user already found, exiting. '
+                     'Use "--force" to force recreation.')
+        sys.exit(0)
     if admin_role and not force:
-        print_error('Admin role already found, exiting. '
-                    'Use "--force" to force recreation.')
+        print_notice('Admin role already found, exiting. '
+                     'Use "--force" to force recreation.')
+        sys.exit(0)
     if admin_user:
         print_notice('Admin user already found, deleting.')
         admin_user.delete()

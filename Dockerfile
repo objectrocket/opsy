@@ -1,7 +1,22 @@
-FROM python:3.6 as builder
+FROM python:3.6
+LABEL maintainer="sre@objectrocket.com"
 
-ENV REPO_PATH=/opsy
-COPY . $REPO_PATH
-COPY dist/Opsy*.whl $REPO_PATH
-WORKDIR $REPO_PATH
-RUN pip install dist/Opsy*.whl
+ENV PYTHONUNBUFFERED 1
+ENV OPSY_CONFIG "/etc/opsy/opsy.toml"
+
+COPY dist/Opsy*.whl /tmp
+
+RUN set -ex; \
+    mkdir /etc/opsy && \
+    useradd -rmd /opt/opsy opsy && \
+    python -m venv /opt/opsy && \
+    /opt/opsy/bin/pip install --no-cache-dir /tmp/Opsy*.whl && \
+    chown -R opsy: /opt/opsy /etc/opsy && \
+    rm -rf /tmp/Opsy*.whl
+
+COPY --chown=opsy:opsy scripts/entrypoint.sh /opt/opsy/bin/
+
+USER opsy
+
+EXPOSE 5000
+ENTRYPOINT ["/opt/opsy/bin/entrypoint.sh"]
