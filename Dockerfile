@@ -10,6 +10,7 @@ RUN set -ex; \
     mkdir /etc/opsy && \
     useradd -rmd /opt/opsy opsy && \
     python -m venv /opt/opsy && \
+    /opt/opsy/bin/pip install --no-cache-dir --upgrade pip && \
     /opt/opsy/bin/pip install --no-cache-dir /tmp/Opsy*.whl && \
     chown -R opsy: /opt/opsy /etc/opsy && \
     rm -rf /tmp/Opsy*.whl

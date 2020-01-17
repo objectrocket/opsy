@@ -3,7 +3,7 @@
 set -e
 
 if [ -z "${OPSY_DATABASE_URI}" ] || [ -z "${OPSY_SECRET_KEY}" ] || [ -z "${OPSY_ADMIN_PASSWORD}" ]; then
-    echo ',OPSY_DATABASE_URI, OPSY_SECRET_KEY, and OPSY_ADMIN_PASSWORD must be set, exiting.'
+    echo 'OPSY_DATABASE_URI, OPSY_SECRET_KEY, and OPSY_ADMIN_PASSWORD must be set, exiting.'
     exit 1
 fi
 

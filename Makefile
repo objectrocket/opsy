@@ -6,20 +6,22 @@ OS?=$(shell uname -s | tr A-Z a-z)
 default: build
 
 clean:
-	-rm -rf dist
+	-rm -rf dist/*
 
-test-clean:
+clean-tests:
 	rm -rf .tox/
 
 build: clean
-	pip install --upgrade pip setuptools wheel pbr twine
+	pip install --upgrade -r build-requirements.txt
 	python setup.py sdist bdist_wheel
+
+install: build
 	pip install dist/Opsy*.whl
 
 run-tests:
 	tox
 
-test: test-clean
+test:
 	tox
 
 test-verbose:
