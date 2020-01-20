@@ -7,7 +7,7 @@ if [ -z "${OPSY_DATABASE_URI}" ] || [ -z "${OPSY_SECRET_KEY}" ] || [ -z "${OPSY_
     exit 1
 fi
 
-cat > /etc/opsy/opsy.toml <<__EOF__
+cat > ${OPSY_CONFIG} <<__EOF__
 [app]
 database_uri = '${OPSY_DATABASE_URI}'
 secret_key = '${OPSY_SECRET_KEY}'

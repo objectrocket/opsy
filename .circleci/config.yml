@@ -11,31 +11,27 @@ workflows:
       - test_python36
       - test_python37
       - test_python38
-  build_and_release:
-    jobs:
-      - build_release:
-          filters:
-            tags:
-              only: /[0-9]+(\.[0-9]+)*(\.(a|b|rc)[0-9]*)?/
-            branches:
-              only: master
+      - build
       - hold:
           filters:
             tags:
-              only: /[0-9]+(\.[0-9]+)*(\.(a|b|rc)[0-9]*)?/
+              only: /[0-9]+(\.[0-9]+)*(\.0(a|b|rc)[0-9]*)?/
             branches:
-              only: master
+              ignore: /.*/
           type: approval
           requires:
-            - build_release
+            - build
+            - test_python36
+            - test_python37
+            - test_python38
       - release:
           filters:
             tags:
-              only: /[0-9]+(\.[0-9]+)*(\.(a|b|rc)[0-9]*)?/
+              only: /[0-9]+(\.[0-9]+)*(\.0(a|b|rc)[0-9]*)?/
             branches:
-              only: master
+              ignore: /.*/
           requires:
-           - hold
+            - hold
 
 jobs:
   test_python36:
@@ -74,28 +70,18 @@ jobs:
       - common_setup:
           python_version: "3.8"
       - run_tests
-  build_release:
+  build:
     docker:
       - image: circleci/python:3.6
     working_directory: ~/repo
     steps:
       - build
-      - check_build
   release:
     docker:
       - image: circleci/python:3.6
     working_directory: ~/repo
     steps:
-      - release_to_pypi
-  build_deploy:
-    docker:
-      - image: circleci/python:3.6
-    steps:
-      - setup_remote_docker
-      - attach_workspace:
-        at: /tmp/dist
-      - docker_build
-
+      - release
 
 commands:
   common_setup:
@@ -117,6 +103,7 @@ commands:
             . ~/venv/bin/activate
             pip install tox
             tox --notest
+            echo "source ~/venv/bin/activate" >> $BASH_ENV
       - save_cache:
           paths:
             - ~/repo/.tox
@@ -126,25 +113,12 @@ commands:
     steps:
       - run:
           name: Run tests
-          command: |
-            . ~/venv/bin/activate
-            tox
-  docker_build:
-    description: Docker build and deploy
-    steps:
-      - run:
-          name: docker login
-          command: |
-            docker login -u $DOCKER_USER -p $DOCKER_PASS
-            docker info
-      - run:
-          name: docker build and push container to docker hub
-          command: |
-            make docker-build
-            make docker-deploy DOCKER_TAG=${CIRCLE_TAG}
+          command: make test
   build:
-    description: Setup release environment
+    description: Build the python package and docker image
     steps:
+      - checkout
+      - setup_remote_docker
       - run:
           name: install dependencies
           command: |
@@ -154,30 +128,20 @@ commands:
             echo "source ~/venv/bin/activate" >> $BASH_ENV
       - run:
           name: build
-          command: python setup.py sdist bdist_wheel
-  check_build:
-    description: Check the build
-    steps:
+          command: make build
       - run:
-          name: install
-          command: pip install dist/Opsy*.whl
-      - run:
-          name: verify version is marked for release
-          command: test $(pbr info opsy | awk '{print $3}') = 'released'
-      - run:
-          name: verify version matches tag
-          command: test $(pbr info opsy | awk '{print $2}') = $CIRCLE_TAG
-      - run:
-          name: run twine checks
-          command: twine check dist/*
+          name: Save docker image to workspace
+          command: docker save objectrocket/opsy:${CIRCLE_TAG} | gzip > dist/Opsy-${CIRCLE_TAG}-docker.tar.gz
       - persist_to_workspace:
           root: dist
           paths: '*'
-  release_to_pypi:
-    description: Actually release
+  release:
+    description: Release to pypi and dockerhub
     steps:
+      - checkout
       - attach_workspace:
-          at: /tmp/dist
+          at: ~/repo/dist
+      - setup_remote_docker
       - run:
           name: install dependencies
           command: |
@@ -186,20 +150,8 @@ commands:
             pip install twine
             echo "source ~/venv/bin/activate" >> $BASH_ENV
       - run:
-          name: upload to pypi
-          command: twine upload --non-interactive /tmp/dist/*
-  release_to_dockerhub:
-    description: Actually release
-    steps:
-      - attach_workspace:
-          at: /tmp/dist
+          name: Load docker image from workspace
+          command: cat dist/Opsy-${CIRCLE_TAG}-docker.tar.gz | gzip -d | docker image load
       - run:
-          name: install dependencies
-          command: |
-            virtualenv ~/venv
-            . ~/venv/bin/activate
-            pip install twine
-            echo "source ~/venv/bin/activate" >> $BASH_ENV
-      - run:
-          name: upload to pypi
-          command: twine upload --non-interactive /tmp/dist/*
+          name: Push release
+          command: make release
