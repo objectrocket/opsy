@@ -11,7 +11,11 @@ workflows:
       - test_python36
       - test_python37
       - test_python38
-      - build
+      - build:
+          requires:
+            - test_python36
+            - test_python37
+            - test_python38
       - hold:
           filters:
             tags:
@@ -21,9 +25,6 @@ workflows:
           type: approval
           requires:
             - build
-            - test_python36
-            - test_python37
-            - test_python38
       - release:
           filters:
             tags:
