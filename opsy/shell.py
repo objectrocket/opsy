@@ -6,13 +6,16 @@ from flask import current_app
 from flask.cli import (
     AppGroup, routes_command, ScriptInfo, with_appcontext, pass_script_info)
 from flask_migrate.cli import db as db_command
+
+import opsy
 from opsy.flask_extensions import db
 from opsy.app import create_app
 from opsy.config import load_config
+from opsy.exceptions import NoConfigFile
 from opsy.server import create_server
 from opsy.auth.schema import AppPermissionSchema, UserSchema, RoleSchema
 from opsy.utils import (
-    print_notice, get_protected_routes, get_valid_permissions)
+    print_error, print_notice, get_protected_routes, get_valid_permissions)
 from opsy.auth.models import Role, User, Permission
 from opsy.inventory.models import Zone, Host, Group, HostGroupMapping
 
@@ -29,7 +32,11 @@ click_option = partial(  # pylint: disable=invalid-name
               help='Config file for opsy.', show_default=True)
 @click.pass_context
 def cli(ctx, config):
-    ctx.obj.data['config'] = load_config(config)
+    try:
+        ctx.obj.data['config'] = load_config(config)
+    except NoConfigFile as error:
+        print_error(error, exit_script=False)
+        ctx.obj.data['config'] = None
 
 
 cli.add_command(routes_command)
@@ -156,9 +163,17 @@ def create_admin_user(password, force):
     print(RoleSchema().dumps(admin_role, indent=4))
 
 
+@cli.command('version', with_appcontext=False)
+def version():
+    """Just show the version and quit."""
+    print(opsy.__version__)
+
+
 def main():
 
     def create_opsy_app(script_info):
+        if not script_info.data['config']:
+            print_error('Config file not loaded, unable to start app.')
         return create_app(script_info.data['config'])
     cli(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
         obj=ScriptInfo(create_app=create_opsy_app))

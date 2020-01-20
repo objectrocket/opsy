@@ -32,6 +32,8 @@ def log_after_request(response):
 
 
 def configure_logging(config):
+    # Nuke any default handlers
+    logging.getLogger().handlers = []
     # First configure the application logger.
     app_logger = logging.getLogger('opsy')
     app_log_handlers = [logging.StreamHandler(sys.stdout)]

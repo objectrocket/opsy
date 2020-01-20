@@ -16,13 +16,13 @@ workflows:
       - build_release:
           filters:
             tags:
-              only: /[0-9]+(\.[0-9]+)*/
+              only: /[0-9]+(\.[0-9]+)*(\.(a|b|rc)[0-9]*)?/
             branches:
               only: master
       - hold:
           filters:
             tags:
-              only: /[0-9]+(\.[0-9]+)*/
+              only: /[0-9]+(\.[0-9]+)*(\.(a|b|rc)[0-9]*)?/
             branches:
               only: master
           type: approval
@@ -31,19 +31,11 @@ workflows:
       - release:
           filters:
             tags:
-              only: /[0-9]+(\.[0-9]+)*/
+              only: /[0-9]+(\.[0-9]+)*(\.(a|b|rc)[0-9]*)?/
             branches:
               only: master
           requires:
            - hold
-      - build_deploy:
-          filters:
-            tags:
-              only: /[0-9]+(\.[0-9]+)*/
-            branches:
-              only: master
-          requires:
-            - release
 
 jobs:
   test_python36:
@@ -182,6 +174,21 @@ commands:
           root: dist
           paths: '*'
   release_to_pypi:
+    description: Actually release
+    steps:
+      - attach_workspace:
+          at: /tmp/dist
+      - run:
+          name: install dependencies
+          command: |
+            virtualenv ~/venv
+            . ~/venv/bin/activate
+            pip install twine
+            echo "source ~/venv/bin/activate" >> $BASH_ENV
+      - run:
+          name: upload to pypi
+          command: twine upload --non-interactive /tmp/dist/*
+  release_to_dockerhub:
     description: Actually release
     steps:
       - attach_workspace:

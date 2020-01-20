@@ -32,7 +32,11 @@ def test_print_utils(capsys):
     assert pytest_wrapped_e.type == SystemExit
     assert pytest_wrapped_e.value.code == 1
     print_error('error', title='uhoh', exit_script=False)
+    captured = capsys.readouterr()
     assert captured.err == '[\033[91muhoh\033[0m] error\n'
+    print_error(AssertionError('test'), exit_script=False)
+    captured = capsys.readouterr()
+    assert captured.err == '[\033[91mAssertionError\033[0m] test\n'
 
 
 def test_merge_dict():
