@@ -130,6 +130,13 @@ commands:
           name: build
           command: make build
       - run:
+          name: Stop if we're not releasing
+          command: |
+            if [ -z "$CIRCLE_TAG" ]; then
+                echo "No tag, stopping build early."
+                circleci-agent step halt
+            fi
+      - run:
           name: Save docker image to workspace
           command: docker save objectrocket/opsy:${CIRCLE_TAG} | gzip > dist/Opsy-${CIRCLE_TAG}-docker.tar.gz
       - persist_to_workspace:
