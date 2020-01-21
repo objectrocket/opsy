@@ -20,16 +20,14 @@ from opsy.auth.models import Role, User, Permission
 from opsy.inventory.models import Zone, Host, Group, HostGroupMapping
 
 
-DEFAULT_CONFIG = os.environ.get(
-    'OPSY_CONFIG', '%s/opsy.toml' % os.path.abspath(os.path.curdir))
-
 click_option = partial(  # pylint: disable=invalid-name
     click.option, show_default=True, show_envvar=True)
 
 
 @click.group(cls=AppGroup, help='The Opsy management cli.')
-@click_option('--config', type=click.Path(), default=DEFAULT_CONFIG,
-              help='Config file for opsy.', show_default=True)
+@click_option('--config', type=click.Path(),
+              default=f'{os.path.abspath(os.path.curdir)}/opsy.toml',
+              envvar='OPSY_CONFIG', help='Config file for opsy.')
 @click.pass_context
 def cli(ctx, config):
     try:
