@@ -6,12 +6,44 @@ version: 2.1
 
 workflows:
   version: 2
-  main_workflow:
+  # This will run on every commit, but not on tags.
+  test_build:
     jobs:
       - test_python36
       - test_python37
       - test_python38
       - build:
+          requires:
+            - test_python36
+            - test_python37
+            - test_python38
+  # This will run only on tagged commits due to the filters.
+  test_build_release:
+    jobs:
+      - test_python36:
+          filters:
+            tags:
+              only: /[0-9]+(\.[0-9]+)*(\.0(a|b|rc)[0-9]*)?/
+            branches:
+              ignore: /.*/
+      - test_python37:
+          filters:
+            tags:
+              only: /[0-9]+(\.[0-9]+)*(\.0(a|b|rc)[0-9]*)?/
+            branches:
+              ignore: /.*/
+      - test_python38:
+          filters:
+            tags:
+              only: /[0-9]+(\.[0-9]+)*(\.0(a|b|rc)[0-9]*)?/
+            branches:
+              ignore: /.*/
+      - build:
+          filters:
+            tags:
+              only: /[0-9]+(\.[0-9]+)*(\.0(a|b|rc)[0-9]*)?/
+            branches:
+              ignore: /.*/
           requires:
             - test_python36
             - test_python37
