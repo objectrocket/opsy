@@ -1,0 +1,3 @@
+*
+!scripts/entrypoint.sh
+!dist/Opsy-*-py3-none-any.whl

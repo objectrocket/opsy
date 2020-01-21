@@ -17,7 +17,10 @@ def rwrap(some_string):
 
 def print_error(error, title=None, exit_script=True):
     if not title:
-        title = "Something broke"
+        if isinstance(error, Exception):
+            title = error.__class__.__name__
+        else:
+            title = "Something broke"
     print("[%s] %s" % (rwrap(title), error), file=sys.stderr)
     if exit_script:
         sys.exit(1)

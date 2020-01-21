@@ -85,7 +85,7 @@ class ConfigSchema(Schema):
 
 def load_config(config_file):
     if not os.path.exists(config_file):
-        raise NoConfigFile(f'File {config_file} does not exist.')
+        raise NoConfigFile(f'File "{config_file}" does not exist.')
     with open(config_file, 'r') as file_handler:
         config = ConfigSchema().load(toml.load(file_handler))
     return config

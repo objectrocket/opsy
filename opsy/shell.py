@@ -1,13 +1,17 @@
 import os
+import sys
 from functools import partial
 import click
 from flask import current_app
 from flask.cli import (
     AppGroup, routes_command, ScriptInfo, with_appcontext, pass_script_info)
 from flask_migrate.cli import db as db_command
+
+import opsy
 from opsy.flask_extensions import db
 from opsy.app import create_app
 from opsy.config import load_config
+from opsy.exceptions import NoConfigFile
 from opsy.server import create_server
 from opsy.auth.schema import AppPermissionSchema, UserSchema, RoleSchema
 from opsy.utils import (
@@ -16,19 +20,21 @@ from opsy.auth.models import Role, User, Permission
 from opsy.inventory.models import Zone, Host, Group, HostGroupMapping
 
 
-DEFAULT_CONFIG = os.environ.get(
-    'OPSY_CONFIG', '%s/opsy.toml' % os.path.abspath(os.path.curdir))
-
 click_option = partial(  # pylint: disable=invalid-name
-    click.option, show_default=True)
+    click.option, show_default=True, show_envvar=True)
 
 
 @click.group(cls=AppGroup, help='The Opsy management cli.')
-@click_option('--config', type=click.Path(), default=DEFAULT_CONFIG,
-              help='Config file for opsy.', show_default=True)
+@click_option('--config', type=click.Path(),
+              default=f'{os.path.abspath(os.path.curdir)}/opsy.toml',
+              envvar='OPSY_CONFIG', help='Config file for opsy.')
 @click.pass_context
 def cli(ctx, config):
-    ctx.obj.data['config'] = load_config(config)
+    try:
+        ctx.obj.data['config'] = load_config(config)
+    except NoConfigFile as error:
+        print_error(error, exit_script=False)
+        ctx.obj.data['config'] = None
 
 
 cli.add_command(routes_command)
@@ -117,6 +123,7 @@ def permission_list(**kwargs):
 
 @cli.command('create-admin-user')
 @click_option('--password', '-p', hide_input=True, confirmation_prompt=True,
+              envvar='OPSY_ADMIN_PASSWORD',
               prompt='Password for the new admin user',
               help='Password for the new admin user.')
 @click_option('--force', '-f', type=click.BOOL, is_flag=True,
@@ -126,11 +133,13 @@ def create_admin_user(password, force):
     admin_user = User.query.filter_by(name='admin').first()
     admin_role = Role.query.filter_by(name='admin').first()
     if admin_user and not force:
-        print_error('Admin user already found, exiting. '
-                    'Use "--force" to force recreation.')
+        print_notice('Admin user already found, exiting. '
+                     'Use "--force" to force recreation.')
+        sys.exit(0)
     if admin_role and not force:
-        print_error('Admin role already found, exiting. '
-                    'Use "--force" to force recreation.')
+        print_notice('Admin role already found, exiting. '
+                     'Use "--force" to force recreation.')
+        sys.exit(0)
     if admin_user:
         print_notice('Admin user already found, deleting.')
         admin_user.delete()
@@ -152,9 +161,17 @@ def create_admin_user(password, force):
     print(RoleSchema().dumps(admin_role, indent=4))
 
 
+@cli.command('version', with_appcontext=False)
+def version():
+    """Just show the version and quit."""
+    print(opsy.__version__)
+
+
 def main():
 
     def create_opsy_app(script_info):
+        if not script_info.data['config']:
+            print_error('Config file not loaded, unable to start app.')
         return create_app(script_info.data['config'])
     cli(  # pylint: disable=unexpected-keyword-arg,no-value-for-parameter
         obj=ScriptInfo(create_app=create_opsy_app))
