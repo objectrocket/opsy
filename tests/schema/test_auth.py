@@ -70,11 +70,23 @@ def test_user_schema(test_user):
         ('created_at', test_user.created_at.isoformat()),
         ('updated_at', test_user.updated_at.isoformat()),
         ('roles', [
-            OrderedDict([('id', x.id), ('name', x.name)])
+            OrderedDict([
+                ('id', x.id),
+                ('name', x.name),
+                ('_links', {
+                    'self': f'/api/v1/roles/{x.id}',
+                    'collection': '/api/v1/roles/'})])
             for x in test_user.roles]),
-        ('permissions', [
-            OrderedDict([('id', x.id), ('name', x.name)])
-            for x in test_user.permissions])])
+        ('permissions', [OrderedDict([
+            ('id', x.id),
+            ('name', x.name),
+            ('_links', {
+                'self': f'/api/v1/roles/{x.role.id}/permissions/{x.id}',
+                'collection': f'/api/v1/roles/{x.role.id}/permissions/'})])
+            for x in test_user.permissions]),
+        ('_links', {
+            'self': f'/api/v1/users/{test_user.id}',
+            'collection': '/api/v1/users/'})])
 
     assert UserSchema().dump(test_user) == expected_user_schema_output
 
@@ -114,10 +126,17 @@ def test_role_schema(test_role):
         ('description', test_role.description),
         ('created_at', test_role.created_at.isoformat()),
         ('updated_at', test_role.updated_at.isoformat()),
-        ('permissions', [
-            OrderedDict([('id', x.id), ('name', x.name)])
+        ('permissions', [OrderedDict([
+            ('id', x.id),
+            ('name', x.name),
+            ('_links', {
+                'self': f'/api/v1/roles/{x.role.id}/permissions/{x.id}',
+                'collection': f'/api/v1/roles/{x.role.id}/permissions/'})])
             for x in test_role.permissions]),
-        ('users', test_role.users)])
+        ('users', test_role.users),
+        ('_links', {
+            'self': f'/api/v1/roles/{test_role.id}',
+            'collection': '/api/v1/roles/'})])
 
     assert RoleSchema().dump(test_role) == expected_role_schema_output
 
@@ -135,10 +154,16 @@ def test_role_permission_schema(admin_user):
         ('id', test_perm.id),
         ('role', OrderedDict([
             ('id', test_perm.role.id),
-            ('name', test_perm.role.name)])),
+            ('name', test_perm.role.name),
+            ('_links', {
+                'self': f'/api/v1/roles/{test_perm.role.id}',
+                'collection': '/api/v1/roles/'})])),
         ('name', test_perm.name),
         ('created_at', test_perm.created_at.isoformat()),
-        ('updated_at', test_perm.updated_at.isoformat())])
+        ('updated_at', test_perm.updated_at.isoformat()),
+        ('_links', {
+            'self': f'/api/v1/roles/{test_perm.role.id}/permissions/{test_perm.id}',
+            'collection': f'/api/v1/roles/{test_perm.role.id}/permissions/'})])
 
     assert RolePermissionSchema().dump(test_perm) \
         == expected_role_permission_schema_output

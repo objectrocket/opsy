@@ -42,7 +42,8 @@ def configure_extensions(app):
             version='v1',
             openapi_version='2.0',
             info={'description': "It's Opsy!"},
-            plugins=[MarshmallowPlugin()]
+            plugins=[MarshmallowPlugin()],
+            basePath=app.config.opsy['app']['uri_prefix']
         ),
         'APISPEC_SWAGGER_URL': '/docs/swagger.json',
         'APISPEC_SWAGGER_UI_URL': '/docs/',

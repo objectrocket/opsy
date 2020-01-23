@@ -8,6 +8,7 @@ from opsy.exceptions import NoConfigFile
 class ConfigAppSchema(Schema):
     database_uri = fields.Str(required=True)
     secret_key = fields.Str(required=True)
+    uri_prefix = fields.Str(missing='/')
 
 
 class ConfigAuthSchema(Schema):

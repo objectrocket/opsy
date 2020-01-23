@@ -3,7 +3,7 @@ from marshmallow import RAISE
 from marshmallow_sqlalchemy import field_for
 from opsy.auth.models import User, Role, Permission
 from opsy.flask_extensions import ma
-from opsy.schema import BaseSchema
+from opsy.schema import BaseSchema, Hyperlinks
 
 ###############################################################################
 # Non-sqlalchemy schemas
@@ -38,7 +38,7 @@ class UserSchema(BaseSchema):
     class Meta:
         model = User
         fields = ('id', 'name', 'full_name', 'email', 'enabled', 'ldap_user',
-                  'created_at', 'updated_at', 'roles', 'permissions')
+                  'created_at', 'updated_at', 'roles', 'permissions', '_links')
         ordered = True
         unknown = RAISE
 
@@ -53,6 +53,11 @@ class UserSchema(BaseSchema):
         'RolePermissionRefSchema', many=True, dump_only=True)
     roles = ma.Nested(  # pylint: disable=no-member
         'RoleRefSchema', many=True, dump_only=True)
+    _links = Hyperlinks(
+        {"self": ma.URLFor("auth_users.users_get", id_or_name="<id>"),
+         "collection": ma.URLFor("auth_users.users_list")},
+        dump_only=True
+    )
 
 
 class UserCreateSchema(UserSchema):
@@ -147,7 +152,7 @@ class RoleSchema(BaseSchema):
     class Meta:
         model = Role
         fields = ('id', 'name', 'ldap_group', 'description', 'created_at',
-                  'updated_at', 'permissions', 'users')
+                  'updated_at', 'permissions', 'users', '_links')
         ordered = True
         unknown = RAISE
 
@@ -160,6 +165,11 @@ class RoleSchema(BaseSchema):
         'RolePermissionRefSchema', many=True, dump_only=True)
     users = ma.Nested(  # pylint: disable=no-member
         'UserRefSchema', many=True, dump_only=True)
+
+    _links = Hyperlinks(
+        {"self": ma.URLFor("auth_roles.roles_get", id_or_name="<id>"),
+         "collection": ma.URLFor("auth_roles.roles_list")},
+        dump_only=True)
 
 
 class RoleUpdateSchema(RoleSchema):
@@ -203,7 +213,7 @@ class RolePermissionSchema(BaseSchema):
 
     class Meta:
         model = Permission
-        fields = ('id', 'role', 'name', 'created_at', 'updated_at')
+        fields = ('id', 'role', 'name', 'created_at', 'updated_at', '_links')
         ordered = True
 
     id = field_for(Permission, 'id', dump_only=True)
@@ -213,6 +223,13 @@ class RolePermissionSchema(BaseSchema):
 
     role = ma.Nested(  # pylint: disable=no-member
         'RoleRefSchema', dump_only=True)
+
+    _links = Hyperlinks({
+        "self": ma.URLFor("auth_roles.role_permissions_get",
+                          id_or_name="<role_id>",
+                          permission_id_or_name="<id>"),
+        "collection": ma.URLFor("auth_roles.role_permissions_list",
+                                id_or_name="<role_id>")}, dump_only=True)
 
 
 class RolePermissionUpdateSchema(BaseSchema):
