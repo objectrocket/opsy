@@ -11,7 +11,7 @@ cat > ${OPSY_CONFIG} <<__EOF__
 [app]
 database_uri = '${OPSY_DATABASE_URI}'
 secret_key = '${OPSY_SECRET_KEY}'
-application_root = '${OPSY_APPLICATION_ROOT:-/}'
+uri_prefix = '${OPSY_URI_PREFIX:-/}'
 
 [server]
 host = '0.0.0.0'

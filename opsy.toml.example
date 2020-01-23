@@ -14,9 +14,10 @@ database_uri = 'sqlite:///../opsy.db'
 secret_key = 'this is a secret'
 
 # This is used if Opsy is behind a reverse proxy. It should be set to where
-# you have it mounted, like '/opsy/' for example.
+# you have it mounted, like '/opsy' for example.
 # Required: false
-application_root = '/'
+# Default value: /
+uri_prefix = '/'
 
 [server]
 # This section contains configuration for the embedded WSGI server.

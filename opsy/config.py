@@ -8,7 +8,7 @@ from opsy.exceptions import NoConfigFile
 class ConfigAppSchema(Schema):
     database_uri = fields.Str(required=True)
     secret_key = fields.Str(required=True)
-    application_root = fields.Str(missing='/')
+    uri_prefix = fields.Str(missing='/')
 
 
 class ConfigAuthSchema(Schema):
@@ -98,7 +98,6 @@ def configure_app(app, config):
         'JSON_SORT_KEYS': False,
         'SECRET_KEY': config['app']['secret_key'],
         'SQLALCHEMY_DATABASE_URI': config['app']['database_uri'],
-        'APPLICATION_ROOT': config['app']['application_root'],
         'LDAP_HOST': config['auth']['ldap_host'],
         'LDAP_PORT': config['auth']['ldap_port'],
         'LDAP_USE_SSL': config['auth']['ldap_use_ssl'],
