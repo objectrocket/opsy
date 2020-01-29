@@ -1,0 +1,93 @@
+# Default values for opsy.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 3
+
+image:
+  repository: objectrocket/opsy
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths:
+        - /opsy
+
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+
+opsy:
+  admin_password:  # This is stored as a secret
+  app:
+    database_uri:  # This is stored as a secret
+    secret_key:  # This is stored as a secret
+    uri_prefix: '/opsy'
+  server:
+    threads: 10
+  logging:
+    log_level: 'INFO'
+  auth:
+    base_permissions: []
+    logged_in_permissions: []
+    session_token_ttl: 86400
+    ldap_enabled: false
+    ldap_host: ''
+    ldap_port: 389
+    ldap_use_ssl: false
+    ldap_bind_user_dn: ''
+    ldap_bind_user_password: ''  # This is stored as a secret
+    ldap_base_dn: ''
+    ldap_user_dn: ''
+    ldap_user_object_filter: ''
+    ldap_user_login_attr: ''
+    ldap_user_rdn_attr: ''
+    ldap_user_full_name_attr: ''
+    ldap_user_email_attr: ''
+    ldap_user_search_scope: 'LEVEL'
+    ldap_group_dn: ''
+    ldap_group_object_filter: ''
+    ldap_group_members_attr: ''
+    ldap_group_name_attr: ''
+    ldap_group_search_scope: 'LEVEL'
+
+database_migration:
+  resources: {}
+  nodeSelector: {}
+  tolerations: {}
+  affinity: {}
+
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
