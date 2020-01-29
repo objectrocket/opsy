@@ -8,7 +8,7 @@ It's recommended to use a virtual environment for development.
 
 Clone down the opsy repo:
 
-    $ git clone git@github.com:testeddoughnut/opsy.git
+    $ git clone git@github.com:objectrocket/opsy.git
 
 Install opsy for development (ensure you are in your previously created virtualenv):
 
@@ -33,6 +33,21 @@ We are now ready to start opsy for the first time:
     $ opsyctl run
 
 By default it listens on `http://127.0.0.1:5000/`. You can access the auto generated swagger docs by navigating to `http://127.0.0.1:5000/docs/`.
+
+# Docker image
+
+The included Dockerfile can be used to create a docker image for Opsy. The entrypoint script accepts environment variables to configure Opsy. A full mapping of the variables can be found in `scripts/entrypoint.sh`, here are the more important ones:
+
+| Variable               | Default | Description                                                              |
+| ---------------------- | ------- | ------------------------------------------------------------------------ |
+| OPSY_CREATE_ADMIN_USER | `true`  | Controls if the admin user should be created.                            |
+| OPSY_ADMIN_PASSWORD    | `none`  | Password for the admin user. Required if OPSY_CREATE_ADMIN_USER is true. |
+| OPSY_MIGRATE_DB        | `true`  | Controls if the DB schema should be migrated.                            |
+| OPSY_RUN               | `true`  | Controls if the Opsy app should be started.                              |
+| OPSY_DATABASE_URI      | `none`  | The connection string for the DB. Required.                              |
+| OPSY_SECRET_KEY        | `none`  | The secret key. Required.                                                |
+
+The Docker image can be built by running `make`.
 
 # Dealing with schema changes
 
