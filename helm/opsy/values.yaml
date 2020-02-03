@@ -6,7 +6,7 @@ replicaCount: 3
 
 image:
   repository: objectrocket/opsy
-  tag: latest
+  #tag: latest  # This is optional, will default to .Chart.AppVersion if not set.
   pullPolicy: IfNotPresent
 
 imagePullSecrets: []
@@ -29,7 +29,7 @@ service:
   port: 80
 
 ingress:
-  enabled: true
+  enabled: false
   annotations: {}
     # kubernetes.io/ingress.class: nginx
     # kubernetes.io/tls-acme: "true"
@@ -46,10 +46,10 @@ ingress:
 resources: {}
 
 opsy:
-  admin_password:  # This is stored as a secret
+  #admin_password:  # This is stored as a secret, required.
   app:
-    database_uri:  # This is stored as a secret
-    secret_key:  # This is stored as a secret
+    #database_uri:  # This is stored as a secret, required.
+    #secret_key:  # This is stored as a secret, required.
     uri_prefix: '/opsy'
   server:
     threads: 10

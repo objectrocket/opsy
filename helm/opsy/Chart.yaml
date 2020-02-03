@@ -1,5 +1,5 @@
 name: opsy
-appVersion: 0.0.1
+appVersion: "0.3.1"
 version: 0.0.1
 description: It's Opsy! A simple multi-user/role operations inventory system with aspirations.
 home: https://github.com/objectrocket/opsy

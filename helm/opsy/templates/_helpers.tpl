@@ -47,7 +47,7 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Migration labels
 */}}
-{{- define "opsy.migration_labels" -}}
+{{- define "opsy.migrationLabels" -}}
 app.kubernetes.io/name: {{ include "opsy.name" . }}-database-migrations
 helm.sh/chart: {{ include "opsy.chart" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
@@ -55,4 +55,8 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- end -}}
+
+{{- define "opsy.imageTag" -}}
+{{- default .Chart.AppVersion .Values.image.tag -}}
 {{- end -}}
