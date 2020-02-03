@@ -50,7 +50,7 @@ opsy:
   app:
     #database_uri:  # This is stored as a secret, required.
     #secret_key:  # This is stored as a secret, required.
-    uri_prefix: '/opsy'
+    uri_prefix: '/opsy'  # This should match the path you have on ingress.
   server:
     threads: 10
   logging:
