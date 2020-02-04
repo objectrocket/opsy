@@ -1,0 +1,49 @@
+# We define two configs, one that's used for the db migration job, and one that
+# is for the release. We do this because the database migration job needs
+# config too but we don't want to have orphaned resources if we helm delete.
+{{- define "config.content" -}}
+data:
+  OPSY_URI_PREFIX: {{ .Values.opsy.app.uri_prefix }}
+  OPSY_THREADS: {{ .Values.opsy.server.threads | quote }}
+  OPSY_LOG_LEVEL: {{ .Values.opsy.logging.log_level }}
+  OPSY_BASE_PERMISSIONS: {{ .Values.opsy.auth.base_permissions | quote }}
+  OPSY_LOGGED_IN_PERMISSIONS: {{ .Values.opsy.auth.logged_in_permissions | quote }}
+  OPSY_SESSION_TOKEN_TTL: {{ .Values.opsy.auth.session_token_ttl | quote }}
+  OPSY_LDAP_ENABLED: {{ .Values.opsy.auth.ldap_enabled | quote }}
+  OPSY_LDAP_HOST: {{ .Values.opsy.auth.ldap_host }}
+  OPSY_LDAP_PORT: {{ .Values.opsy.auth.ldap_port | quote }}
+  OPSY_LDAP_USE_SSL: {{ .Values.opsy.auth.ldap_use_ssl | quote }}
+  OPSY_LDAP_BIND_USER_DN: {{ .Values.opsy.auth.ldap_bind_user_dn }}
+  OPSY_LDAP_BASE_DN: {{ .Values.opsy.auth.ldap_base_dn }}
+  OPSY_LDAP_USER_DN: {{ .Values.opsy.auth.ldap_user_dn }}
+  OPSY_LDAP_USER_OBJECT_FILTER: {{ .Values.opsy.auth.ldap_user_object_filter }}
+  OPSY_LDAP_USER_LOGIN_ATTR: {{ .Values.opsy.auth.ldap_user_login_attr }}
+  OPSY_LDAP_USER_RDN_ATTR: {{ .Values.opsy.auth.ldap_user_rdn_attr }}
+  OPSY_LDAP_USER_FULL_NAME_ATTR: {{ .Values.opsy.auth.ldap_user_full_name_attr }}
+  OPSY_LDAP_USER_EMAIL_ATTR: {{ .Values.opsy.auth.ldap_user_email_attr }}
+  OPSY_LDAP_USER_SEARCH_SCOPE: {{ .Values.opsy.auth.ldap_user_search_scope }}
+  OPSY_LDAP_GROUP_DN: {{ .Values.opsy.auth.ldap_group_dn }}
+  OPSY_LDAP_GROUP_OBJECT_FILTER: {{ .Values.opsy.auth.ldap_group_object_filter }}
+  OPSY_LDAP_GROUP_MEMBERS_ATTR: {{ .Values.opsy.auth.ldap_group_members_attr }}
+  OPSY_LDAP_GROUP_NAME_ATTR: {{ .Values.opsy.auth.ldap_group_name_attr }}
+  OPSY_LDAP_GROUP_SEARCH_SCOPE: {{ .Values.opsy.auth.ldap_group_search_scope }}
+{{- end -}}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "opsy.fullname" . }}-database-migrations
+  labels:
+{{ include "opsy.migrationLabels" . | indent 4 }}
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+{{ include "config.content" . }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "opsy.fullname" . }}
+  labels:
+{{ include "opsy.labels" . | indent 4 }}
+{{ include "config.content" . }}

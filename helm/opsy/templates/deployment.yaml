@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "opsy.fullname" . }}
+  labels:
+{{ include "opsy.labels" . | indent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "opsy.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "opsy.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ include "opsy.imageTag" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "opsy.fullname" . }}
+          env:
+            - name: OPSY_MIGRATE_DB
+              value: "false"
+            - name: OPSY_CREATE_ADMIN_USER
+              value: "false"
+            - name: OPSY_RUN
+              value: "true"
+            - name: OPSY_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsy.fullname" . }}
+                  key:  OPSY_SECRET_KEY
+            - name: OPSY_DATABASE_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsy.fullname" . }}
+                  key:  OPSY_DATABASE_URI
+            - name: OPSY_LDAP_BIND_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsy.fullname" . }}
+                  key:  OPSY_LDAP_BIND_USER_PASSWORD
+          ports:
+            - name: http
+              containerPort: 5000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.opsy.app.uri_prefix }}/metrics
+              port: http
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.opsy.app.uri_prefix }}/metrics
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}

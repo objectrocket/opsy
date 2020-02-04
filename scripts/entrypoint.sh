@@ -2,8 +2,8 @@
 
 set -e
 
-if [ -z "${OPSY_DATABASE_URI}" ] || [ -z "${OPSY_SECRET_KEY}" ] || [ -z "${OPSY_ADMIN_PASSWORD}" ]; then
-    echo 'OPSY_DATABASE_URI, OPSY_SECRET_KEY, and OPSY_ADMIN_PASSWORD must be set, exiting.'
+if [ -z "${OPSY_DATABASE_URI}" ] || [ -z "${OPSY_SECRET_KEY}" ]; then
+    echo 'OPSY_DATABASE_URI and OPSY_SECRET_KEY must be set, exiting.'
     exit 1
 fi
 
@@ -19,7 +19,7 @@ port = 5000
 threads = ${OPSY_THREADS:-10}
 
 [logging]
-log_level = '${OPSY_THREADS:-INFO}'
+log_level = '${OPSY_LOG_LEVEL:-INFO}'
 
 [auth]
 base_permissions = ${OPSY_BASE_PERMISSIONS:-[]}
@@ -46,10 +46,24 @@ ldap_group_name_attr = '${OPSY_LDAP_GROUP_NAME_ATTR:-}'
 ldap_group_search_scope = '${OPSY_LDAP_GROUP_SEARCH_SCOPE:-LEVEL}'
 __EOF__
 
-/opt/opsy/bin/opsyctl db upgrade -d /opt/opsy/opsy_data/migrations
-/opt/opsy/bin/opsyctl create-admin-user
+# Migrate the DB schema
+if [ "${OPSY_MIGRATE_DB:-true}" = true ]; then
+    /opt/opsy/bin/opsyctl db upgrade -d /opt/opsy/opsy_data/migrations
+fi
+
+# Create the admin user
+if [ "${OPSY_CREATE_ADMIN_USER:-true}" = true ]; then
+    if [ -z "${OPSY_ADMIN_PASSWORD}" ]; then
+        echo 'OPSY_ADMIN_PASSWORD must be set to create admin user, exiting.'
+        exit 1
+    fi
+    /opt/opsy/bin/opsyctl create-admin-user
+fi
 
 # Remove passwords
 unset OPSY_DATABASE_URI OPSY_SECRET_KEY OPSY_LDAP_BIND_USER_PASSWORD OPSY_ADMIN_PASSWORD
 
-/opt/opsy/bin/opsyctl run
+# Now run the app
+if [ "${OPSY_RUN:-true}" = true ]; then
+    /opt/opsy/bin/opsyctl run
+fi
