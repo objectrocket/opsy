@@ -10,7 +10,7 @@ RUN useradd -rmd /opt/opsy opsy
 
 USER opsy
 
-COPY --chown=opsy:opsy dist/Opsy-${OPSY_VERSION}-py3-none-any.whl /opt/opsy
+COPY --chown=opsy:opsy dist/python/Opsy-${OPSY_VERSION}-py3-none-any.whl /opt/opsy
 
 RUN set -ex; \
     python -m venv /opt/opsy && \
