@@ -133,6 +133,7 @@ jobs:
       - image: circleci/python:3.6
     working_directory: ~/repo
     steps:
+      - setup_helm
       - release
 
 commands:
@@ -225,5 +226,22 @@ commands:
           name: Load docker image from workspace
           command: cat dist/Opsy-${CIRCLE_TAG}-docker.tar.gz | gzip -d | docker image load
       - run:
-          name: Push release
+          name: Push python and docker release
           command: make release
+      - add_ssh_keys:
+          fingerprints:
+            - "fc:74:39:48:d3:a0:a2:7c:71:45:58:cf:bf:5b:7e:8a"
+      - run:
+          name: Push helm chart release
+          command: |
+            export CHART_VERSION="$(egrep '^version:' helm/opsy/Chart.yaml | sed 's/^version: \(.*\)$/\1/')+${CIRCLE_TAG}"
+            git config --global user.email "builds@circleci.com"
+            git config --global user.name "CircleCI"
+            git checkout gh-pages
+            cp dist/helm/opsy-${CHART_VERSION}.tgz helm/
+            cd helm/
+            helm repo index .
+            git add opsy-${CHART_VERSION}.tgz
+            git add index.yaml
+            git commit -m "[ci skip] Release ${CIRCLE_TAG}."
+            git push origin gh-pages
