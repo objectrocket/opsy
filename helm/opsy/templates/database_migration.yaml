@@ -15,54 +15,71 @@ spec:
       name: {{ include "opsy.fullname" . }}-database-migration
       labels:
         app: {{ include "opsy.fullname" . }}
+        app.kubernetes.io/name: {{ include "opsy.name" . }}
         app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
         app.kubernetes.io/instance: {{ .Release.Name | quote }}
         helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      {{- range $key, $value := .Values.database_migration.podAnnotations }}
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
     spec:
       restartPolicy: Never
     {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+      securityContext:
+        {{- toYaml .Values.database_migration.podSecurityContext | nindent 8 }}
       containers:
-      - name: {{ include "opsy.fullname" . }}-database-migration
-        image: "{{ .Values.image.repository }}:{{ include "opsy.imageTag" . }}"
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
-        envFrom:
-          - configMapRef:
-              name: {{ include "opsy.fullname" . }}-database-migrations
-        env:
-          - name: OPSY_MIGRATE_DB
-            value: "true"
-          - name: OPSY_CREATE_ADMIN_USER
-            value: "true"
-          - name: OPSY_RUN
-            value: "false"
-          - name: OPSY_ADMIN_PASSWORD
-            valueFrom:
-              secretKeyRef:
+        - name: {{ include "opsy.fullname" . }}-database-migration
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ include "opsy.imageTag" . }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          envFrom:
+            - configMapRef:
                 name: {{ include "opsy.fullname" . }}-database-migrations
-                key:  OPSY_ADMIN_PASSWORD
-          - name: OPSY_SECRET_KEY
-            valueFrom:
-              secretKeyRef:
-                name: {{ include "opsy.fullname" . }}-database-migrations
-                key:  OPSY_SECRET_KEY
-          - name: OPSY_DATABASE_URI
-            valueFrom:
-              secretKeyRef:
-                name: {{ include "opsy.fullname" . }}-database-migrations
-                key:  OPSY_DATABASE_URI
-          - name: OPSY_LDAP_BIND_USER_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: {{ include "opsy.fullname" . }}-database-migrations
-                key:  OPSY_LDAP_BIND_USER_PASSWORD
-        resources:
-{{ toYaml .Values.database_migration.resources | indent 12 }}
-        nodeSelector:
-{{ toYaml .Values.database_migration.nodeSelector | indent 12 }}
-        affinity:
-{{ toYaml .Values.database_migration.affinity | indent 12 }}
-        tolerations:
-{{ toYaml .Values.database_migration.tolerations | indent 12 }}
+          env:
+            - name: OPSY_MIGRATE_DB
+              value: "true"
+            - name: OPSY_CREATE_ADMIN_USER
+              value: "true"
+            - name: OPSY_RUN
+              value: "false"
+            - name: OPSY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsy.fullname" . }}-database-migrations
+                  key:  OPSY_ADMIN_PASSWORD
+            - name: OPSY_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsy.fullname" . }}-database-migrations
+                  key:  OPSY_SECRET_KEY
+            - name: OPSY_DATABASE_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsy.fullname" . }}-database-migrations
+                  key:  OPSY_DATABASE_URI
+            - name: OPSY_LDAP_BIND_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "opsy.fullname" . }}-database-migrations
+                  key:  OPSY_LDAP_BIND_USER_PASSWORD
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+    {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
