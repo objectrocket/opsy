@@ -154,11 +154,13 @@ commands:
           command: |
             virtualenv ~/venv
             . ~/venv/bin/activate
-            pip install tox
+            pip install --upgrade pip setuptools wheel
+            pip install --upgrade tox
             tox --notest
             echo "source ~/venv/bin/activate" >> $BASH_ENV
       - save_cache:
           paths:
+            - ~/venv
             - ~/repo/.tox
           key: v1-dependencies-<< parameters.python_version >>-{{ checksum "requirements.txt" }}-{{ checksum "test-requirements.txt" }}
   setup_helm:
