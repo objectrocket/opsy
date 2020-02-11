@@ -1,0 +1,20 @@
+apiVersion: v1
+entries:
+  opsy:
+  - apiVersion: v1
+    appVersion: 0.3.1.0rc2
+    created: "2020-02-11T16:01:45.595438995Z"
+    description: It's Opsy! A simple multi-user/role operations inventory system with
+      aspirations.
+    digest: f92d007d521b6fbe3f2a5f8e31246ed04f84d3671fe0bd9d9b5841d5bfa42771
+    home: https://github.com/objectrocket/opsy
+    maintainers:
+    - email: sre@objectrocket.com
+      name: ObjectRocket SRE Team
+    name: opsy
+    sources:
+    - https://github.com/objectrocket/opsy
+    urls:
+    - opsy-0.0.1+0.3.1.0rc2.tgz
+    version: 0.0.1+0.3.1.0rc2
+generated: "2020-02-11T16:01:45.594854498Z"
