@@ -13,6 +13,8 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
+podAnnotations: {}
+
 podSecurityContext: {}
   # fsGroup: 2000
 
@@ -80,6 +82,8 @@ opsy:
     ldap_group_search_scope: 'LEVEL'
 
 database_migration:
+  podAnnotations: {}
+  podSecurityContext: {}
   resources: {}
   nodeSelector: {}
   tolerations: {}

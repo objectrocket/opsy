@@ -9,17 +9,25 @@ workflows:
   # This will run on every commit, but not on tags.
   test_build:
     jobs:
+      - test_style
       - test_python36
       - test_python37
       - test_python38
       - build:
           requires:
+            - test_style
             - test_python36
             - test_python37
             - test_python38
   # This will run only on tagged commits due to the filters.
   test_build_release:
     jobs:
+      - test_style:
+          filters:
+            tags:
+              only: /[0-9]+(\.[0-9]+)*(\.0(a|b|rc)[0-9]*)?/
+            branches:
+              ignore: /.*/
       - test_python36:
           filters:
             tags:
@@ -45,6 +53,7 @@ workflows:
             branches:
               ignore: /.*/
           requires:
+            - test_style
             - test_python36
             - test_python37
             - test_python38
@@ -67,6 +76,15 @@ workflows:
             - hold
 
 jobs:
+  test_style:
+    docker:
+      - image: circleci/python:3.6
+    working_directory: ~/repo
+    steps:
+      - setup_tox:
+          python_version: "3.6"
+      - setup_helm
+      - test_style
   test_python36:
     docker:
       - image: circleci/python:3.6
@@ -76,9 +94,9 @@ jobs:
           POSTGRES_DB: opsy
     working_directory: ~/repo
     steps:
-      - common_setup:
+      - setup_tox:
           python_version: "3.6"
-      - run_tests
+      - test_code
   test_python37:
     docker:
       - image: circleci/python:3.7
@@ -88,9 +106,9 @@ jobs:
           POSTGRES_DB: opsy
     working_directory: ~/repo
     steps:
-      - common_setup:
+      - setup_tox:
           python_version: "3.7"
-      - run_tests
+      - test_code
   test_python38:
     docker:
       - image: circleci/python:3.8
@@ -100,25 +118,27 @@ jobs:
           POSTGRES_DB: opsy
     working_directory: ~/repo
     steps:
-      - common_setup:
+      - setup_tox:
           python_version: "3.8"
-      - run_tests
+      - test_code
   build:
     docker:
       - image: circleci/python:3.6
     working_directory: ~/repo
     steps:
+      - setup_helm
       - build
   release:
     docker:
       - image: circleci/python:3.6
     working_directory: ~/repo
     steps:
+      - setup_helm
       - release
 
 commands:
-  common_setup:
-    description: Common steps for all jobs
+  setup_tox:
+    description: Install tox and load its cache
     parameters:
       python_version:
           type: string
@@ -134,19 +154,37 @@ commands:
           command: |
             virtualenv ~/venv
             . ~/venv/bin/activate
-            pip install tox
+            pip install --upgrade pip setuptools wheel
+            pip install --upgrade tox
             tox --notest
             echo "source ~/venv/bin/activate" >> $BASH_ENV
       - save_cache:
           paths:
+            - ~/venv
             - ~/repo/.tox
           key: v1-dependencies-<< parameters.python_version >>-{{ checksum "requirements.txt" }}-{{ checksum "test-requirements.txt" }}
-  run_tests:
-    description: Run tests
+  setup_helm:
+    description: Install helm
     steps:
       - run:
-          name: Run tests
-          command: make test
+          name: Install Helm binaries
+          command: |
+            curl https://raw.githubusercontent.com/kubernetes/helm/master/scripts/get | bash -s -- -v v2.16.1
+      - run:
+          name: Init Helm
+          command: helm init --client-only
+  test_style:
+    description: Run style checks
+    steps:
+      - run:
+          name: Run style checks
+          command: make test-style
+  test_code:
+    description: Run python tests
+    steps:
+      - run:
+          name: Run python tests
+          command: make test-code
   build:
     description: Build the python package and docker image
     steps:
@@ -169,9 +207,6 @@ commands:
                 echo "No tag, stopping build early."
                 circleci-agent step halt
             fi
-      - run:
-          name: Save docker image to workspace
-          command: docker save objectrocket/opsy:${CIRCLE_TAG} | gzip > dist/Opsy-${CIRCLE_TAG}-docker.tar.gz
       - persist_to_workspace:
           root: dist
           paths: '*'
@@ -191,7 +226,24 @@ commands:
             echo "source ~/venv/bin/activate" >> $BASH_ENV
       - run:
           name: Load docker image from workspace
-          command: cat dist/Opsy-${CIRCLE_TAG}-docker.tar.gz | gzip -d | docker image load
+          command: cat dist/docker/Opsy-${CIRCLE_TAG}-docker.tar.gz | gzip -d | docker image load
       - run:
-          name: Push release
+          name: Push python and docker release
           command: make release
+      - add_ssh_keys:
+          fingerprints:
+            - "fc:74:39:48:d3:a0:a2:7c:71:45:58:cf:bf:5b:7e:8a"
+      - run:
+          name: Push helm chart release
+          command: |
+            export CHART_VERSION="$(egrep '^version:' helm/opsy/Chart.yaml | sed 's/^version: \(.*\)$/\1/')+${CIRCLE_TAG}"
+            git config --global user.email "builds@circleci.com"
+            git config --global user.name "CircleCI"
+            git checkout gh-pages
+            cp dist/helm/opsy-${CHART_VERSION}.tgz helm/
+            cd helm/
+            helm repo index .
+            git add opsy-${CHART_VERSION}.tgz
+            git add index.yaml
+            git commit -m "[ci skip] Release ${CIRCLE_TAG}."
+            git push origin gh-pages
