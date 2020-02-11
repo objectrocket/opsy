@@ -36,7 +36,7 @@ Common labels
 */}}
 {{- define "opsy.labels" -}}
 app.kubernetes.io/name: {{ include "opsy.name" . }}
-helm.sh/chart: {{ include "opsy.chart" . }}
+helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
@@ -49,7 +49,7 @@ Migration labels
 */}}
 {{- define "opsy.migrationLabels" -}}
 app.kubernetes.io/name: {{ include "opsy.name" . }}-database-migrations
-helm.sh/chart: {{ include "opsy.chart" . }}
+helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}

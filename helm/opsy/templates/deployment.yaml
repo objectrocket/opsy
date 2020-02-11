@@ -13,11 +13,7 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ include "opsy.fullname" . }}
-        app.kubernetes.io/name: {{ include "opsy.name" . }}
-        app.kubernetes.io/managed-by: {{ .Release.Service | quote }}
-        app.kubernetes.io/instance: {{ .Release.Name | quote }}
-        helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version }}"
+{{ include "opsy.labels" . | indent 8 }}
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
         checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
