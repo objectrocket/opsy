@@ -43,7 +43,7 @@ Example usage:
 
     $ docker run --name opsy-test -d -p 5000:5000 -e OPSY_DATABASE_URI='postgresql://opsy:password@myneatdb.example.com/opsy' -e OPSY_SECRET_KEY='this is a secret' -e OPSY_ADMIN_PASSWORD='password' objectrocket/opsy:0.3.1.0rc3
 
-## Installing - Pip
+# Installing - Pip
 
 First setup a virtual environment for Opsy:
 
