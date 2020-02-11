@@ -226,7 +226,7 @@ commands:
             echo "source ~/venv/bin/activate" >> $BASH_ENV
       - run:
           name: Load docker image from workspace
-          command: cat dist/docker/Opsy-${CIRCLE_TAG}-docker.tar.gz | gzip -d | docker image load
+          command: cat dist/docker/Opsy-${CIRCLE_TAG}.tar.gz | gzip -d | docker image load
       - run:
           name: Push python and docker release
           command: make release
