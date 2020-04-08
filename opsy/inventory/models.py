@@ -29,6 +29,8 @@ class Host(NamedModel, TimeStampMixin, db.Model):
 
     __tablename__ = 'hosts'
 
+    device_id = db.Column(db.String(128))
+    bmc_ip = db.Column(db.String(39))
     zone_id = db.Column(
         db.String(36), db.ForeignKey('zones.id', ondelete='CASCADE'),
         index=True, nullable=False)
