@@ -3,7 +3,7 @@ from marshmallow import fields as ma_fields
 from marshmallow_sqlalchemy import field_for
 from opsy.inventory.models import Zone, Host, Group, HostGroupMapping
 from opsy.flask_extensions import ma
-from opsy.schema import BaseSchema, Hyperlinks
+from opsy.schema import BaseSchema, Hyperlinks, validate_ip
 
 ###############################################################################
 # Sqlalchemy schemas
@@ -77,15 +77,16 @@ class HostSchema(BaseSchema):
 
     class Meta:
         model = Host
-        fields = ('id', 'zone_id', 'name', 'vars', 'compiled_vars',
-                  'zone', 'group_mappings', 'created_at', 'updated_at',
-                  '_links')
+        fields = ('id', 'zone_id', 'name', 'device_id', 'bmc_ip', 'vars',
+                  'compiled_vars', 'zone', 'group_mappings', 'created_at',
+                  'updated_at', '_links')
         ordered = True
         unknown = RAISE
 
     id = field_for(Host, 'id', dump_only=True)
     name = field_for(Host, 'name', required=True)
     zone_id = field_for(Host, 'zone_id', required=True)
+    bmc_ip = field_for(Host, 'bmc_ip', validate=validate_ip)
     created_at = field_for(Host, 'created_at', dump_only=True)
     updated_at = field_for(Host, 'updated_at', dump_only=True)
     vars = field_for(Host, 'vars', field_class=ma_fields.Dict)
@@ -108,7 +109,7 @@ class HostUpdateSchema(HostSchema):
 
     class Meta:
         model = Host
-        fields = ('zone_id', 'name', 'vars')
+        fields = ('zone_id', 'name', 'device_id', 'bmc_ip', 'vars')
         ordered = True
         unknown = RAISE
 
@@ -120,7 +121,7 @@ class HostQuerySchema(HostSchema):
     class Meta:
         model = Host
         fields = ('id', 'zone_id', 'zone_name', 'group_id', 'group_name',
-                  'name')
+                  'name', 'device_id', 'bmc_ip')
         ordered = True
         unknown = RAISE
 

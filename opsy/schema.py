@@ -1,6 +1,7 @@
+from ipaddress import ip_address
 from flask_apispec import use_kwargs as api_spec_use_kwargs
 from flask_marshmallow.fields import _rapply, _url_val
-from marshmallow import post_load
+from marshmallow import post_load, ValidationError
 from marshmallow import fields as ma_fields
 from opsy.flask_extensions import ma
 
@@ -22,6 +23,13 @@ def use_kwargs(schema_cls, schema_kwargs=None, **kwargs):
         )
 
     return api_spec_use_kwargs(factory, **kwargs)
+
+
+def validate_ip(ip_addr):
+    try:
+        ip_address(ip_addr)
+    except ValueError as err:
+        raise ValidationError(err)
 
 
 class Hyperlinks(ma_fields.Dict):
