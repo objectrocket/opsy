@@ -2,10 +2,12 @@ from cheroot import wsgi
 from cheroot.ssl.pyopenssl import pyOpenSSLAdapter
 
 
-def create_server(app, host, port, threads=10, ssl_enabled=None,
-                  certificate=None, private_key=None, ca_certificate=None):
-    server = wsgi.Server((host, port), app, numthreads=threads)
-    if ssl_enabled:
+def create_server(app):
+    server_config = app.config.opsy['server']
+    server = wsgi.Server((server_config['host'], server_config['port']), app,
+                         numthreads=server_config['threads'])
+    if server_config['ssl_enabled']:
         server.ssl_adapter = pyOpenSSLAdapter(
-            certificate, private_key, certificate_chain=ca_certificate)
+            server_config['certificate'], server_config['private_key'],
+            certificate_chain=server_config['ca_certificate'])
     return server

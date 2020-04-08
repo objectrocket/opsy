@@ -1,3 +1,4 @@
+import os
 import threading
 import time
 import pytest
@@ -15,7 +16,11 @@ from opsy.flask_extensions import db as opsy_db
 
 @pytest.fixture(scope='session')
 def app():
-    test_app = create_app(load_config('tests/test_opsy_config.toml'))
+    overrides = {'app': {}}
+    if os.getenv('OPSY_TEST_DATABASE_URI'):
+        overrides['app']['database_uri'] = os.getenv('OPSY_TEST_DATABASE_URI')
+    config = load_config('tests/test_opsy_config.toml', overrides)
+    test_app = create_app(config)
     test_app.config['TESTING'] = True
     return test_app
 
@@ -34,9 +39,7 @@ def _db(app):
 
 @pytest.fixture(scope='function')
 def test_server(app):
-    host = app.config.opsy['server']['host']
-    port = app.config.opsy['server']['port']
-    server = create_server(app, host, port)
+    server = create_server(app)
     server.shutdown_timeout = 0  # Speed-up tests teardown
     threading.Thread(target=server.safe_start).start()
     while not server.ready:  # wait until fully initialized and bound
