@@ -92,6 +92,7 @@ jobs:
         environment:
           POSTGRES_USER: opsy
           POSTGRES_DB: opsy
+          POSTGRES_PASSWORD: $POSTGRES_PASSWORD
     working_directory: ~/repo
     steps:
       - setup_tox:
@@ -104,6 +105,7 @@ jobs:
         environment:
           POSTGRES_USER: opsy
           POSTGRES_DB: opsy
+          POSTGRES_PASSWORD: $POSTGRES_PASSWORD
     working_directory: ~/repo
     steps:
       - setup_tox:
@@ -116,6 +118,7 @@ jobs:
         environment:
           POSTGRES_USER: opsy
           POSTGRES_DB: opsy
+          POSTGRES_PASSWORD: $POSTGRES_PASSWORD
     working_directory: ~/repo
     steps:
       - setup_tox:

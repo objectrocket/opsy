@@ -3,6 +3,7 @@ import toml
 from marshmallow import (Schema, fields, validate, validates_schema,
                          ValidationError)
 from opsy.exceptions import NoConfigFile
+from opsy.utils import merge_dict
 
 
 class ConfigAppSchema(Schema):
@@ -84,12 +85,14 @@ class ConfigSchema(Schema):
         ConfigServerSchema(), missing=ConfigServerSchema().load({}))
 
 
-def load_config(config_file):
+def load_config(config_file, overrides=None):
     if not os.path.exists(config_file):
         raise NoConfigFile(f'File "{config_file}" does not exist.')
     with open(config_file, 'r') as file_handler:
-        config = ConfigSchema().load(toml.load(file_handler))
-    return config
+        config = toml.load(file_handler)
+    if overrides:
+        merge_dict(config, overrides)
+    return ConfigSchema().load(config)
 
 
 def configure_app(app, config):

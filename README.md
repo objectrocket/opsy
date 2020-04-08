@@ -95,6 +95,16 @@ Initialize the DB, the example config uses sqlite by default for development:
 
     $ opsyctl db upgrade
 
+# Running tests
+
+You can run the tests by running:
+
+    $ make test
+
+By default this will use a local sqlite database created at `tests/opsy.db` to run the tests. This can be changed by supplying a SQLAlchemy compatible database URI through the environment variable `OPSY_TEST_DATABASE_URI`:
+
+    $ OPSY_TEST_DATABASE_URI="postgresql://opsy:password@192.168.100.145/opsy" make test
+
 # Dealing with schema changes
 
 If you are introducing a change that requires a schema change you must create a schema revision. This can be done like so:

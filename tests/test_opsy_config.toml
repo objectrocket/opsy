@@ -1,5 +1,6 @@
 [app]
-database_uri = 'postgresql://opsy@localhost/opsy'
+# Set to sqlite for local tests, can be set using env var OPSY_TEST_DATABASE_URI.
+database_uri = 'sqlite:///../tests/opsy.db'
 secret_key = 'this should be changed'
 
 [server]

@@ -28,10 +28,50 @@ click_option = partial(  # pylint: disable=invalid-name
 @click_option('--config', type=click.Path(),
               default=f'{os.path.abspath(os.path.curdir)}/opsy.toml',
               envvar='OPSY_CONFIG', help='Config file for opsy.')
+@click_option('--app_database_uri', type=click.STRING,
+              envvar='OPSY_APP_DATABASE_URI',
+              help='The SQLAlchemy compatible database URI')
+@click_option('--app_secret_key', type=click.STRING,
+              envvar='OPSY_APP_SECRET_KEY',
+              help='The key used for crypto features.')
+@click_option('--app_uri_prefix', type=click.STRING,
+              envvar='OPSY_APP_URI_PREFIX',
+              help='URL prefix if mounted behind a reverse proxy.')
+@click_option('--server_host', type=click.STRING,
+              envvar='OPSY_SERVER_HOST',
+              help='Host address.')
+@click_option('--server_port', type=click.INT,
+              envvar='OPSY_SERVER_PORT',
+              help='Port number to listen on.')
+@click_option('--server_threads', type=click.INT,
+              envvar='OPSY_SERVER_THREADS',
+              help='Amount of threads.')
+@click_option('--server_ssl_enabled', type=click.BOOL, is_flag=True,
+              envvar='OPSY_SERVER_SSL_ENABLED',
+              help='Set to enable SSL.')
+@click_option('--server_certificate', type=click.Path(),
+              envvar='OPSY_SERVER_CERTIFICATE',
+              help='SSL cert.')
+@click_option('--server_private_key', type=click.Path(),
+              envvar='OPSY_SERVER_PRIVATE_KEY',
+              help='SSL key.')
+@click_option('--server_ca_certificate', type=click.Path(),
+              envvar='OPSY_SERVER_CA_CERTIFICATE',
+              help='SSL CA cert.')
 @click.pass_context
-def cli(ctx, config):
+def cli(ctx, config, **kwargs):
+    overrides = {
+        'app': {},
+        'auth': {},
+        'logging': {},
+        'server': {}
+    }
+    for key, value in kwargs.items():
+        top_key, sub_key = key.split('_', 1)
+        if value is not None:
+            overrides[top_key][sub_key] = value
     try:
-        ctx.obj.data['config'] = load_config(config)
+        ctx.obj.data['config'] = load_config(config, overrides)
     except NoConfigFile as error:
         print_error(error, exit_script=False)
         ctx.obj.data['config'] = None
@@ -42,29 +82,14 @@ cli.add_command(db_command)
 
 
 @cli.command('run')
-@click_option('--host', type=click.STRING, help='Host address.')
-@click_option('--port', '-p', type=click.INT, help='Port number to listen on.')
-@click_option('--threads', '-t', type=click.INT, help='Amount of threads.')
-@click_option('--ssl_enabled', type=click.BOOL, is_flag=True)
-@click_option('--certificate', type=click.Path(), help='SSL cert.')
-@click_option('--private_key', type=click.Path(), help='SSL key.')
-@click_option('--ca_certificate', type=click.Path(), help='SSL CA cert.')
 @pass_script_info
-def run(script_info, host, port, threads, ssl_enabled, certificate,
-        private_key, ca_certificate):
+def run(script_info):
     """Run the Opsy server."""
     app = script_info.load_app()
-    host = host or app.config.opsy['server']['host']
-    port = port or app.config.opsy['server']['port']
-    threads = threads or app.config.opsy['server']['threads']
-    ssl_enabled = ssl_enabled or app.config.opsy['server']['ssl_enabled']
-    certificate = certificate or app.config.opsy['server']['certificate']
-    private_key = private_key or app.config.opsy['server']['private_key']
-    ca_certificate = ca_certificate or \
-        app.config.opsy['server']['ca_certificate']
-    server = create_server(app, host, port, threads, ssl_enabled, certificate,
-                           private_key, ca_certificate)
+    server = create_server(app)
     try:
+        host = app.config.opsy['server']['host']
+        port = app.config.opsy['server']['port']
         proto = 'https' if server.ssl_adapter else 'http'
         app.logger.info(f'Starting Opsy server at {proto}://{host}:{port}/...')
         app.logger.info(f'API docs available at {proto}://{host}:{port}/docs/')

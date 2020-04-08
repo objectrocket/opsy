@@ -55,12 +55,16 @@ def test_config(app):
     with pytest.raises(ValidationError, match=r'.*ssl_enabled.*'):
         load_config(
             f'{CURRENT_DIR}/../data/fake_opsy_config_no_ssl.toml')
+    # Make sure overrides work and don't remove non-overridden data.
+    overrides = {'app': {'database_uri': 'sqlite:///../opsy.db'}}
+    config = load_config(f'{CURRENT_DIR}/../test_opsy_config.toml',
+                         overrides=overrides)
+    assert config['app']['database_uri'] == overrides['app']['database_uri']
+    assert config['app']['secret_key'] == 'this should be changed'
     # Make sure our flask config makes it to the app.
     config = load_config(f'{CURRENT_DIR}/../test_opsy_config.toml')
     assert app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] is False
     assert app.config['SECRET_KEY'] == config['app']['secret_key']
-    assert app.config['SQLALCHEMY_DATABASE_URI'] == \
-        config['app']['database_uri']
 
 
 def test_logging(app, caplog):
