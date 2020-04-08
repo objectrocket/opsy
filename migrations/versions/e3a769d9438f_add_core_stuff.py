@@ -1,4 +1,4 @@
-"""Add core ID and BMC IP columns to Host model
+"""Add device ID and BMC IP columns to Host model
 
 Revision ID: e3a769d9438f
 Revises: b0ee04f071c6
