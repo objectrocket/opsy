@@ -58,6 +58,8 @@ def test_host_schema(test_host, test_hosts):
         ('id', test_host.id),
         ('zone_id', test_host.zone_id),
         ('name', test_host.name),
+        ('device_id', test_host.device_id),
+        ('bmc_ip', test_host.bmc_ip),
         ('vars', None),
         ('compiled_vars', {}),
         ('zone', OrderedDict([
