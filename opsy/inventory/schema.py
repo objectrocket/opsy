@@ -127,6 +127,7 @@ class HostQuerySchema(HostSchema):
 
     id = field_for(Host, 'id')
     name = field_for(Host, 'name', required=False)
+    bmc_ip = field_for(Host, 'bmc_ip')
     zone_id = field_for(Host, 'zone_id', required=False)
     zone_name = ma_fields.String(attribute='zone___name')
     group_id = ma_fields.String(attribute='groups___id')
