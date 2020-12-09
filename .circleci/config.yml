@@ -4,166 +4,186 @@
 #
 version: 2.1
 
+references:
+  objectrocket-docker-auth: &objectrocket-docker-auth
+    auth:
+      username: ${DOCKER_USERNAME}
+      password: ${DOCKER_PASSWORD}
+  context-to-use: &context-to-use
+    context: objectrocket-shared
 workflows:
   version: 2
   main_workflow:
     jobs:
-      - test_python36
-      - test_python37
-      - test_python38
+    - test_python36: *context-to-use
+    - test_python37: *context-to-use
+    - test_python38: *context-to-use
   build_and_release:
     jobs:
-      - build_release:
-          filters:
-            tags:
-              only: /[0-9]+(\.[0-9]+)*/
-            branches:
-              only: master
-      - hold:
-          filters:
-            tags:
-              only: /[0-9]+(\.[0-9]+)*/
-            branches:
-              only: master
-          type: approval
-          requires:
-            - build_release
-      - release:
-          filters:
-            tags:
-              only: /[0-9]+(\.[0-9]+)*/
-            branches:
-              only: master
-          requires:
-           - hold
+    - build_release:
+        <<: *context-to-use
+        filters:
+          tags:
+            only: /[0-9]+(\.[0-9]+)*/
+          branches:
+            only: master
+    - hold:
+        <<: *context-to-use
+        filters:
+          tags:
+            only: /[0-9]+(\.[0-9]+)*/
+          branches:
+            only: master
+        type: approval
+        requires:
+        - build_release
+    - release:
+        <<: *context-to-use
+        filters:
+          tags:
+            only: /[0-9]+(\.[0-9]+)*/
+          branches:
+            only: master
+        requires:
+        - hold
 
 jobs:
   test_python36:
     docker:
-      - image: circleci/python:3.6
-      - image: circleci/postgres:12
-        environment:
-          POSTGRES_USER: opsy
-          POSTGRES_DB: opsy
+    - <<: *objectrocket-docker-auth
+      image: circleci/python:3.6
+    - <<: *objectrocket-docker-auth
+      image: circleci/postgres:12
+      environment:
+        POSTGRES_USER: opsy
+        POSTGRES_DB: opsy
     working_directory: ~/repo
     steps:
-      - common_setup:
-          python_version: "3.6"
-      - run_tests
+    - common_setup:
+        python_version: '3.6'
+    - run_tests
   test_python37:
     docker:
-      - image: circleci/python:3.7
-      - image: circleci/postgres:12
-        environment:
-          POSTGRES_USER: opsy
-          POSTGRES_DB: opsy
+    - <<: *objectrocket-docker-auth
+      image: circleci/python:3.7
+    - <<: *objectrocket-docker-auth
+      image: circleci/postgres:12
+      environment:
+        POSTGRES_USER: opsy
+        POSTGRES_DB: opsy
     working_directory: ~/repo
     steps:
-      - common_setup:
-          python_version: "3.7"
-      - run_tests
+    - common_setup:
+        python_version: '3.7'
+    - run_tests
   test_python38:
     docker:
-      - image: circleci/python:3.8
-      - image: circleci/postgres:12
-        environment:
-          POSTGRES_USER: opsy
-          POSTGRES_DB: opsy
+    - <<: *objectrocket-docker-auth
+      image: circleci/python:3.8
+    - <<: *objectrocket-docker-auth
+      image: circleci/postgres:12
+      environment:
+        POSTGRES_USER: opsy
+        POSTGRES_DB: opsy
     working_directory: ~/repo
     steps:
-      - common_setup:
-          python_version: "3.8"
-      - run_tests
+    - common_setup:
+        python_version: '3.8'
+    - run_tests
   build_release:
     docker:
-      - image: circleci/python:3.6
+    - <<: *objectrocket-docker-auth
+      image: circleci/python:3.6
     working_directory: ~/repo
     steps:
-      - build
-      - check_build
+    - build
+    - check_build
   release:
     docker:
-      - image: circleci/python:3.6
+    - <<: *objectrocket-docker-auth
+      image: circleci/python:3.6
     working_directory: ~/repo
     steps:
-      - release_to_pypi
+    - release_to_pypi
 
 commands:
   common_setup:
     description: Common steps for all jobs
     parameters:
       python_version:
-          type: string
-          default: ""
+        type: string
+        default: ''
     steps:
-      - checkout
+    - checkout
       # Download and cache dependencies
-      - restore_cache:
-          keys:
-            - v1-dependencies-<< parameters.python_version >>-{{ checksum "requirements.txt" }}-{{ checksum "test-requirements.txt" }}
-      - run:
-          name: install dependencies
-          command: |
-            virtualenv ~/venv
-            . ~/venv/bin/activate
-            pip install tox
-            tox --notest
-      - save_cache:
-          paths:
-            - ~/repo/.tox
-          key: v1-dependencies-<< parameters.python_version >>-{{ checksum "requirements.txt" }}-{{ checksum "test-requirements.txt" }}
+    - restore_cache:
+        keys:
+        - v1-dependencies-<< parameters.python_version >>-{{ checksum "requirements.txt"
+          }}-{{ checksum "test-requirements.txt" }}
+    - run:
+        name: install dependencies
+        command: |
+          virtualenv ~/venv
+          . ~/venv/bin/activate
+          pip install tox
+          tox --notest
+    - save_cache:
+        paths:
+        - ~/repo/.tox
+        key: v1-dependencies-<< parameters.python_version >>-{{ checksum "requirements.txt"
+          }}-{{ checksum "test-requirements.txt" }}
   run_tests:
     description: Run tests
     steps:
-      - run:
-          name: Run tests
-          command: |
-            . ~/venv/bin/activate
-            tox
+    - run:
+        name: Run tests
+        command: |
+          . ~/venv/bin/activate
+          tox
   build:
     description: Setup release environment
     steps:
-      - checkout
-      - run:
-          name: install dependencies
-          command: |
-            virtualenv ~/venv
-            . ~/venv/bin/activate
-            pip install --upgrade pip setuptools wheel pbr twine
-            echo "source ~/venv/bin/activate" >> $BASH_ENV
-      - run:
-          name: build
-          command: python setup.py sdist bdist_wheel
+    - checkout
+    - run:
+        name: install dependencies
+        command: |
+          virtualenv ~/venv
+          . ~/venv/bin/activate
+          pip install --upgrade pip setuptools wheel pbr twine
+          echo "source ~/venv/bin/activate" >> $BASH_ENV
+    - run:
+        name: build
+        command: python setup.py sdist bdist_wheel
   check_build:
     description: Check the build
     steps:
-      - run:
-          name: install
-          command: pip install dist/Opsy*.whl
-      - run:
-          name: verify version is marked for release
-          command: test $(pbr info opsy | awk '{print $3}') = 'released'
-      - run:
-          name: verify version matches tag
-          command: test $(pbr info opsy | awk '{print $2}') = $CIRCLE_TAG
-      - run:
-          name: run twine checks
-          command: twine check dist/*
-      - persist_to_workspace:
-          root: dist
-          paths: '*'
+    - run:
+        name: install
+        command: pip install dist/Opsy*.whl
+    - run:
+        name: verify version is marked for release
+        command: test $(pbr info opsy | awk '{print $3}') = 'released'
+    - run:
+        name: verify version matches tag
+        command: test $(pbr info opsy | awk '{print $2}') = $CIRCLE_TAG
+    - run:
+        name: run twine checks
+        command: twine check dist/*
+    - persist_to_workspace:
+        root: dist
+        paths: '*'
   release_to_pypi:
     description: Actually release
     steps:
-      - attach_workspace:
-          at: /tmp/dist
-      - run:
-          name: install dependencies
-          command: |
-            virtualenv ~/venv
-            . ~/venv/bin/activate
-            pip install twine
-            echo "source ~/venv/bin/activate" >> $BASH_ENV
-      - run:
-          name: upload to pypi
-          command: twine upload --non-interactive /tmp/dist/*
+    - attach_workspace:
+        at: /tmp/dist
+    - run:
+        name: install dependencies
+        command: |
+          virtualenv ~/venv
+          . ~/venv/bin/activate
+          pip install twine
+          echo "source ~/venv/bin/activate" >> $BASH_ENV
+    - run:
+        name: upload to pypi
+        command: twine upload --non-interactive /tmp/dist/*
