@@ -4,6 +4,12 @@
 #
 version: 2.1
 
+references:
+  objectrocket-docker-auth: &objectrocket-docker-auth
+    auth:
+      username: ${DOCKER_USER}
+      password: ${DOCKER_PASS}
+
 workflows:
   version: 2
   # This will run on every commit, but not on tags.
@@ -79,6 +85,7 @@ jobs:
   test_style:
     docker:
       - image: circleci/python:3.6
+        <<: *objectrocket-docker-auth
     working_directory: ~/repo
     steps:
       - setup_tox:
@@ -88,7 +95,9 @@ jobs:
   test_python36:
     docker:
       - image: circleci/python:3.6
+        <<: *objectrocket-docker-auth
       - image: circleci/postgres:12
+        <<: *objectrocket-docker-auth
         environment:
           POSTGRES_USER: opsy
           POSTGRES_DB: opsy
@@ -101,7 +110,9 @@ jobs:
   test_python37:
     docker:
       - image: circleci/python:3.7
+        <<: *objectrocket-docker-auth
       - image: circleci/postgres:12
+        <<: *objectrocket-docker-auth
         environment:
           POSTGRES_USER: opsy
           POSTGRES_DB: opsy
@@ -114,7 +125,9 @@ jobs:
   test_python38:
     docker:
       - image: circleci/python:3.8
+        <<: *objectrocket-docker-auth
       - image: circleci/postgres:12
+        <<: *objectrocket-docker-auth
         environment:
           POSTGRES_USER: opsy
           POSTGRES_DB: opsy
@@ -127,6 +140,7 @@ jobs:
   build:
     docker:
       - image: circleci/python:3.6
+        <<: *objectrocket-docker-auth
     working_directory: ~/repo
     steps:
       - setup_helm
@@ -134,6 +148,7 @@ jobs:
   release:
     docker:
       - image: circleci/python:3.6
+        <<: *objectrocket-docker-auth
     working_directory: ~/repo
     steps:
       - setup_helm
