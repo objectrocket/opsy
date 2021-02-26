@@ -1,4 +1,4 @@
-aiohttp==3.5.1
+aiohttp==3.7.4
 apispec==2.0.2
 cheroot==8.0.0
 Flask==1.1.1
